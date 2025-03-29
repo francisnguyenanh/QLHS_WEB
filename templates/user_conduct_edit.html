@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container">
+        <h2 class="mt-4 mb-4">Chỉnh sửa hạnh kiểm học sinh</h2>
+        <form method="POST">
+            <div class="row g-3">
+                <div class="col-12 col-md-4">
+                    <div class="form-group">
+                        <label for="user_id">Học sinh:</label>
+                        <select name="user_id" id="user_id" class="form-control" required onchange="calculateTotalPoints()">
+                            {% for user in users %}
+                                <option value="{{ user[0] }}" {% if user[0] == record[1] %}selected{% endif %}>
+                                    {{ user[1] }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group mt-3">
+                        <label for="conduct_id">Hạnh kiểm:</label>
+                        <select name="conduct_id" id="conduct_id" class="form-control" required onchange="loadConductPoints()">
+                            {% for conduct in conducts %}
+                                <option value="{{ conduct[0] }}" {% if conduct[0] == record[2] %}selected{% endif %}>
+                                    {{ conduct[1] }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="form-group">
+                        <label for="registered_date">Dữ liệu ngày:</label>
+                        <input type="date" name="registered_date" id="registered_date" class="form-control" value="{{ record[3] }}" required onchange="calculateTotalPoints()">
+                    </div>
+                    <div class="form-group mt-3">
+                        <label for="entered_by">Người đăng ký:</label>
+                        <input type="text" name="entered_by" id="entered_by" class="form-control" value="{{ record[5] }}" required>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="form-group">
+                        <label for="conduct_points">Điểm hạnh kiểm:</label>
+                        <input type="number" name="conduct_points" id="conduct_points" class="form-control" readonly>
+                    </div>
+                    <div class="form-group mt-3">
+                        <label for="total_points">Tổng điểm ngày:</label>
+                        <input type="number" name="total_points" id="total_points" class="form-control" readonly>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12 text-center">
+                    <button type="submit" class="btn btn-primary w-100 w-md-auto mb-2 mr-2">Cập nhật</button>
+                    <a href="{{ url_for('user_conduct_list', sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}" class="btn btn-secondary w-100 w-md-auto mb-2 mb-md-0 mr-md-2">Quay về</a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <style>
+        @media (max-width: 768px) {
+            .form-group {
+                margin-bottom: 1rem;
+            }
+            .btn {
+                margin-bottom: 0.5rem;
+            }
+        }
+    </style>
+
+    <script>
+        // Kiểm tra xem script có được tải không
+        console.log("Script loaded successfully");
+
+        // Định nghĩa hàm loadConductPoints
+        function loadConductPoints() {
+            console.log("loadConductPoints function called");
+            const conductId = document.getElementById('conduct_id').value;
+            console.log("Selected conduct_id:", conductId);
+
+            if (conductId) {
+                fetch(`/get_conduct_points/${conductId}`)
+                    .then(response => {
+                        console.log("Fetch response status:", response.status);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        const conductPoints = data.conduct_points || 0;
+                        document.getElementById('conduct_points').value = conductPoints;
+                        console.log(`Conduct points fetched: ${conductPoints}`);
+                        calculateTotalPoints();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching conduct points:', error);
+                        document.getElementById('conduct_points').value = 0;
+                        calculateTotalPoints();
+                    });
+            } else {
+                document.getElementById('conduct_points').value = 0;
+                console.log("No conduct_id selected");
+                calculateTotalPoints();
+            }
+        }
+
+        // Định nghĩa hàm calculateTotalPoints
+        function calculateTotalPoints() {
+            console.log("calculateTotalPoints function called");
+            const userId = document.getElementById('user_id').value;
+            const registeredDate = document.getElementById('registered_date').value;
+            const conductPoints = parseFloat(document.getElementById('conduct_points').value) || 0;
+            const excludeId = {{ id | default(0) | safe }}; // Giá trị mặc định là 0 nếu id không được truyền
+
+            console.log("Parameters - user_id:", userId, "registered_date:", registeredDate, "exclude_id:", excludeId);
+
+            if (userId && registeredDate) {
+                fetch(`/user_conduct_total_points?user_id=${userId}®istered_date=${registeredDate}&exclude_id=${excludeId}`)
+                    .then(response => {
+                        console.log("Fetch total points response status:", response.status);
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! Status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        const totalPoints = (data.total_points || 0) + conductPoints;
+                        document.getElementById('total_points').value = totalPoints;
+                        console.log(`Total points fetched: ${data.total_points}, Final total: ${totalPoints}`);
+                    })
+                    .catch(error => {
+                        console.error('Error fetching total points:', error);
+                        document.getElementById('total_points').value = conductPoints;
+                    });
+            } else {
+                document.getElementById('total_points').value = conductPoints;
+                console.log("Insufficient data for total points, using conduct_points:", conductPoints);
+            }
+        }
+
+        // Load initial values when page loads
+        window.onload = function() {
+            console.log("Page loaded, calling loadConductPoints");
+            loadConductPoints();
+        };
+    </script>
+{% endblock %}

@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container">
+        <h2 class="mt-4 mb-4">Quản lý hạnh kiểm</h2>
+
+        <form method="POST">
+            <div class="row g-3">
+                <div class="col-12 col-md-3">
+                    <div class="form-group">
+                        <label for="date_from">Dữ liệu từ ngày ～</label>
+                        <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from or '' }}">
+                    </div>
+                    <div class="form-group mt-2">
+                        <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to or '' }}">
+                    </div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <div class="form-group">
+                        <label for="users">Học sinh:</label>
+                        <select name="users" id="users" multiple class="form-control" size="4">
+                            {% for user in users %}
+                                <option value="{{ user[0] }}" {% if user[0]|string in selected_users %}selected{% endif %}>{{ user[1] }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-check mt-2">
+                            <input type="checkbox" class="form-check-input" id="select_all_users" name="select_all_users" {% if select_all_users %}checked{% endif %}>
+                            <label class="form-check-label" for="select_all_users">Chọn tất cả</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <div class="form-group">
+                        <label for="groups">Nhóm:</label>
+                        <select name="groups" id="groups" multiple class="form-control" size="4">
+                            {% for group in groups %}
+                                <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-check mt-2">
+                            <input type="checkbox" class="form-check-input" id="select_all_groups" name="select_all_groups" {% if select_all_groups %}checked{% endif %}>
+                            <label class="form-check-label" for="select_all_groups">Chọn tất cả</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-3">
+                    <div class="form-group">
+                        <label for="conducts">Hạnh kiểm:</label>
+                        <select name="conducts" id="conducts" multiple class="form-control" size="4">
+                            {% for conduct in conducts %}
+                                <option value="{{ conduct[0] }}" {% if conduct[0]|string in selected_conducts %}selected{% endif %}>{{ conduct[1] }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-check mt-2">
+                            <input type="checkbox" class="form-check-input" id="select_all_conducts" name="select_all_conducts" {% if select_all_conducts %}checked{% endif %}>
+                            <label class="form-check-label" for="select_all_conducts">Chọn tất cả</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12 text-center">
+                    <button type="submit" class="btn btn-primary w-100 w-md-auto">Tìm kiếm</button>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-12">
+                    <a href="{{ url_for('user_conduct_create', sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}" class="btn btn-success w-100 w-md-auto">Tạo mới</a>
+                </div>
+            </div>
+        </form>
+
+        <div class="table-responsive mt-4">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('user_conduct_list', sort_by='user_name', sort_order='desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}">
+                                Họ tên
+                                {% if sort_by == 'user_name' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('user_conduct_list', sort_by='conduct_name', sort_order='desc' if sort_by == 'conduct_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}">
+                                Hạnh kiểm
+                                {% if sort_by == 'conduct_name' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('user_conduct_list', sort_by='group_name', sort_order='desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}">
+                                Nhóm
+                                {% if sort_by == 'group_name' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('user_conduct_list', sort_by='registered_date', sort_order='desc' if sort_by == 'registered_date' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}">
+                                Dữ liệu ngày
+                                {% if sort_by == 'registered_date' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('user_conduct_list', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}">
+                                Điểm ngày
+                                {% if sort_by == 'total_points' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('user_conduct_list', sort_by='entered_by', sort_order='desc' if sort_by == 'entered_by' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}">
+                                Đăng ký bởi
+                                {% if sort_by == 'entered_by' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-nowrap">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in records %}
+                        <tr>
+                            <td>{{ record[1] }}</td>
+                            <td>{{ record[2] }}</td>
+                            <td>{{ record[6] }}</td>
+                            <td>{{ record[3] }}</td>
+                            <td>{{ record[4] }}</td>
+                            <td>{{ record[5] }}</td>
+                            <td class="text-nowrap">
+                                <a href="{{ url_for('user_conduct_edit', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}" class="btn btn-sm btn-info me-1">Edit</a>
+                                <a href="{{ url_for('user_conduct_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('select_all_users').addEventListener('change', function() {
+            const userSelect = document.getElementById('users');
+            for (let option of userSelect.options) {
+                option.selected = this.checked;
+            }
+        });
+
+        document.getElementById('select_all_conducts').addEventListener('change', function() {
+            const conductSelect = document.getElementById('conducts');
+            for (let option of conductSelect.options) {
+                option.selected = this.checked;
+            }
+        });
+
+        document.getElementById('select_all_groups').addEventListener('change', function() {
+            const groupSelect = document.getElementById('groups');
+            for (let option of groupSelect.options) {
+                option.selected = this.checked;
+            }
+        });
+    </script>
+
+    <style>
+        @media (max-width: 768px) {
+            .form-group {
+                margin-bottom: 1rem;
+            }
+
+            select[multiple] {
+                height: auto !important;
+            }
+
+            .btn {
+                margin-bottom: 0.5rem;
+            }
+
+            .table {
+                font-size: 0.7rem;
+            }
+
+            th, td {
+                padding: 0.5rem !important;
+            }
+        }
+    </style>
+{% endblock %}

@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container">
+        <h2 class="mt-4 mb-4">Thống kê nhóm</h2>
+
+        <div class="row g-3">
+            <div class="col-12 col-md-3">
+                <form method="POST">
+                    <div class="mb-3">
+                        <label for="date_from" class="form-label">Dữ liệu từ ngày~</label>
+                        <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="groups" class="form-label">Nhóm:</label>
+                        <select name="groups" id="groups" multiple class="form-control" size="4">
+                            {% for group in groups %}
+                                <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="form-check mt-2">
+                            <input type="checkbox" class="form-check-input" id="select_all_groups" name="select_all_groups" {% if select_all_groups %}checked{% endif %}>
+                            <label class="form-check-label" for="select_all_groups">Chọn tất cả nhóm</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tìm theo:</label>
+                        <div class="form-check">
+                            <input type="radio" class="form-check-input" id="user_conduct" name="data_source" value="user_conduct" {% if data_source == 'user_conduct' or not data_source %}checked{% endif %}>
+                            <label class="form-check-label" for="user_conduct">Hạnh kiểm</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="radio" class="form-check-input" id="user_subjects" name="data_source" value="user_subjects" {% if data_source == 'user_subjects' %}checked{% endif %}>
+                            <label class="form-check-label" for="user_subjects">Học tập</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="radio" class="form-check-input" id="all" name="data_source" value="all" {% if data_source == 'all' %}checked{% endif %}>
+                            <label class="form-check-label" for="all">Tất cả</label>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary w-100 w-md-auto">Tìm kiếm</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="col-12 col-md-9">
+                <div class="table-responsive mt-3 mt-md-0">
+                    <table class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th class="text-nowrap">
+                                    <a href="{{ url_for('group_summary', sort_by='group_name', sort_order='desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, groups=selected_groups, select_all_groups=select_all_groups, data_source=data_source) }}">
+                                        Nhóm
+                                        {% if sort_by == 'group_name' %}
+                                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                        {% endif %}
+                                    </a>
+                                </th>
+                                <th class="text-nowrap">
+                                    <a href="{{ url_for('group_summary', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, groups=selected_groups, select_all_groups=select_all_groups, data_source=data_source) }}">
+                                        Tổng điểm
+                                        {% if sort_by == 'total_points' %}
+                                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                        {% endif %}
+                                    </a>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in records %}
+                                <tr>
+                                    <td>{{ record[0] }}</td>
+                                    <td>{{ record[1] }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('select_all_groups').addEventListener('change', function() {
+            const groupSelect = document.getElementById('groups');
+            for (let option of groupSelect.options) {
+                option.selected = this.checked;
+            }
+        });
+    </script>
+
+    <style>
+        @media (max-width: 768px) {
+            .mb-3 {
+                margin-bottom: 1rem !important;
+            }
+
+            select[multiple] {
+                height: auto !important;
+            }
+
+            .btn {
+                margin-bottom: 0.5rem;
+            }
+
+            .table {
+                font-size: 0.9rem;
+            }
+
+            th, td {
+                padding: 0.5rem !important;
+            }
+        }
+    </style>
+{% endblock %}

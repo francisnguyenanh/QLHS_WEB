@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container">
+        <h2 class="mt-4 mb-4">Danh sách môn học</h2>
+        <div class="row mb-3">
+            <div class="col-12">
+                <a href="{{ url_for('subject_create') }}" class="btn btn-success w-100 w-md-auto">Tạo mới</a>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th class="text-nowrap">Tên môn học</th>
+                        <th class="text-nowrap">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subject in subjects %}
+                        <tr>
+                            <td>{{ subject[1] }}</td>
+                            <td class="text-nowrap">
+                                <a href="{{ url_for('subject_edit', id=subject[0]) }}" class="btn btn-sm btn-primary me-1">Sửa</a>
+                                <a href="{{ url_for('subject_delete', id=subject[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Xoá</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <style>
+        @media (max-width: 768px) {
+            .table {
+                font-size: 0.9rem;
+            }
+            th, td {
+                padding: 0.5rem !important;
+            }
+            .btn {
+                margin-bottom: 0.5rem;
+            }
+        }
+    </style>
+{% endblock %}

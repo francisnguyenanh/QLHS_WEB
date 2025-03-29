@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+    <div class="container">
+        <h2 class="mt-4 mb-4">Tạo chức vụ mới</h2>
+        <form method="POST">
+            <div class="mb-3">
+                <label for="name" class="form-label">Tên chức vụ:</label>
+                <input type="text" name="name" id="name" class="form-control" required>
+            </div>
+            <div class="text-center d-flex justify-content-center flex-wrap">
+                <button type="submit" class="btn btn-primary w-100 w-md-auto mb-2 mr-2">Tạo mới</button>
+                <a href="{{ url_for('roles_list') }}" class="btn btn-secondary w-100 w-md-auto mb-2">Quay về</a>
+            </div>
+        </form>
+    </div>
+
+    <style>
+        @media (min-width: 768px) {
+            .btn {
+                min-width: 120px;
+            }
+        }
+    </style>
+{% endblock %}
