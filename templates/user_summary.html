@@ -116,7 +116,17 @@
                                 <td>
                                     <input type="checkbox" name="in_{{ record[3] }}" value="1" {% if record[2] %}checked{% endif %}>
                                 </td>
-                                <td>{{ record[0] }}</td>
+                                <td>
+                                    <span class="user-name-clickable" 
+                                          data-user-id="{{ record[3] }}" 
+                                          data-date-from="{{ date_from or '' }}" 
+                                          data-date-to="{{ date_to or '' }}"
+                                          style="cursor: pointer; color: #007bff; text-decoration: underline;"
+                                          title="Click để copy link báo cáo">
+                                        {{ record[0] }}
+                                        <i class="fas fa-external-link-alt ms-1"></i>
+                                    </span>
+                                </td>
                                 <td>{{ record[1] }}</td>
                                 <td>
                                     <div class="d-flex align-items-center">
@@ -292,6 +302,62 @@
         document.addEventListener('DOMContentLoaded', function() {
             // Khởi tạo
             updatePeriodDisplay();
+
+            // Xử lý click vào tên user để copy link báo cáo
+            document.querySelectorAll('.user-name-clickable').forEach(element => {
+                element.addEventListener('click', function() {
+                    const userId = this.getAttribute('data-user-id');
+                    const dateFrom = this.getAttribute('data-date-from');
+                    const dateTo = this.getAttribute('data-date-to');
+                    
+                    let reportUrl = `${window.location.origin}/user_report/${userId}`;
+                    
+                    // Thêm tham số ngày nếu có
+                    const params = new URLSearchParams();
+                    if (dateFrom) params.append('date_from', dateFrom);
+                    if (dateTo) params.append('date_to', dateTo);
+                    
+                    if (params.toString()) {
+                        reportUrl += '?' + params.toString();
+                    }
+                    
+                    // Copy to clipboard
+                    navigator.clipboard.writeText(reportUrl).then(function() {
+                        // Show success message
+                        const toast = document.createElement('div');
+                        toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed';
+                        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+                        toast.innerHTML = `
+                            <div class="d-flex">
+                                <div class="toast-body">
+                                    <i class="fas fa-check-circle me-2"></i>
+                                    Đã copy link báo cáo!
+                                </div>
+                                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                            </div>
+                        `;
+                        document.body.appendChild(toast);
+                        
+                        const bsToast = new bootstrap.Toast(toast);
+                        bsToast.show();
+                        
+                        // Remove toast after hiding
+                        toast.addEventListener('hidden.bs.toast', () => {
+                            document.body.removeChild(toast);
+                        });
+                    }).catch(function() {
+                        // Fallback for older browsers
+                        const textArea = document.createElement('textarea');
+                        textArea.value = reportUrl;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        
+                        alert('Đã copy link báo cáo: ' + reportUrl);
+                    });
+                });
+            });
 
             // Xử lý thay đổi loại thời gian
             document.querySelectorAll('input[name="period_type"]').forEach(radio => {

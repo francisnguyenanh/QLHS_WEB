@@ -2581,14 +2581,15 @@ def group_summary():
         filtered_users = filter_users_by_permission(all_users, 'student_statistics')
         groups = filter_groups_by_permission(all_groups, 'student_statistics')
 
-        # Tính toán ngày mặc định: Thứ 2~6 gần ngày hệ thống nhất
+        # Tính toán ngày mặc định: Tuần hiện tại (Thứ Hai đến Chủ Nhật)
         today = datetime.today()
-        if today.weekday() >= 5:  # Nếu là thứ Bảy (5) hoặc Chủ Nhật (6)
-            nearest_monday = today - timedelta(days=today.weekday())  # Thứ Hai tuần hiện tại
-        else:  # Nếu là thứ Hai (0) đến thứ Sáu (4)
-            nearest_monday = today - timedelta(days=today.weekday() + 7)  # Thứ Hai tuần trước
-        default_date_from = nearest_monday.strftime('%Y-%m-%d')
-        default_date_to = (nearest_monday + timedelta(days=4)).strftime('%Y-%m-%d')  # Thứ Sáu gần nhất
+        # Lấy thứ Hai của tuần hiện tại
+        days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
+        monday = today - timedelta(days=days_since_monday)
+        sunday = monday + timedelta(days=6)
+        
+        default_date_from = monday.strftime('%Y-%m-%d')
+        default_date_to = sunday.strftime('%Y-%m-%d')
 
         # Khởi tạo các biến lọc
         selected_groups = []
@@ -3575,6 +3576,115 @@ def save_user_comment():
         return jsonify({'success': True, 'message': 'Đã lưu nhận xét thành công!'})
     except Exception as e:
         return jsonify({'error': f'Lỗi khi lưu nhận xét: {str(e)}'}), 500
+
+
+@app.route('/user_report/<int:user_id>')
+def user_report(user_id):
+    """Public route for user report - no login required"""
+    date_from = request.args.get('date_from')
+    date_to = request.args.get('date_to')
+    
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    # Get user info
+    cursor.execute("SELECT name FROM Users WHERE id = ? AND is_deleted = 0", (user_id,))
+    user_info = cursor.fetchone()
+    if not user_info:
+        return "Không tìm thấy học sinh", 404
+    
+    user_name = user_info[0]
+    
+    # Get subject entries
+    us_query = """
+        SELECT us.registered_date, s.name AS subject_name, c.name AS criteria_name, us.total_points
+        FROM User_Subjects us
+        LEFT JOIN Subjects s ON us.subject_id = s.id
+        LEFT JOIN Criteria c ON us.criteria_id = c.id
+        WHERE us.user_id = ? AND us.is_deleted = 0
+    """
+    us_params = [user_id]
+    if date_from:
+        us_query += " AND us.registered_date >= ?"
+        us_params.append(date_from)
+    if date_to:
+        us_query += " AND us.registered_date <= ?"
+        us_params.append(date_to)
+    us_query += " ORDER BY us.registered_date DESC"
+    
+    cursor.execute(us_query, us_params)
+    subject_entries = cursor.fetchall()
+    
+    # Get conduct entries
+    uc_query = """
+        SELECT uc.registered_date, con.name AS conduct_name, uc.total_points
+        FROM User_Conduct uc
+        LEFT JOIN Conduct con ON uc.conduct_id = con.id
+        WHERE uc.user_id = ? AND uc.is_deleted = 0
+    """
+    uc_params = [user_id]
+    if date_from:
+        uc_query += " AND uc.registered_date >= ?"
+        uc_params.append(date_from)
+    if date_to:
+        uc_query += " AND uc.registered_date <= ?"
+        uc_params.append(date_to)
+    uc_query += " ORDER BY uc.registered_date DESC"
+    
+    cursor.execute(uc_query, uc_params)
+    conduct_entries = cursor.fetchall()
+    
+    conn.close()
+    
+    # Process data for template
+    grouped_data = {}
+    total_points = 0
+    
+    # Process subject entries
+    for entry in subject_entries:
+        reg_date = entry[0]
+        subject_name = entry[1] if entry[1] else '-'
+        criteria_name = entry[2] if entry[2] else '-'
+        points = entry[3] if entry[3] is not None else 0
+        total_points += points
+        
+        if reg_date not in grouped_data:
+            grouped_data[reg_date] = []
+        grouped_data[reg_date].append({
+            'subject_name': subject_name,
+            'criteria_name': criteria_name,
+            'conduct_name': '-',
+            'total_points': points
+        })
+    
+    # Process conduct entries
+    for entry in conduct_entries:
+        reg_date = entry[0]
+        conduct_name = entry[1] if entry[1] else '-'
+        points = entry[2] if entry[2] is not None else 0
+        total_points += points
+        
+        if reg_date not in grouped_data:
+            grouped_data[reg_date] = []
+        grouped_data[reg_date].append({
+            'subject_name': '-',
+            'criteria_name': '-',
+            'conduct_name': conduct_name,
+            'total_points': points
+        })
+    
+    # Sort dates
+    sorted_dates = sorted(grouped_data.keys(), reverse=True)
+    
+    return render_template('user_report.html',
+                         user_name=user_name,
+                         date_from=date_from,
+                         date_to=date_to,
+                         total_points=total_points,
+                         subject_entries=subject_entries,
+                         conduct_entries=conduct_entries,
+                         grouped_data=grouped_data,
+                         sorted_dates=sorted_dates)
 
 
 if __name__ == '__main__':
