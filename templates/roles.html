@@ -39,8 +39,13 @@
                                 </button>
                             </td>
                             <td class="text-nowrap">
-                                <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ role[0] }})">Sửa</button>
-                                <a href="{{ url_for('role_delete', id=role[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Xoá</a>
+                                {% if role[1] not in ['GVCN', 'Master'] %}
+                                    <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ role[0] }})">Sửa</button>
+                                    <a href="{{ url_for('role_delete', id=role[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Xoá</a>
+                                {% else %}
+                                    <button class="btn btn-sm btn-secondary me-1" disabled title="Không thể sửa role hệ thống">Sửa</button>
+                                    <button class="btn btn-sm btn-secondary" disabled title="Không thể xóa role hệ thống">Xoá</button>
+                                {% endif %}
                             </td>
                         </tr>
                     {% endfor %}
@@ -132,6 +137,18 @@
                 .then(data => {
                     document.getElementById('modal_id').value = data.id;
                     document.getElementById('modal_name').value = data.name;
+                    
+                    // Vô hiệu hóa việc sửa tên cho role GVCN và Master
+                    const nameInput = document.getElementById('modal_name');
+                    if (data.name === 'GVCN' || data.name === 'Master') {
+                        nameInput.readOnly = true;
+                        nameInput.style.backgroundColor = '#e9ecef';
+                        nameInput.title = 'Không thể thay đổi tên role hệ thống';
+                    } else {
+                        nameInput.readOnly = false;
+                        nameInput.style.backgroundColor = '';
+                        nameInput.title = '';
+                    }
                     
                     const modal = new bootstrap.Modal(document.getElementById('roleModal'));
                     modal.show();

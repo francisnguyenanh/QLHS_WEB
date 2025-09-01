@@ -636,6 +636,11 @@ def create_role_api():
 @app.route('/api/roles/<int:id>', methods=['PUT'])
 def update_role_api(id):
     if 'user_id' in session:
+        # Kiểm tra role hiện tại
+        role_data = read_record_by_id('Roles', id, ['id', 'name'])
+        if role_data and role_data[1] in ['GVCN', 'Master']:
+            return jsonify({'success': False, 'error': 'Không thể thay đổi role hệ thống'}), 400
+        
         data = {'name': request.json['name']}
         update_record('Roles', id, data)
         return jsonify({'success': True, 'message': 'Cập nhật thành công'})
@@ -777,6 +782,12 @@ def role_edit(id):
 
 @app.route('/roles/delete/<int:id>')
 def role_delete(id):
+    # Kiểm tra role hiện tại
+    role_data = read_record_by_id('Roles', id, ['id', 'name'])
+    if role_data and role_data[1] in ['GVCN', 'Master']:
+        flash('Không thể xóa role hệ thống', 'error')
+        return redirect(url_for('roles_list'))
+    
     # Kiểm tra xem có user nào đang liên kết với role này không
     conn = connect_db()
     cursor = conn.cursor()
@@ -1187,6 +1198,13 @@ def create_user_api():
 @app.route('/api/users/<int:id>', methods=['PUT'])
 def update_user_api(id):
     if 'user_id' in session:
+        # Kiểm tra user hiện tại có role Master không
+        user_data = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
+        if user_data and user_data[6]:  # role_id at index 6
+            role_data = read_record_by_id('Roles', user_data[6], ['id', 'name'])
+            if role_data and role_data[1] == 'Master':
+                return jsonify({'success': False, 'error': 'Không thể thay đổi user Master'}), 400
+        
         name = request.json['name']
         username = request.json['username']
         password = request.json['password']
@@ -1393,6 +1411,14 @@ def user_edit(id):
 
 @app.route('/users/delete/<int:id>')
 def user_delete(id):
+    # Kiểm tra user có role Master không
+    user_data = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
+    if user_data and user_data[6]:  # role_id at index 6
+        role_data = read_record_by_id('Roles', user_data[6], ['id', 'name'])
+        if role_data and role_data[1] == 'Master':
+            flash('Không thể xóa user Master', 'error')
+            return redirect(url_for('users_list'))
+    
     delete_record('Users', id)
     return redirect(url_for('users_list'))
 
@@ -1590,6 +1616,9 @@ def user_conduct_list():
         cursor.execute("SELECT id FROM Roles WHERE name = 'GVCN'")
         role_result = cursor.fetchone()
         gvcn_role_id = role_result[0] if role_result else None
+        cursor.execute("SELECT id FROM Roles WHERE name = 'Master'")
+        master_role_result = cursor.fetchone()
+        master_role_id = master_role_result[0] if master_role_result else None
         cursor.execute("SELECT id FROM Groups WHERE name = 'Giáo viên'")
         group_result = cursor.fetchone()
         teacher_group_id = group_result[0] if group_result else None
@@ -1597,8 +1626,16 @@ def user_conduct_list():
 
         conn = connect_db()
         cursor = conn.cursor()
+        # Loại trừ GVCN và Master khỏi danh sách
+        excluded_roles = []
         if gvcn_role_id is not None:
-            cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id != ?", (gvcn_role_id,))
+            excluded_roles.append(gvcn_role_id)
+        if master_role_id is not None:
+            excluded_roles.append(master_role_id)
+        
+        if excluded_roles:
+            placeholders = ','.join('?' * len(excluded_roles))
+            cursor.execute(f"SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id NOT IN ({placeholders})", excluded_roles)
         else:
             cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
         all_users = cursor.fetchall()
@@ -1696,10 +1733,17 @@ def user_conduct_list():
                 query += " AND u.group_id = ?"
                 params.append(current_group_id)
         
-        # Add GVCN role filtering (existing logic)
+        # Add GVCN and Master role filtering (existing logic)
+        excluded_roles = []
         if gvcn_role_id is not None:
-            query += " AND u.role_id != ?"
-            params.append(gvcn_role_id)
+            excluded_roles.append(gvcn_role_id)
+        if master_role_id is not None:
+            excluded_roles.append(master_role_id)
+        
+        if excluded_roles:
+            placeholders = ','.join('?' * len(excluded_roles))
+            query += f" AND u.role_id NOT IN ({placeholders})"
+            params.extend(excluded_roles)
 
         if select_all_users:
             all_user_ids = [user[0] for user in modal_users]  # Use modal_users for consistency
@@ -2077,6 +2121,9 @@ def user_subjects_list():
         cursor.execute("SELECT id FROM Roles WHERE name = 'GVCN'")
         role_result = cursor.fetchone()
         gvcn_role_id = role_result[0] if role_result else None
+        cursor.execute("SELECT id FROM Roles WHERE name = 'Master'")
+        master_role_result = cursor.fetchone()
+        master_role_id = master_role_result[0] if master_role_result else None
         cursor.execute("SELECT id FROM Groups WHERE name = 'Giáo viên'")
         group_result = cursor.fetchone()
         teacher_group_id = group_result[0] if group_result else None
@@ -2084,8 +2131,16 @@ def user_subjects_list():
 
         conn = connect_db()
         cursor = conn.cursor()
+        # Loại trừ GVCN và Master khỏi danh sách
+        excluded_roles = []
         if gvcn_role_id is not None:
-            cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id != ?", (gvcn_role_id,))
+            excluded_roles.append(gvcn_role_id)
+        if master_role_id is not None:
+            excluded_roles.append(master_role_id)
+        
+        if excluded_roles:
+            placeholders = ','.join('?' * len(excluded_roles))
+            cursor.execute(f"SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id NOT IN ({placeholders})", excluded_roles)
         else:
             cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
         all_users = cursor.fetchall()
@@ -2187,10 +2242,17 @@ def user_subjects_list():
                 query += " AND u.group_id = ?"
                 params.append(current_group_id)
         
-        # Add GVCN role filtering (existing logic)
+        # Add GVCN and Master role filtering (existing logic)
+        excluded_roles = []
         if gvcn_role_id is not None:
-            query += " AND u.role_id != ?"
-            params.append(gvcn_role_id)
+            excluded_roles.append(gvcn_role_id)
+        if master_role_id is not None:
+            excluded_roles.append(master_role_id)
+        
+        if excluded_roles:
+            placeholders = ','.join('?' * len(excluded_roles))
+            query += f" AND u.role_id NOT IN ({placeholders})"
+            params.extend(excluded_roles)
 
         if select_all_users:
             all_user_ids = [user[0] for user in modal_users]  # Use modal_users for consistency
@@ -2477,12 +2539,15 @@ def group_summary():
         sort_column = valid_columns.get(sort_by, 'group_name')
         sort_direction = 'DESC' if sort_order == 'desc' else 'ASC'
 
-        # Lấy role_id của GVCN và group_id của "Giáo viên" để lọc
+        # Lấy role_id của GVCN, Master và group_id của "Giáo viên" để lọc
         conn = connect_db()
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM Roles WHERE name = 'GVCN'")
         role_result = cursor.fetchone()
         gvcn_role_id = role_result[0] if role_result else None
+        cursor.execute("SELECT id FROM Roles WHERE name = 'Master'")
+        master_role_result = cursor.fetchone()
+        master_role_id = master_role_result[0] if master_role_result else None
         cursor.execute("SELECT id FROM Groups WHERE name = 'Giáo viên'")
         group_result = cursor.fetchone()
         teacher_group_id = group_result[0] if group_result else None
@@ -2497,9 +2562,16 @@ def group_summary():
             cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0")
         all_groups = cursor.fetchall()
         
-        # Lấy danh sách users (loại bỏ GVCN) - giống user_summary
+        # Lấy danh sách users (loại bỏ GVCN và Master) - giống user_summary
+        excluded_roles = []
         if gvcn_role_id is not None:
-            cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id != ?", (gvcn_role_id,))
+            excluded_roles.append(gvcn_role_id)
+        if master_role_id is not None:
+            excluded_roles.append(master_role_id)
+        
+        if excluded_roles:
+            placeholders = ','.join('?' * len(excluded_roles))
+            cursor.execute(f"SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id NOT IN ({placeholders})", excluded_roles)
         else:
             cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
         all_users = cursor.fetchall()
@@ -2568,10 +2640,17 @@ def group_summary():
                     query_uc += " AND u.group_id = ?"
                     params_uc.append(current_group_id)
             
-            # Add GVCN role filtering (existing logic)
+            # Add GVCN and Master role filtering (existing logic)
+            excluded_roles = []
             if gvcn_role_id is not None:
-                query_uc += " AND u.role_id != ?"
-                params_uc.append(gvcn_role_id)
+                excluded_roles.append(gvcn_role_id)
+            if master_role_id is not None:
+                excluded_roles.append(master_role_id)
+            
+            if excluded_roles:
+                placeholders = ','.join('?' * len(excluded_roles))
+                query_uc += f" AND u.role_id NOT IN ({placeholders})"
+                params_uc.extend(excluded_roles)
             if select_all_groups:
                 all_group_ids = [group[0] for group in groups]
                 if all_group_ids:
@@ -2610,10 +2689,17 @@ def group_summary():
                     query_us += " AND u.group_id = ?"
                     params_us.append(current_group_id)
             
-            # Add GVCN role filtering (existing logic)
+            # Add GVCN and Master role filtering (existing logic)
+            excluded_roles = []
             if gvcn_role_id is not None:
-                query_us += " AND u.role_id != ?"
-                params_us.append(gvcn_role_id)
+                excluded_roles.append(gvcn_role_id)
+            if master_role_id is not None:
+                excluded_roles.append(master_role_id)
+            
+            if excluded_roles:
+                placeholders = ','.join('?' * len(excluded_roles))
+                query_us += f" AND u.role_id NOT IN ({placeholders})"
+                params_us.extend(excluded_roles)
             if select_all_groups:
                 all_group_ids = [group[0] for group in groups]
                 if all_group_ids:
@@ -2873,6 +2959,9 @@ def user_summary():
         cursor.execute("SELECT id FROM Roles WHERE name = 'GVCN'")
         role_result = cursor.fetchone()
         gvcn_role_id = role_result[0] if role_result else None
+        cursor.execute("SELECT id FROM Roles WHERE name = 'Master'")
+        master_role_result = cursor.fetchone()
+        master_role_id = master_role_result[0] if master_role_result else None
         cursor.execute("SELECT id FROM Groups WHERE name = 'Giáo viên'")
         group_result = cursor.fetchone()
         teacher_group_id = group_result[0] if group_result else None
@@ -2880,8 +2969,16 @@ def user_summary():
 
         conn = connect_db()
         cursor = conn.cursor()
+        # Loại trừ GVCN và Master khỏi danh sách
+        excluded_roles = []
         if gvcn_role_id is not None:
-            cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id != ?", (gvcn_role_id,))
+            excluded_roles.append(gvcn_role_id)
+        if master_role_id is not None:
+            excluded_roles.append(master_role_id)
+        
+        if excluded_roles:
+            placeholders = ','.join('?' * len(excluded_roles))
+            cursor.execute(f"SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id NOT IN ({placeholders})", excluded_roles)
         else:
             cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
         all_users = cursor.fetchall()
@@ -2952,10 +3049,17 @@ def user_summary():
                 user_query += " AND group_id = ?"
                 user_params.append(current_group_id)
         
-        # Add GVCN role filtering (existing logic)
+        # Add GVCN and Master role filtering (existing logic)
+        excluded_roles = []
         if gvcn_role_id is not None:
-            user_query += " AND role_id != ?"
-            user_params.append(gvcn_role_id)
+            excluded_roles.append(gvcn_role_id)
+        if master_role_id is not None:
+            excluded_roles.append(master_role_id)
+        
+        if excluded_roles:
+            placeholders = ','.join('?' * len(excluded_roles))
+            user_query += f" AND role_id NOT IN ({placeholders})"
+            user_params.extend(excluded_roles)
 
         if select_all_users:
             filtered_user_ids = [user[0] for user in filtered_users]
@@ -3193,8 +3297,19 @@ def reset_table(table_name):
             conn = connect_db()
             cursor = conn.cursor()
             
-            # Xóa dữ liệu bằng cách đặt is_deleted = 1 hoặc DELETE
-            if table_name in ['Users', 'Classes', 'Groups', 'Roles', 'Role_Permissions', 
+            # Xóa dữ liệu với điều kiện đặc biệt cho bảng Roles và Users
+            if table_name == 'Roles':
+                # Không xóa role GVCN và Master
+                cursor.execute("DELETE FROM Roles WHERE name NOT IN ('GVCN', 'Master')")
+            elif table_name == 'Users':
+                # Không xóa user có role Master
+                cursor.execute("""
+                    DELETE FROM Users 
+                    WHERE role_id NOT IN (
+                        SELECT id FROM Roles WHERE name = 'Master'
+                    )
+                """)
+            elif table_name in ['Classes', 'Groups', 'Role_Permissions', 
                              'Conduct', 'Subjects', 'Criteria', 'User_Conduct', 'User_Subjects']:
                 cursor.execute(f"DELETE FROM {table_name}")
             

@@ -59,8 +59,13 @@
                             <td>{{ user[5] or 'None' }}</td>
                             <td>{{ user[4] or 'None' }}</td>
                             <td class="text-nowrap">
-                                <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ user[0] }})">Sửa</button>
-                                <a href="{{ url_for('user_delete', id=user[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Xoá</a>
+                                {% if user[4] == 'Master' %}
+                                    <button class="btn btn-sm btn-secondary me-1" disabled title="Không thể sửa user Master">Sửa</button>
+                                    <button class="btn btn-sm btn-secondary" disabled title="Không thể xóa user Master">Xoá</button>
+                                {% else %}
+                                    <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ user[0] }})">Sửa</button>
+                                    <a href="{{ url_for('user_delete', id=user[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Xoá</a>
+                                {% endif %}
                             </td>
                         </tr>
                     {% endfor %}
