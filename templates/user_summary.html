@@ -6,12 +6,39 @@
         <div class="row">
             <div class="col-md-3">
                 <form method="POST" id="searchForm">
+                    <!-- Chọn loại thời gian -->
+                    <div class="form-group mb-3">
+                        <label class="form-label">Loại thời gian:</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" checked>
+                            <label class="btn btn-outline-primary" for="week_type">Tuần</label>
+                            <input type="radio" class="btn-check" name="period_type" id="month_type" value="month">
+                            <label class="btn btn-outline-primary" for="month_type">Tháng</label>
+                        </div>
+                    </div>
+
+                    <!-- Điều hướng thời gian -->
+                    <div class="form-group mb-3">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <button type="button" class="btn btn-outline-secondary" id="prevPeriod">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="text-center flex-grow-1 mx-2">
+                                <strong id="periodDisplay">Tuần hiện tại</strong>
+                            </div>
+                            <button type="button" class="btn btn-outline-secondary" id="nextPeriod">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
                     <div class="form-group">
-                        <label for="date_from">Dữ liệu ngày ～</label>
-                        <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from or '' }}">
+                        <label for="date_from">Từ ngày:</label>
+                        <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from or '' }}" readonly>
                     </div>
                     <div class="form-group">
-                        <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to or '' }}">
+                        <label for="date_to">Đến ngày:</label>
+                        <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to or '' }}" readonly>
                     </div>
                     <div class="form-group">
                         <label for="users">Học sinh:</label>
@@ -80,6 +107,7 @@
                                     {% endif %}
                                 </a>
                             </th>
+                            <th style="width: 300px;">Nhận xét</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -90,6 +118,22 @@
                                 </td>
                                 <td>{{ record[0] }}</td>
                                 <td>{{ record[1] }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <textarea class="form-control me-2" id="comment_{{ record[3] }}" rows="2" placeholder="Nhận xét...">{{ (record[4] if record[4] else record[5]) if record|length > 4 else '' }}</textarea>
+                                        <button type="button" class="btn btn-sm btn-success" onclick="saveComment({{ record[3] }})">
+                                            <i class="fas fa-save"></i>
+                                        </button>
+                                    </div>
+                                    {% if record|length > 5 and record[5] %}
+                                        <div class="mt-1">
+                                            <small class="text-muted">Gợi ý: {{ record[5] }}</small>
+                                            <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="useAutoComment({{ record[3] }}, '{{ record[5] }}')">
+                                                <i class="fas fa-magic"></i> Sử dụng
+                                            </button>
+                                        </div>
+                                    {% endif %}
+                                </td>
                             </tr>
                         {% endfor %}
                     </tbody>
@@ -148,6 +192,150 @@
             for (let i = 0; i < checkboxes.length; i++) {
                 checkboxes[i].checked = this.checked;
             }
+        });
+
+        // Hàm lưu nhận xét
+        function saveComment(userId) {
+            const commentText = document.getElementById(`comment_${userId}`).value;
+            const dateFrom = document.getElementById('date_from').value;
+            const dateTo = document.getElementById('date_to').value;
+            
+            fetch('/save_user_comment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    comment_text: commentText,
+                    period_start: dateFrom,
+                    period_end: dateTo
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Đã lưu nhận xét thành công!');
+                } else {
+                    alert('Lỗi: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Lỗi kết nối: ' + error);
+            });
+        }
+
+        // Hàm sử dụng gợi ý tự động
+        function useAutoComment(userId, autoComment) {
+            document.getElementById(`comment_${userId}`).value = autoComment;
+        }
+
+        // Biến toàn cục cho việc quản lý thời gian
+        let currentDate = new Date();
+        let currentPeriodType = 'week';
+
+        // Hàm lấy thứ Hai của tuần
+        function getMonday(date) {
+            const d = new Date(date);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Điều chỉnh cho Chủ Nhật
+            return new Date(d.setDate(diff));
+        }
+
+        // Hàm lấy ngày đầu tháng
+        function getFirstDayOfMonth(date) {
+            return new Date(date.getFullYear(), date.getMonth(), 1);
+        }
+
+        // Hàm lấy ngày cuối tháng
+        function getLastDayOfMonth(date) {
+            return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        }
+
+        // Hàm format ngày về yyyy-mm-dd
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Hàm cập nhật hiển thị thời gian
+        function updatePeriodDisplay() {
+            const periodDisplay = document.getElementById('periodDisplay');
+            const dateFromInput = document.getElementById('date_from');
+            const dateToInput = document.getElementById('date_to');
+
+            if (currentPeriodType === 'week') {
+                const monday = getMonday(currentDate);
+                const sunday = new Date(monday);
+                sunday.setDate(monday.getDate() + 6);
+
+                dateFromInput.value = formatDate(monday);
+                dateToInput.value = formatDate(sunday);
+
+                const weekNumber = getWeekNumber(monday);
+                periodDisplay.textContent = `Tuần ${weekNumber} - ${monday.getFullYear()}`;
+            } else {
+                const firstDay = getFirstDayOfMonth(currentDate);
+                const lastDay = getLastDayOfMonth(currentDate);
+
+                dateFromInput.value = formatDate(firstDay);
+                dateToInput.value = formatDate(lastDay);
+
+                const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+                                   'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+                periodDisplay.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+            }
+        }
+
+        // Hàm lấy số tuần trong năm
+        function getWeekNumber(date) {
+            const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+            const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+            return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Khởi tạo
+            updatePeriodDisplay();
+
+            // Xử lý thay đổi loại thời gian
+            document.querySelectorAll('input[name="period_type"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    currentPeriodType = this.value;
+                    updatePeriodDisplay();
+                });
+            });
+
+            // Xử lý nút lùi
+            document.getElementById('prevPeriod').addEventListener('click', function() {
+                if (currentPeriodType === 'week') {
+                    currentDate.setDate(currentDate.getDate() - 7);
+                } else {
+                    currentDate.setMonth(currentDate.getMonth() - 1);
+                }
+                updatePeriodDisplay();
+            });
+
+            // Xử lý nút tiến
+            document.getElementById('nextPeriod').addEventListener('click', function() {
+                if (currentPeriodType === 'week') {
+                    currentDate.setDate(currentDate.getDate() + 7);
+                } else {
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                }
+                updatePeriodDisplay();
+            });
+
+            // Tự động submit form khi thay đổi ngày
+            document.getElementById('date_from').addEventListener('change', function() {
+                document.getElementById('searchForm').submit();
+            });
+            document.getElementById('date_to').addEventListener('change', function() {
+                document.getElementById('searchForm').submit();
+            });
         });
     </script>
 {% endblock %}

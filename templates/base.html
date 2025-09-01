@@ -117,6 +117,13 @@
                         <a class="dropdown-item {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="{{ url_for('subjects_list') }}">Môn học</a>
                         <a class="dropdown-item {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="{{ url_for('criteria_list') }}">Kết quả học tập</a>
                         <a class="dropdown-item {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="{{ url_for('conducts_list') }}">Hạnh kiểm</a>
+                        <div class="dropdown-divider"></div>
+                        <a class="dropdown-item {% if not (permissions is defined and (permissions.get('master', False) or permissions.get('comment_management', 'none') != 'none')) %}disabled-link{% endif %}" href="{{ url_for('comment_management') }}">
+                            <i class="fas fa-comments"></i> Quản lý nhận xét
+                        </a>
+                        <a class="dropdown-item text-danger {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="{{ url_for('reset_page') }}">
+                            <i class="fas fa-trash"></i> Reset Dữ Liệu
+                        </a>
                     </div>
                 </li>
                 <li class="nav-item">

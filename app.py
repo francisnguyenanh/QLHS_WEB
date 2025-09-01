@@ -359,6 +359,12 @@ def can_access_student_statistics():
     return (permissions.get('master', False) or 
             permissions.get('student_statistics', 'none') != 'none')
 
+def can_access_comment_management():
+    """Check if user can access comment management"""
+    permissions = get_user_permissions()
+    return (permissions.get('master', False) or 
+            permissions.get('comment_management', 'none') != 'none')
+
 def render_template_with_permissions(template_name, **kwargs):
     """Helper function to render template with permissions always included"""
     if 'user_id' in session:
@@ -2890,14 +2896,15 @@ def user_summary():
         filtered_users = filter_users_by_permission(all_users, 'student_statistics')
         groups = filter_groups_by_permission(all_groups, 'student_statistics')
 
-        # Tính toán ngày mặc định: Thứ 2~6 gần ngày hệ thống nhất
+        # Tính toán ngày mặc định: Tuần hiện tại (Thứ Hai đến Chủ Nhật)
         today = datetime.today()
-        if today.weekday() >= 5:  # Nếu là thứ Bảy (5) hoặc Chủ Nhật (6)
-            nearest_monday = today - timedelta(days=today.weekday())  # Thứ Hai tuần hiện tại
-        else:  # Nếu là thứ Hai (0) đến thứ Sáu (4)
-            nearest_monday = today - timedelta(days=today.weekday() + 7)  # Thứ Hai tuần trước
-        default_date_from = nearest_monday.strftime('%Y-%m-%d')
-        default_date_to = (nearest_monday + timedelta(days=4)).strftime('%Y-%m-%d')  # Thứ Sáu gần nhất
+        # Lấy thứ Hai của tuần hiện tại
+        days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
+        monday = today - timedelta(days=days_since_monday)
+        sunday = monday + timedelta(days=6)
+        
+        default_date_from = monday.strftime('%Y-%m-%d')
+        default_date_to = sunday.strftime('%Y-%m-%d')
 
         selected_users = []
         selected_groups = []
@@ -3011,7 +3018,68 @@ def user_summary():
                 total_points += us_points
                 has_data = True
 
-            records.append((user_name, total_points if total_points else 0, has_data, user_id))
+            # Tính toán nhận xét tự động
+            current_comment = ""
+            auto_comment = ""
+            
+            # Lấy nhận xét hiện tại từ User_Comments
+            cursor.execute('''
+                SELECT comment_text FROM User_Comments 
+                WHERE user_id = ? AND period_start = ? AND period_end = ?
+                ORDER BY updated_date DESC LIMIT 1
+            ''', (user_id, date_from, date_to))
+            comment_result = cursor.fetchone()
+            if comment_result:
+                current_comment = comment_result[0] or ""
+            
+            # Tính điểm kỳ trước (cùng khoảng thời gian tuần trước)
+            if date_from and date_to:
+                try:
+                    period_start = datetime.strptime(date_from, '%Y-%m-%d')
+                    period_end = datetime.strptime(date_to, '%Y-%m-%d')
+                    period_duration = (period_end - period_start).days
+                    
+                    # Tính ngày của kỳ trước (cùng khoảng thời gian)
+                    prev_period_end = period_start - timedelta(days=1)
+                    prev_period_start = prev_period_end - timedelta(days=period_duration)
+                    
+                    prev_date_from = prev_period_start.strftime('%Y-%m-%d')
+                    prev_date_to = prev_period_end.strftime('%Y-%m-%d')
+                    
+                    # Tính điểm kỳ trước
+                    prev_total_points = 0
+                    
+                    # Điểm hạnh kiểm kỳ trước
+                    cursor.execute('''
+                        SELECT SUM(total_points) FROM User_Conduct
+                        WHERE user_id = ? AND is_deleted = 0 
+                        AND registered_date >= ? AND registered_date <= ?
+                    ''', (user_id, prev_date_from, prev_date_to))
+                    prev_uc = cursor.fetchone()[0]
+                    if prev_uc:
+                        prev_total_points += prev_uc
+                    
+                    # Điểm học tập kỳ trước
+                    cursor.execute('''
+                        SELECT SUM(total_points) FROM User_Subjects
+                        WHERE user_id = ? AND is_deleted = 0 
+                        AND registered_date >= ? AND registered_date <= ?
+                    ''', (user_id, prev_date_from, prev_date_to))
+                    prev_us = cursor.fetchone()[0]
+                    if prev_us:
+                        prev_total_points += prev_us
+                    
+                    # Tính sự thay đổi và gợi ý nhận xét
+                    current_points = total_points if total_points else 0
+                    score_difference = current_points - prev_total_points
+                    
+                    if score_difference != 0:
+                        auto_comment = get_auto_comment(score_difference)
+                    
+                except:
+                    pass
+
+            records.append((user_name, total_points if total_points else 0, has_data, user_id, current_comment, auto_comment))
 
         if sort_by == 'user_name':
             records.sort(key=lambda x: x[0], reverse=(sort_order == 'desc'))
@@ -3081,6 +3149,317 @@ def home():
 def logout():
     session.pop('user_id', None)  # Xóa user_id khỏi session
     return redirect(url_for('login'))
+
+# --- Reset Data Page ---
+@app.route('/reset')
+def reset_page():
+    if 'user_id' in session:
+        if not can_access_master():
+            flash('Bạn không có quyền truy cập chức năng này', 'error')
+            return redirect(url_for('index'))
+        
+        # Danh sách các table và mô tả
+        tables = [
+            {'name': 'Users', 'description': 'Dữ liệu người dùng'},
+            {'name': 'Classes', 'description': 'Dữ liệu lớp học'},
+            {'name': 'Groups', 'description': 'Dữ liệu nhóm'},
+            {'name': 'Roles', 'description': 'Dữ liệu chức vụ'},
+            {'name': 'Role_Permissions', 'description': 'Dữ liệu phân quyền'},
+            {'name': 'Conduct', 'description': 'Dữ liệu hạnh kiểm'},
+            {'name': 'Subjects', 'description': 'Dữ liệu môn học'},
+            {'name': 'Criteria', 'description': 'Dữ liệu tiêu chí đánh giá'},
+            {'name': 'User_Conduct', 'description': 'Dữ liệu hạnh kiểm học sinh'},
+            {'name': 'User_Subjects', 'description': 'Dữ liệu học tập học sinh'}
+        ]
+        
+        return render_template_with_permissions('reset.html', tables=tables)
+    else:
+        return redirect(url_for('login'))
+
+@app.route('/reset/table/<table_name>', methods=['POST'])
+def reset_table(table_name):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Không có quyền truy cập'}), 403
+        
+        # Danh sách table được phép xóa
+        allowed_tables = ['Users', 'Classes', 'Groups', 'Roles', 'Role_Permissions', 
+                         'Conduct', 'Subjects', 'Criteria', 'User_Conduct', 'User_Subjects']
+        
+        if table_name not in allowed_tables:
+            return jsonify({'error': 'Table không hợp lệ'}), 400
+        
+        try:
+            conn = connect_db()
+            cursor = conn.cursor()
+            
+            # Xóa dữ liệu bằng cách đặt is_deleted = 1 hoặc DELETE
+            if table_name in ['Users', 'Classes', 'Groups', 'Roles', 'Role_Permissions', 
+                             'Conduct', 'Subjects', 'Criteria', 'User_Conduct', 'User_Subjects']:
+                cursor.execute(f"DELETE FROM {table_name}")
+            
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'message': f'Đã xóa toàn bộ dữ liệu bảng {table_name}'})
+        except Exception as e:
+            return jsonify({'error': f'Lỗi khi xóa dữ liệu: {str(e)}'}), 500
+    else:
+        return jsonify({'error': 'Chưa đăng nhập'}), 401
+
+# === COMMENT MANAGEMENT ROUTES ===
+@app.route('/comment_management')
+def comment_management():
+    if 'user_id' in session:
+        if not can_access_comment_management():
+            flash('Bạn không có quyền truy cập chức năng này', 'error')
+            return redirect(url_for('index'))
+        
+        try:
+            conn = connect_db()
+            cursor = conn.cursor()
+            
+            # Lấy danh sách mẫu nhận xét
+            cursor.execute('''
+                SELECT id, comment_type, score_range_min, score_range_max, comment_text, created_date
+                FROM Comment_Templates 
+                WHERE is_deleted = 0
+                ORDER BY comment_type, score_range_min
+            ''')
+            templates = cursor.fetchall()
+            
+            conn.close()
+            
+            return render_template_with_permissions('comment_management.html', templates=templates)
+        except Exception as e:
+            flash(f'Lỗi khi tải dữ liệu: {str(e)}', 'error')
+            return redirect(url_for('index'))
+    else:
+        return redirect(url_for('login'))
+
+@app.route('/comment_template/create', methods=['GET', 'POST'])
+def comment_template_create():
+    if 'user_id' in session:
+        if not can_access_comment_management():
+            flash('Bạn không có quyền truy cập chức năng này', 'error')
+            return redirect(url_for('index'))
+        
+        if request.method == 'POST':
+            try:
+                comment_type = request.form['comment_type']
+                score_range_min = int(request.form['score_range_min'])
+                score_range_max = int(request.form['score_range_max'])
+                comment_text = request.form['comment_text']
+                
+                conn = connect_db()
+                cursor = conn.cursor()
+                
+                cursor.execute('''
+                    INSERT INTO Comment_Templates (comment_type, score_range_min, score_range_max, comment_text)
+                    VALUES (?, ?, ?, ?)
+                ''', (comment_type, score_range_min, score_range_max, comment_text))
+                
+                conn.commit()
+                conn.close()
+                
+                flash('Đã thêm mẫu nhận xét thành công!', 'success')
+                return redirect(url_for('comment_management'))
+            except Exception as e:
+                flash(f'Lỗi khi thêm mẫu nhận xét: {str(e)}', 'error')
+        
+        return render_template_with_permissions('comment_template_create.html')
+    else:
+        return redirect(url_for('login'))
+
+@app.route('/comment_template/edit/<int:template_id>', methods=['GET', 'POST'])
+def comment_template_edit(template_id):
+    if 'user_id' in session:
+        if not can_access_comment_management():
+            flash('Bạn không có quyền truy cập chức năng này', 'error')
+            return redirect(url_for('index'))
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        if request.method == 'POST':
+            try:
+                comment_type = request.form['comment_type']
+                score_range_min = int(request.form['score_range_min'])
+                score_range_max = int(request.form['score_range_max'])
+                comment_text = request.form['comment_text']
+                
+                cursor.execute('''
+                    UPDATE Comment_Templates 
+                    SET comment_type=?, score_range_min=?, score_range_max=?, comment_text=?
+                    WHERE id=? AND is_deleted=0
+                ''', (comment_type, score_range_min, score_range_max, comment_text, template_id))
+                
+                conn.commit()
+                conn.close()
+                
+                flash('Đã cập nhật mẫu nhận xét thành công!', 'success')
+                return redirect(url_for('comment_management'))
+            except Exception as e:
+                flash(f'Lỗi khi cập nhật mẫu nhận xét: {str(e)}', 'error')
+        
+        # Lấy thông tin mẫu nhận xét
+        cursor.execute('SELECT * FROM Comment_Templates WHERE id=? AND is_deleted=0', (template_id,))
+        template = cursor.fetchone()
+        conn.close()
+        
+        if not template:
+            flash('Không tìm thấy mẫu nhận xét!', 'error')
+            return redirect(url_for('comment_management'))
+        
+        return render_template_with_permissions('comment_template_edit.html', template=template)
+    else:
+        return redirect(url_for('login'))
+
+@app.route('/comment_template/delete/<int:template_id>', methods=['POST'])
+def comment_template_delete(template_id):
+    if 'user_id' in session:
+        if not can_access_comment_management():
+            return jsonify({'error': 'Không có quyền truy cập'}), 403
+        
+        try:
+            conn = connect_db()
+            cursor = conn.cursor()
+            
+            cursor.execute('UPDATE Comment_Templates SET is_deleted=1 WHERE id=?', (template_id,))
+            
+            conn.commit()
+            conn.close()
+            
+            return jsonify({'success': True, 'message': 'Đã xóa mẫu nhận xét thành công!'})
+        except Exception as e:
+            return jsonify({'error': f'Lỗi khi xóa mẫu nhận xét: {str(e)}'}), 500
+    else:
+        return jsonify({'error': 'Chưa đăng nhập'}), 401
+
+def get_auto_comment(score_difference):
+    """Lấy nhận xét tự động dựa trên sự thay đổi điểm số"""
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        abs_diff = abs(score_difference)
+        comment_type = 'encouragement' if score_difference > 0 else 'reminder'
+        
+        cursor.execute('''
+            SELECT comment_text FROM Comment_Templates 
+            WHERE comment_type = ? AND ? BETWEEN score_range_min AND score_range_max 
+            AND is_deleted = 0
+            ORDER BY score_range_min LIMIT 1
+        ''', (comment_type, abs_diff))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        return result[0] if result else None
+    except:
+        return None
+
+@app.route('/save_user_comment', methods=['POST'])
+def save_user_comment():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Chưa đăng nhập'}), 401
+    
+    try:
+        data = request.get_json()
+        user_id = data['user_id']
+        comment_text = data['comment_text']
+        period_start = data['period_start']
+        period_end = data['period_end']
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        # Tính điểm hiện tại và điểm kỳ trước
+        current_points = 0
+        previous_points = 0
+        
+        # Tính điểm hiện tại
+        if period_start and period_end:
+            cursor.execute('''
+                SELECT SUM(total_points) FROM User_Conduct
+                WHERE user_id = ? AND is_deleted = 0 
+                AND registered_date >= ? AND registered_date <= ?
+            ''', (user_id, period_start, period_end))
+            uc_points = cursor.fetchone()[0] or 0
+            
+            cursor.execute('''
+                SELECT SUM(total_points) FROM User_Subjects
+                WHERE user_id = ? AND is_deleted = 0 
+                AND registered_date >= ? AND registered_date <= ?
+            ''', (user_id, period_start, period_end))
+            us_points = cursor.fetchone()[0] or 0
+            
+            current_points = uc_points + us_points
+            
+            # Tính điểm kỳ trước
+            try:
+                period_start_date = datetime.strptime(period_start, '%Y-%m-%d')
+                period_end_date = datetime.strptime(period_end, '%Y-%m-%d')
+                period_duration = (period_end_date - period_start_date).days
+                
+                prev_period_end = period_start_date - timedelta(days=1)
+                prev_period_start = prev_period_end - timedelta(days=period_duration)
+                
+                prev_date_from = prev_period_start.strftime('%Y-%m-%d')
+                prev_date_to = prev_period_end.strftime('%Y-%m-%d')
+                
+                cursor.execute('''
+                    SELECT SUM(total_points) FROM User_Conduct
+                    WHERE user_id = ? AND is_deleted = 0 
+                    AND registered_date >= ? AND registered_date <= ?
+                ''', (user_id, prev_date_from, prev_date_to))
+                prev_uc = cursor.fetchone()[0] or 0
+                
+                cursor.execute('''
+                    SELECT SUM(total_points) FROM User_Subjects
+                    WHERE user_id = ? AND is_deleted = 0 
+                    AND registered_date >= ? AND registered_date <= ?
+                ''', (user_id, prev_date_from, prev_date_to))
+                prev_us = cursor.fetchone()[0] or 0
+                
+                previous_points = prev_uc + prev_us
+            except:
+                pass
+        
+        score_difference = current_points - previous_points
+        
+        # Kiểm tra xem đã có nhận xét cho kỳ này chưa
+        cursor.execute('''
+            SELECT id FROM User_Comments 
+            WHERE user_id = ? AND period_start = ? AND period_end = ?
+        ''', (user_id, period_start, period_end))
+        existing = cursor.fetchone()
+        
+        if existing:
+            # Cập nhật nhận xét hiện tại
+            cursor.execute('''
+                UPDATE User_Comments 
+                SET comment_text = ?, current_score = ?, previous_score = ?, 
+                    score_difference = ?, is_auto_generated = 0, updated_date = CURRENT_TIMESTAMP
+                WHERE user_id = ? AND period_start = ? AND period_end = ?
+            ''', (comment_text, current_points, previous_points, score_difference, 
+                  user_id, period_start, period_end))
+        else:
+            # Thêm nhận xét mới
+            cursor.execute('''
+                INSERT INTO User_Comments 
+                (user_id, period_start, period_end, previous_score, current_score, 
+                 score_difference, comment_text, is_auto_generated)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+            ''', (user_id, period_start, period_end, previous_points, current_points, 
+                  score_difference, comment_text))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Đã lưu nhận xét thành công!'})
+    except Exception as e:
+        return jsonify({'error': f'Lỗi khi lưu nhận xét: {str(e)}'}), 500
 
 
 if __name__ == '__main__':
