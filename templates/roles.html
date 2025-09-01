@@ -25,6 +25,7 @@
                 <thead>
                     <tr>
                         <th class="text-nowrap">Tên chức vụ</th>
+                        <th class="text-nowrap">Phân quyền</th>
                         <th class="text-nowrap">Thao tác</th>
                     </tr>
                 </thead>
@@ -32,6 +33,11 @@
                     {% for role in roles %}
                         <tr>
                             <td>{{ role[1] }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-permissions" onclick="openPermissionsModal({{ role[0] }}, '{{ role[1] }}')">
+                                    <i class="fas fa-key"></i> Phân quyền
+                                </button>
+                            </td>
                             <td class="text-nowrap">
                                 <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ role[0] }})">Sửa</button>
                                 <a href="{{ url_for('role_delete', id=role[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Xoá</a>
@@ -40,6 +46,38 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Modal for Permissions -->
+    <div class="modal fade permissions-modal" id="permissionsModal" tabindex="-1" aria-labelledby="permissionsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="permissionsModalLabel">Phân quyền cho chức vụ</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Lưu ý:</strong> Quyền Master sẽ ghi đè tất cả các quyền khác. Nếu bật Master, người dùng sẽ có toàn quyền trong hệ thống.
+                    </div>
+                    <form id="permissionsForm">
+                        <input type="hidden" id="permissions_role_id" name="role_id">
+                        <div id="permissionsContainer">
+                            <!-- Permissions will be loaded here -->
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Đóng
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="savePermissions()">
+                        <i class="fas fa-save"></i> Lưu phân quyền
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -71,6 +109,7 @@
     <script>
         let isEditMode = false;
         let currentEditId = null;
+        let currentPermissionsRoleId = null;
 
         function openCreateModal() {
             isEditMode = false;
@@ -101,6 +140,169 @@
                     console.error('Error fetching record:', error);
                     alert('Có lỗi xảy ra khi tải dữ liệu');
                 });
+        }
+
+        function openPermissionsModal(roleId, roleName) {
+            currentPermissionsRoleId = roleId;
+            document.getElementById('permissionsModalLabel').textContent = `Phân quyền cho chức vụ: ${roleName}`;
+            document.getElementById('permissions_role_id').value = roleId;
+            
+            // Load permissions structure and current permissions
+            Promise.all([
+                fetch('/api/permissions/structure'),
+                fetch(`/api/roles/${roleId}/permissions`)
+            ])
+            .then(responses => Promise.all(responses.map(r => r.json())))
+            .then(([structure, currentPermissions]) => {
+                renderPermissionsForm(structure, currentPermissions);
+                const modal = new bootstrap.Modal(document.getElementById('permissionsModal'));
+                modal.show();
+            })
+            .catch(error => {
+                console.error('Error loading permissions:', error);
+                alert('Có lỗi xảy ra khi tải phân quyền');
+            });
+        }
+
+        function renderPermissionsForm(structure, currentPermissions) {
+            const container = document.getElementById('permissionsContainer');
+            container.innerHTML = '';
+            
+            // Create matrix table
+            const table = document.createElement('table');
+            table.className = 'table table-bordered table-striped';
+            
+            // Table header
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr class="table-dark">
+                    <th style="width: 25%">Loại quyền</th>
+                    <th style="width: 20%">Cấp độ</th>
+                    <th style="width: 13%">Xem</th>
+                    <th style="width: 13%">Tạo</th>
+                    <th style="width: 13%">Sửa</th>
+                    <th style="width: 13%">Xóa</th>
+                </tr>
+            `;
+            table.appendChild(thead);
+            
+            // Table body
+            const tbody = document.createElement('tbody');
+            
+            // Permission level options
+            const levelOptions = {
+                'all': 'Tất cả',
+                'group_only': 'Chỉ nhóm',
+                'self_only': 'Chỉ mình',
+                'none': 'Không có'
+            };
+            
+            // Add master permission row
+            const masterRow = document.createElement('tr');
+            const masterPermission = structure.permissions_structure.master;
+            const masterData = currentPermissions.master || false;
+            masterRow.innerHTML = `
+                <td>
+                    <strong class="text-danger">
+                        <i class="fas fa-crown"></i> ${masterPermission.name}
+                    </strong>
+                    <br><small class="text-muted">${masterPermission.description}</small>
+                </td>
+                <td>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" 
+                               name="master" ${masterData ? 'checked' : ''}>
+                        <label class="form-check-label">Có quyền</label>
+                    </div>
+                </td>
+                <td colspan="4" class="text-center text-muted">
+                    <em>Quản trị viên có tất cả quyền</em>
+                </td>
+            `;
+            tbody.appendChild(masterRow);
+            
+            // Add other permission rows
+            Object.entries(structure.permissions_structure).forEach(([key, permission]) => {
+                if (key === 'master') return;
+                
+                const row = document.createElement('tr');
+                const perm = currentPermissions[key] || { level: 'none', can_create: false, can_update: false, can_delete: false };
+                
+                let levelSelect = `<select class="form-select form-select-sm" name="${key}_level">`;
+                Object.entries(levelOptions).forEach(([value, text]) => {
+                    const selected = perm.level === value ? 'selected' : '';
+                    levelSelect += `<option value="${value}" ${selected}>${text}</option>`;
+                });
+                levelSelect += '</select>';
+                
+                row.innerHTML = `
+                    <td>
+                        <strong class="text-primary">
+                            <i class="fas fa-cogs"></i> ${permission.name}
+                        </strong>
+                        <br><small class="text-muted">${permission.description}</small>
+                    </td>
+                    <td>${levelSelect}</td>
+                    <td>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" 
+                                   name="${key}_view" ${perm.level !== 'none' ? 'checked' : ''} disabled>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" 
+                                   name="${key}_create" ${perm.can_create ? 'checked' : ''}>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" 
+                                   name="${key}_update" ${perm.can_update ? 'checked' : ''}>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" 
+                                   name="${key}_delete" ${perm.can_delete ? 'checked' : ''}>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            table.appendChild(tbody);
+            container.appendChild(table);
+            
+            // Add event listeners for level changes
+            container.querySelectorAll('select[name$="_level"]').forEach(select => {
+                select.addEventListener('change', function() {
+                    const permKey = this.name.replace('_level', '');
+                    const row = this.closest('tr');
+                    const viewCheckbox = row.querySelector(`input[name="${permKey}_view"]`);
+                    const createCheckbox = row.querySelector(`input[name="${permKey}_create"]`);
+                    const updateCheckbox = row.querySelector(`input[name="${permKey}_update"]`);
+                    const deleteCheckbox = row.querySelector(`input[name="${permKey}_delete"]`);
+                    
+                    if (this.value === 'none') {
+                        viewCheckbox.checked = false;
+                        createCheckbox.checked = false;
+                        createCheckbox.disabled = true;
+                        updateCheckbox.checked = false;
+                        updateCheckbox.disabled = true;
+                        deleteCheckbox.checked = false;
+                        deleteCheckbox.disabled = true;
+                    } else {
+                        viewCheckbox.checked = true;
+                        createCheckbox.disabled = false;
+                        updateCheckbox.disabled = false;
+                        deleteCheckbox.disabled = false;
+                    }
+                });
+                
+                // Trigger change event to set initial state
+                select.dispatchEvent(new Event('change'));
+            });
         }
 
         function saveRole() {
@@ -141,6 +343,61 @@
                 alert('Có lỗi xảy ra khi lưu dữ liệu');
             });
         }
+
+        function savePermissions() {
+            const form = document.getElementById('permissionsForm');
+            const formData = new FormData(form);
+            const roleId = formData.get('role_id');
+            
+            const permissions = {};
+            
+            // Get master permission
+            permissions.master = {
+                level: formData.has('master'),
+                can_create: formData.has('master'),
+                can_update: formData.has('master'),
+                can_delete: formData.has('master')
+            };
+            
+            // Get other permissions from matrix
+            const permissionTypes = ['conduct_management', 'academic_management', 'group_statistics', 'student_statistics'];
+            permissionTypes.forEach(type => {
+                const level = formData.get(type + '_level') || 'none';
+                const can_create = formData.has(type + '_create') && level !== 'none';
+                const can_update = formData.has(type + '_update') && level !== 'none';
+                const can_delete = formData.has(type + '_delete') && level !== 'none';
+                
+                permissions[type] = {
+                    level: level,
+                    can_create: can_create,
+                    can_update: can_update,
+                    can_delete: can_delete
+                };
+            });
+
+            fetch(`/api/roles/${roleId}/permissions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(permissions)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert('Lưu phân quyền thành công!');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('permissionsModal'));
+                    modal.hide();
+                    window.location.reload(); // Reload the page to update roles table
+                } else {
+                    alert('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi lưu phân quyền');
+            });
+        }
     </script>
 
     <style>
@@ -154,6 +411,39 @@
             .btn {
                 margin-bottom: 0.5rem;
             }
+        }
+        
+        .permission-levels {
+            margin-left: 20px;
+        }
+        
+        .permission-levels .form-check {
+            margin-bottom: 8px;
+        }
+        
+        .permission-group {
+            border-left: 3px solid #007bff;
+            padding-left: 15px;
+        }
+        
+        .permission-group.master {
+            border-left-color: #dc3545;
+        }
+        
+        .permissions-modal .modal-body {
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        
+        .btn-permissions {
+            background: linear-gradient(45deg, #17a2b8, #007bff);
+            border: none;
+            color: white;
+        }
+        
+        .btn-permissions:hover {
+            background: linear-gradient(45deg, #138496, #0056b3);
+            color: white;
         }
     </style>
 {% endblock %}

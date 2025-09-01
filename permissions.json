@@ -1,0 +1,95 @@
+{
+  "permissions_structure": {
+    "master": {
+      "name": "Chức năng master",
+      "description": "Quyền xem, thêm, xoá, sửa tất cả",
+      "access_level": "full"
+    },
+    "conduct_management": {
+      "name": "Chức năng quản lý hạnh kiểm",
+      "description": "Quản lý hạnh kiểm của học sinh",
+      "levels": {
+        "all": {
+          "name": "Tất cả",
+          "permissions": ["view", "create", "edit", "delete"],
+          "search_conditions": "all"
+        },
+        "group_only": {
+          "name": "Chỉ nhóm của mình",
+          "permissions": ["view", "create", "edit", "delete"],
+          "search_conditions": "group_restricted"
+        },
+        "self_only": {
+          "name": "Chỉ mình",
+          "permissions": ["view", "create", "edit", "delete"],
+          "search_conditions": "self_restricted"
+        }
+      }
+    },
+    "academic_management": {
+      "name": "Chức năng quản lý học tập",
+      "description": "Quản lý học tập của học sinh",
+      "levels": {
+        "all": {
+          "name": "Tất cả",
+          "permissions": ["view", "create", "edit", "delete"],
+          "search_conditions": "all"
+        },
+        "group_only": {
+          "name": "Chỉ nhóm của mình",
+          "permissions": ["view", "create", "edit", "delete"],
+          "search_conditions": "group_restricted"
+        },
+        "self_only": {
+          "name": "Chỉ mình",
+          "permissions": ["view", "create", "edit", "delete"],
+          "search_conditions": "self_restricted"
+        }
+      }
+    },
+    "group_statistics": {
+      "name": "Chức năng thống kê nhóm",
+      "description": "Xem thống kê theo nhóm",
+      "levels": {
+        "all": {
+          "name": "Tất cả",
+          "permissions": ["view"],
+          "search_conditions": "all"
+        },
+        "group_only": {
+          "name": "Chỉ nhóm của mình",
+          "permissions": ["view"],
+          "search_conditions": "group_restricted"
+        }
+      }
+    },
+    "student_statistics": {
+      "name": "Chức năng thống kê học sinh",
+      "description": "Xem thống kê học sinh",
+      "levels": {
+        "all": {
+          "name": "Tất cả",
+          "permissions": ["view"],
+          "search_conditions": "all"
+        },
+        "group_only": {
+          "name": "Chỉ nhóm của mình",
+          "permissions": ["view"],
+          "search_conditions": "group_restricted"
+        },
+        "self_only": {
+          "name": "Chỉ mình",
+          "permissions": ["view"],
+          "search_conditions": "self_restricted"
+        }
+      }
+    }
+  },
+  "default_permissions": {
+    "master": true,
+    "conduct_management": "none",
+    "academic_management": "none",
+    "group_statistics": "none",
+    "student_statistics": "none"
+  }
+}
