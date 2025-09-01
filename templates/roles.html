@@ -4,7 +4,7 @@
         <h2 class="mt-4 mb-4">Danh sách chức vụ</h2>
         <div class="row mb-3">
             <div class="col-12">
-                <a href="{{ url_for('role_create') }}" class="btn btn-success w-100 w-md-auto">Tạo mới</a>
+                <button type="button" class="btn btn-success w-100 w-md-auto" onclick="openCreateModal()">Tạo mới</button>
             </div>
         </div>
         <div class="table-responsive">
@@ -20,7 +20,7 @@
                         <tr>
                             <td>{{ role[1] }}</td>
                             <td class="text-nowrap">
-                                <a href="{{ url_for('role_edit', id=role[0]) }}" class="btn btn-sm btn-primary me-1">Sửa</a>
+                                <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ role[0] }})">Sửa</button>
                                 <a href="{{ url_for('role_delete', id=role[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Xoá</a>
                             </td>
                         </tr>
@@ -29,6 +29,106 @@
             </table>
         </div>
     </div>
+
+    <!-- Modal for Create/Edit -->
+    <div class="modal fade" id="roleModal" tabindex="-1" aria-labelledby="roleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="roleModalLabel">Tạo chức vụ mới</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="roleForm">
+                        <input type="hidden" id="modal_id" name="id">
+                        <div class="mb-3">
+                            <label for="modal_name" class="form-label">Tên chức vụ:</label>
+                            <input type="text" name="name" id="modal_name" class="form-control" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-primary" onclick="saveRole()">Lưu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isEditMode = false;
+        let currentEditId = null;
+
+        function openCreateModal() {
+            isEditMode = false;
+            currentEditId = null;
+            document.getElementById('roleModalLabel').textContent = 'Tạo chức vụ mới';
+            document.getElementById('roleForm').reset();
+            document.getElementById('modal_id').value = '';
+            const modal = new bootstrap.Modal(document.getElementById('roleModal'));
+            modal.show();
+        }
+
+        function openEditModal(id) {
+            isEditMode = true;
+            currentEditId = id;
+            document.getElementById('roleModalLabel').textContent = 'Chỉnh sửa chức vụ';
+            
+            // Fetch record data
+            fetch(`/api/roles/${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('modal_id').value = data.id;
+                    document.getElementById('modal_name').value = data.name;
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('roleModal'));
+                    modal.show();
+                })
+                .catch(error => {
+                    console.error('Error fetching record:', error);
+                    alert('Có lỗi xảy ra khi tải dữ liệu');
+                });
+        }
+
+        function saveRole() {
+            const form = document.getElementById('roleForm');
+            const formData = new FormData(form);
+            
+            const data = {
+                name: formData.get('name')
+            };
+
+            // Validate required fields
+            if (!data.name) {
+                alert('Vui lòng nhập tên chức vụ');
+                return;
+            }
+
+            const url = isEditMode ? `/api/roles/${currentEditId}` : '/api/roles';
+            const method = isEditMode ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(result.message);
+                    location.reload(); // Reload page to show updated data
+                } else {
+                    alert('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error saving role:', error);
+                alert('Có lỗi xảy ra khi lưu dữ liệu');
+            });
+        }
+    </script>
 
     <style>
         @media (max-width: 768px) {

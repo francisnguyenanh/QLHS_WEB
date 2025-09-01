@@ -64,7 +64,7 @@
             </div>
             <div class="row mt-3">
                 <div class="col-12">
-                    <a href="{{ url_for('user_conduct_create', sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}" class="btn btn-success w-100 w-md-auto">Tạo mới</a>
+                    <button type="button" class="btn btn-success w-100 w-md-auto" onclick="openCreateModal()">Tạo mới</button>
                 </div>
             </div>
         </form>
@@ -134,7 +134,7 @@
                             <td>{{ record[4] }}</td>
                             <td>{{ record[5] }}</td>
                             <td class="text-nowrap">
-                                <a href="{{ url_for('user_conduct_edit', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}" class="btn btn-sm btn-info me-1">Edit</a>
+                                <button class="btn btn-sm btn-info me-1" onclick="openEditModal({{ record[0] }})">Edit</button>
                                 <a href="{{ url_for('user_conduct_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
                             </td>
                         </tr>
@@ -144,7 +144,73 @@
         </div>
     </div>
 
+    <!-- Modal for Create/Edit -->
+    <div class="modal fade" id="conductModal" tabindex="-1" aria-labelledby="conductModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="conductModalLabel">Tạo mới hạnh kiểm học sinh</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="conductForm">
+                        <input type="hidden" id="modal_id" name="id">
+                        <div class="row g-3">
+                            <div class="col-12 col-md-4">
+                                <div class="form-group">
+                                    <label for="modal_user_id">Học sinh:</label>
+                                    <select name="user_id" id="modal_user_id" class="form-control" required onchange="calculateModalTotalPoints()">
+                                        <option value="">Chọn học sinh</option>
+                                        {% for user in all_users %}
+                                            <option value="{{ user[0] }}">{{ user[1] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group mt-3">
+                                    <label for="modal_conduct_id">Hạnh kiểm:</label>
+                                    <select name="conduct_id" id="modal_conduct_id" class="form-control" required onchange="loadModalConductPoints()">
+                                        <option value="">Chọn hạnh kiểm</option>
+                                        {% for conduct in all_conducts %}
+                                            <option value="{{ conduct[0] }}">{{ conduct[1] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <div class="form-group">
+                                    <label for="modal_registered_date">Dữ liệu ngày:</label>
+                                    <input type="date" name="registered_date" id="modal_registered_date" class="form-control" required onchange="calculateModalTotalPoints()">
+                                </div>
+                                <div class="form-group mt-3">
+                                    <label for="modal_entered_by">Người đăng ký:</label>
+                                    <input type="text" name="entered_by" id="modal_entered_by" class="form-control" required>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <div class="form-group">
+                                    <label for="modal_conduct_points">Điểm hạnh kiểm:</label>
+                                    <input type="number" name="conduct_points" id="modal_conduct_points" class="form-control" readonly>
+                                </div>
+                                <div class="form-group mt-3">
+                                    <label for="modal_total_points">Tổng điểm ngày:</label>
+                                    <input type="number" name="total_points" id="modal_total_points" class="form-control" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="button" class="btn btn-primary" onclick="saveConduct()">Lưu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let isEditMode = false;
+        let currentEditId = null;
+
         document.getElementById('select_all_users').addEventListener('change', function() {
             const userSelect = document.getElementById('users');
             for (let option of userSelect.options) {
@@ -165,6 +231,130 @@
                 option.selected = this.checked;
             }
         });
+
+        function openCreateModal() {
+            isEditMode = false;
+            currentEditId = null;
+            document.getElementById('conductModalLabel').textContent = 'Tạo mới hạnh kiểm học sinh';
+            document.getElementById('conductForm').reset();
+            document.getElementById('modal_id').value = '';
+            document.getElementById('modal_conduct_points').value = '';
+            document.getElementById('modal_total_points').value = '';
+            const modal = new bootstrap.Modal(document.getElementById('conductModal'));
+            modal.show();
+        }
+
+        function openEditModal(id) {
+            isEditMode = true;
+            currentEditId = id;
+            document.getElementById('conductModalLabel').textContent = 'Chỉnh sửa hạnh kiểm học sinh';
+            
+            // Fetch record data
+            fetch(`/api/user_conduct/${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('modal_id').value = data.id;
+                    document.getElementById('modal_user_id').value = data.user_id;
+                    document.getElementById('modal_conduct_id').value = data.conduct_id;
+                    document.getElementById('modal_registered_date').value = data.registered_date;
+                    document.getElementById('modal_entered_by').value = data.entered_by;
+                    
+                    // Load conduct points and calculate total
+                    loadModalConductPoints();
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('conductModal'));
+                    modal.show();
+                })
+                .catch(error => {
+                    console.error('Error fetching record:', error);
+                    alert('Có lỗi xảy ra khi tải dữ liệu');
+                });
+        }
+
+        function loadModalConductPoints() {
+            const conductId = document.getElementById('modal_conduct_id').value;
+            if (conductId) {
+                fetch(`/get_conduct_points/${conductId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const conductPoints = data.conduct_points || 0;
+                        document.getElementById('modal_conduct_points').value = conductPoints;
+                        calculateModalTotalPoints();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching conduct points:', error);
+                        document.getElementById('modal_conduct_points').value = 0;
+                        calculateModalTotalPoints();
+                    });
+            } else {
+                document.getElementById('modal_conduct_points').value = 0;
+                calculateModalTotalPoints();
+            }
+        }
+
+        function calculateModalTotalPoints() {
+            const userId = document.getElementById('modal_user_id').value;
+            const registeredDate = document.getElementById('modal_registered_date').value;
+            const conductPoints = parseFloat(document.getElementById('modal_conduct_points').value) || 0;
+            const excludeId = isEditMode ? currentEditId : 0;
+
+            if (userId && registeredDate) {
+                fetch(`/user_conduct_total_points?user_id=${userId}&registered_date=${registeredDate}&exclude_id=${excludeId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const totalPoints = (data.total_points || 0) + conductPoints;
+                        document.getElementById('modal_total_points').value = totalPoints;
+                    })
+                    .catch(error => {
+                        console.error('Error fetching total points:', error);
+                        document.getElementById('modal_total_points').value = conductPoints;
+                    });
+            } else {
+                document.getElementById('modal_total_points').value = conductPoints;
+            }
+        }
+
+        function saveConduct() {
+            const form = document.getElementById('conductForm');
+            const formData = new FormData(form);
+            
+            const data = {
+                user_id: formData.get('user_id'),
+                conduct_id: formData.get('conduct_id'),
+                registered_date: formData.get('registered_date'),
+                entered_by: formData.get('entered_by')
+            };
+
+            // Validate required fields
+            if (!data.user_id || !data.conduct_id || !data.registered_date || !data.entered_by) {
+                alert('Vui lòng điền đầy đủ thông tin');
+                return;
+            }
+
+            const url = isEditMode ? `/api/user_conduct/${currentEditId}` : '/api/user_conduct';
+            const method = isEditMode ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    alert(result.message);
+                    location.reload(); // Reload page to show updated data
+                } else {
+                    alert('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error saving conduct:', error);
+                alert('Có lỗi xảy ra khi lưu dữ liệu');
+            });
+        }
     </script>
 
     <style>

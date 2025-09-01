@@ -4,7 +4,7 @@
         <h2 class="mt-4 mb-4">Danh sách học sinh</h2>
         <div class="row mb-3">
             <div class="col-12">
-                <a href="{{ url_for('user_create') }}" class="btn btn-success w-100 w-md-auto">Tạo mới</a>
+                <button type="button" class="btn btn-success w-100 w-md-auto" onclick="openCreateModal()">Tạo mới</button>
             </div>
         </div>
         <div class="table-responsive">
@@ -14,6 +14,7 @@
                         <th class="text-nowrap">Họ tên</th>
                         <th class="text-nowrap">Tên đăng nhập</th>
                         <th class="text-nowrap">Lớp</th>
+                        <th class="text-nowrap">Nhóm</th>
                         <th class="text-nowrap">Chức vụ</th>
                         <th class="text-nowrap">Thao tác</th>
                     </tr>
@@ -24,15 +25,81 @@
                             <td>{{ user[1] }}</td>
                             <td>{{ user[2] }}</td>
                             <td>{{ user[3] or 'None' }}</td>
+                            <td>{{ user[5] or 'None' }}</td>
                             <td>{{ user[4] or 'None' }}</td>
                             <td class="text-nowrap">
-                                <a href="{{ url_for('user_edit', id=user[0]) }}" class="btn btn-sm btn-primary me-1">Sửa</a>
+                                <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ user[0] }})">Sửa</button>
                                 <a href="{{ url_for('user_delete', id=user[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Xoá</a>
                             </td>
                         </tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="userModalLabel">Tạo mới học sinh</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="userForm">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">Họ tên *</label>
+                                <input type="text" class="form-control" id="name" name="name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">Tên đăng nhập *</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Mật khẩu *</label>
+                                <input type="password" class="form-control" id="password" name="password" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="class_id" class="form-label">Lớp</label>
+                                <select class="form-select" id="class_id" name="class_id">
+                                    <option value="">Chọn lớp</option>
+                                    {% for class in classes %}
+                                        <option value="{{ class[0] }}">{{ class[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="group_id" class="form-label">Nhóm</label>
+                                <select class="form-select" id="group_id" name="group_id">
+                                    <option value="">Chọn nhóm</option>
+                                    {% for group in groups %}
+                                        <option value="{{ group[0] }}">{{ group[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="role_id" class="form-label">Chức vụ</label>
+                                <select class="form-select" id="role_id" name="role_id">
+                                    <option value="">Chọn chức vụ</option>
+                                    {% for role in roles %}
+                                        <option value="{{ role[0] }}">{{ role[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" onclick="saveUser()">Lưu</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -49,4 +116,98 @@
             }
         }
     </style>
+
+    <script>
+        let isEditMode = false;
+        let editUserId = null;
+
+        function openCreateModal() {
+            isEditMode = false;
+            editUserId = null;
+            document.getElementById('userModalLabel').textContent = 'Tạo mới học sinh';
+            document.getElementById('userForm').reset();
+            document.getElementById('password').required = true;
+            new bootstrap.Modal(document.getElementById('userModal')).show();
+        }
+
+        function openEditModal(userId) {
+            isEditMode = true;
+            editUserId = userId;
+            document.getElementById('userModalLabel').textContent = 'Chỉnh sửa học sinh';
+            document.getElementById('password').required = false;
+            
+            // Load user data
+            fetch(`/api/users/${userId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    document.getElementById('name').value = data.name || '';
+                    document.getElementById('username').value = data.username || '';
+                    document.getElementById('password').value = '';
+                    document.getElementById('class_id').value = data.class_id || '';
+                    document.getElementById('group_id').value = data.group_id || '';
+                    document.getElementById('role_id').value = data.role_id || '';
+                    
+                    new bootstrap.Modal(document.getElementById('userModal')).show();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Có lỗi xảy ra khi tải dữ liệu');
+                });
+        }
+
+        function saveUser() {
+            const form = document.getElementById('userForm');
+            const formData = new FormData(form);
+            
+            // Validate required fields
+            if (!formData.get('name') || !formData.get('username')) {
+                alert('Vui lòng nhập đầy đủ thông tin bắt buộc');
+                return;
+            }
+            
+            if (!isEditMode && !formData.get('password')) {
+                alert('Vui lòng nhập mật khẩu');
+                return;
+            }
+            
+            const data = {
+                name: formData.get('name'),
+                username: formData.get('username'),
+                password: formData.get('password'),
+                class_id: formData.get('class_id') || null,
+                group_id: formData.get('group_id') || null,
+                role_id: formData.get('role_id') || null
+            };
+            
+            const url = isEditMode ? `/api/users/${editUserId}` : '/api/users';
+            const method = isEditMode ? 'PUT' : 'POST';
+            
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+                    location.reload();
+                } else {
+                    alert(data.error || 'Có lỗi xảy ra');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi lưu dữ liệu');
+            });
+        }
+    </script>
 {% endblock %}

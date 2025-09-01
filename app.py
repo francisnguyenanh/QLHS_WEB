@@ -228,6 +228,30 @@ def index():
         return redirect(url_for('login'))
 
 
+# --- API routes for Classes ---
+@app.route('/api/classes/<int:id>')
+def get_class_api(id):
+    if 'user_id' in session:
+        class_data = read_record_by_id('Classes', id, ['id', 'name'])
+        return jsonify({'id': class_data[0], 'name': class_data[1]})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/classes', methods=['POST'])
+def create_class_api():
+    if 'user_id' in session:
+        data = {'name': request.json['name'], 'is_deleted': 0}
+        create_record('Classes', data)
+        return jsonify({'success': True, 'message': 'Tạo mới thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/classes/<int:id>', methods=['PUT'])
+def update_class_api(id):
+    if 'user_id' in session:
+        data = {'name': request.json['name']}
+        update_record('Classes', id, data)
+        return jsonify({'success': True, 'message': 'Cập nhật thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
 # --- Classes ---
 @app.route('/classes')
 def classes_list():
@@ -268,6 +292,30 @@ def class_edit(id):
 def class_delete(id):
     delete_record('Classes', id)
     return redirect(url_for('classes_list'))
+
+# --- API routes for Groups ---
+@app.route('/api/groups/<int:id>')
+def get_group_api(id):
+    if 'user_id' in session:
+        group_data = read_record_by_id('Groups', id, ['id', 'name'])
+        return jsonify({'id': group_data[0], 'name': group_data[1]})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/groups', methods=['POST'])
+def create_group_api():
+    if 'user_id' in session:
+        data = {'name': request.json['name'], 'is_deleted': 0}
+        create_record('Groups', data)
+        return jsonify({'success': True, 'message': 'Tạo mới thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/groups/<int:id>', methods=['PUT'])
+def update_group_api(id):
+    if 'user_id' in session:
+        data = {'name': request.json['name']}
+        update_record('Groups', id, data)
+        return jsonify({'success': True, 'message': 'Cập nhật thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
 
 # --- Groups ---
 @app.route('/groups')
@@ -312,6 +360,30 @@ def group_delete(id):
     delete_record('Groups', id)
     return redirect(url_for('groups_list'))
 
+# --- API routes for Roles ---
+@app.route('/api/roles/<int:id>')
+def get_role_api(id):
+    if 'user_id' in session:
+        role_data = read_record_by_id('Roles', id, ['id', 'name'])
+        return jsonify({'id': role_data[0], 'name': role_data[1]})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/roles', methods=['POST'])
+def create_role_api():
+    if 'user_id' in session:
+        data = {'name': request.json['name'], 'is_deleted': 0}
+        create_record('Roles', data)
+        return jsonify({'success': True, 'message': 'Tạo mới thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/roles/<int:id>', methods=['PUT'])
+def update_role_api(id):
+    if 'user_id' in session:
+        data = {'name': request.json['name']}
+        update_record('Roles', id, data)
+        return jsonify({'success': True, 'message': 'Cập nhật thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
 # --- Roles ---
 @app.route('/roles')
 def roles_list():
@@ -355,6 +427,44 @@ def role_delete(id):
     delete_record('Roles', id)
     return redirect(url_for('roles_list'))
 
+
+# --- API routes for Conducts ---
+@app.route('/api/conducts/<int:id>')
+def get_conduct_api(id):
+    if 'user_id' in session:
+        conduct_data = read_record_by_id('Conduct', id, ['id', 'name', 'conduct_type', 'conduct_points'])
+        return jsonify({
+            'id': conduct_data[0], 
+            'name': conduct_data[1], 
+            'conduct_type': conduct_data[2], 
+            'conduct_points': conduct_data[3]
+        })
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/conducts', methods=['POST'])
+def create_conduct_api():
+    if 'user_id' in session:
+        data = {
+            'name': request.json['name'], 
+            'conduct_type': request.json['conduct_type'],
+            'conduct_points': request.json['conduct_points'],
+            'is_deleted': 0
+        }
+        create_record('Conduct', data)
+        return jsonify({'success': True, 'message': 'Tạo mới thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/conducts/<int:id>', methods=['PUT'])
+def update_conduct_api(id):
+    if 'user_id' in session:
+        data = {
+            'name': request.json['name'],
+            'conduct_type': request.json['conduct_type'],
+            'conduct_points': request.json['conduct_points']
+        }
+        update_record('Conduct', id, data)
+        return jsonify({'success': True, 'message': 'Cập nhật thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
 
 # --- Conduct ---
 @app.route('/conducts')
@@ -409,6 +519,30 @@ def conduct_delete(id):
     return redirect(url_for('conducts_list'))
 
 
+# --- API routes for Subjects ---
+@app.route('/api/subjects/<int:id>')
+def get_subject_api(id):
+    if 'user_id' in session:
+        subject_data = read_record_by_id('Subjects', id, ['id', 'name'])
+        return jsonify({'id': subject_data[0], 'name': subject_data[1]})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/subjects', methods=['POST'])
+def create_subject_api():
+    if 'user_id' in session:
+        data = {'name': request.json['name'], 'is_deleted': 0}
+        create_record('Subjects', data)
+        return jsonify({'success': True, 'message': 'Tạo mới thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/subjects/<int:id>', methods=['PUT'])
+def update_subject_api(id):
+    if 'user_id' in session:
+        data = {'name': request.json['name']}
+        update_record('Subjects', id, data)
+        return jsonify({'success': True, 'message': 'Cập nhật thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
 # --- Subjects ---
 @app.route('/subjects')
 def subjects_list():
@@ -452,6 +586,44 @@ def subject_delete(id):
     delete_record('Subjects', id)
     return redirect(url_for('subjects_list'))
 
+
+# --- API routes for Criteria ---
+@app.route('/api/criteria/<int:id>')
+def get_criteria_api(id):
+    if 'user_id' in session:
+        criteria_data = read_record_by_id('Criteria', id, ['id', 'name', 'criterion_type', 'criterion_points'])
+        return jsonify({
+            'id': criteria_data[0], 
+            'name': criteria_data[1], 
+            'criterion_type': criteria_data[2], 
+            'criterion_points': criteria_data[3]
+        })
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/criteria', methods=['POST'])
+def create_criteria_api():
+    if 'user_id' in session:
+        data = {
+            'name': request.json['name'], 
+            'criterion_type': request.json['criterion_type'],
+            'criterion_points': request.json['criterion_points'],
+            'is_deleted': 0
+        }
+        create_record('Criteria', data)
+        return jsonify({'success': True, 'message': 'Tạo mới thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/criteria/<int:id>', methods=['PUT'])
+def update_criteria_api(id):
+    if 'user_id' in session:
+        data = {
+            'name': request.json['name'],
+            'criterion_type': request.json['criterion_type'],
+            'criterion_points': request.json['criterion_points']
+        }
+        update_record('Criteria', id, data)
+        return jsonify({'success': True, 'message': 'Cập nhật thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
 
 # --- Criteria ---
 @app.route('/criteria')
@@ -506,6 +678,85 @@ def criteria_delete(id):
     return redirect(url_for('criteria_list'))
 
 
+# --- API routes for Users ---
+@app.route('/api/users/<int:id>')
+def get_user_api(id):
+    if 'user_id' in session:
+        user_data = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
+        return jsonify({
+            'id': user_data[0],
+            'name': user_data[1],
+            'username': user_data[2],
+            'password': user_data[3],
+            'class_id': user_data[4],
+            'group_id': user_data[5],
+            'role_id': user_data[6]
+        })
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/users', methods=['POST'])
+def create_user_api():
+    if 'user_id' in session:
+        name = request.json['name']
+        username = request.json['username']
+        password = request.json['password']
+        class_id = request.json['class_id']
+        role_id = request.json['role_id']
+        group_id = request.json.get('group_id')
+
+        # Kiểm tra trùng username
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM Users WHERE username = ? AND is_deleted = 0", (username,))
+        if cursor.fetchone()[0] > 0:
+            conn.close()
+            return jsonify({'error': 'Tên đăng nhập đã tồn tại'}), 400
+
+        data = {
+            'name': name,
+            'username': username,
+            'password': password,
+            'class_id': class_id,
+            'group_id': group_id,
+            'role_id': role_id,
+            'is_deleted': 0
+        }
+        create_record('Users', data)
+        conn.close()
+        return jsonify({'success': True, 'message': 'Tạo mới thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/users/<int:id>', methods=['PUT'])
+def update_user_api(id):
+    if 'user_id' in session:
+        name = request.json['name']
+        username = request.json['username']
+        password = request.json['password']
+        class_id = request.json['class_id']
+        role_id = request.json['role_id']
+        group_id = request.json.get('group_id')
+
+        # Kiểm tra trùng username (trừ user hiện tại)
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM Users WHERE username = ? AND id != ? AND is_deleted = 0", (username, id))
+        if cursor.fetchone()[0] > 0:
+            conn.close()
+            return jsonify({'error': 'Tên đăng nhập đã tồn tại'}), 400
+
+        data = {
+            'name': name,
+            'username': username,
+            'password': password,
+            'class_id': class_id,
+            'group_id': group_id,
+            'role_id': role_id
+        }
+        update_record('Users', id, data)
+        conn.close()
+        return jsonify({'success': True, 'message': 'Cập nhật thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
 # --- Users ---
 @app.route('/users')
 def users_list():
@@ -513,15 +764,27 @@ def users_list():
         conn = connect_db()
         cursor = conn.cursor()
         cursor.execute("""
-                SELECT u.id, u.name, u.username, c.name AS class_name, r.name AS role_name
+                SELECT u.id, u.name, u.username, c.name AS class_name, r.name AS role_name, g.name AS group_name
                 FROM Users u
                 LEFT JOIN Classes c ON u.class_id = c.id
                 LEFT JOIN Roles r ON u.role_id = r.id
+                LEFT JOIN Groups g ON u.group_id = g.id
                 WHERE u.is_deleted = 0
             """)
         users = cursor.fetchall()
+        
+        # Lấy danh sách classes, roles, groups cho modal
+        cursor.execute("SELECT id, name FROM Classes WHERE is_deleted = 0 ORDER BY name")
+        classes = cursor.fetchall()
+        
+        cursor.execute("SELECT id, name FROM Roles WHERE is_deleted = 0 ORDER BY name") 
+        roles = cursor.fetchall()
+        
+        cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 ORDER BY name")
+        groups = cursor.fetchall()
+        
         conn.close()
-        return render_template('users.html', users=users, is_gvcn=is_user_gvcn())
+        return render_template('users.html', users=users, classes=classes, roles=roles, groups=groups, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
 
@@ -711,6 +974,97 @@ def user_subjects_total_points():
     return jsonify({'total_points': total_points})
 
 
+# --- API route để lấy dữ liệu record cho modal edit ---
+@app.route('/api/user_conduct/<int:id>')
+def get_user_conduct_api(id):
+    if 'user_id' in session:
+        record = read_record_by_id('User_Conduct', id, 
+                                   ['id', 'user_id', 'conduct_id', 'registered_date', 'total_points', 'entered_by'])
+        return jsonify({
+            'id': record[0],
+            'user_id': record[1],
+            'conduct_id': record[2],
+            'registered_date': record[3],
+            'total_points': record[4],
+            'entered_by': record[5]
+        })
+    return jsonify({'error': 'Unauthorized'}), 401
+
+# --- API route để tạo mới user conduct ---
+@app.route('/api/user_conduct', methods=['POST'])
+def create_user_conduct_api():
+    if 'user_id' in session:
+        user_id = request.json['user_id']
+        conduct_id = request.json['conduct_id']
+        registered_date = request.json['registered_date']
+        entered_by = request.json['entered_by']
+
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT SUM(c.conduct_points) 
+            FROM User_Conduct uc
+            JOIN Conduct c ON uc.conduct_id = c.id
+            WHERE uc.user_id = ? AND uc.registered_date = ? AND uc.is_deleted = 0
+        """, (user_id, registered_date))
+        total_points = cursor.fetchone()[0] or 0
+
+        cursor.execute("SELECT conduct_points FROM Conduct WHERE id = ? AND is_deleted = 0", (conduct_id,))
+        conduct_points = cursor.fetchone()[0] or 0
+
+        total_points += conduct_points
+
+        data = {
+            'user_id': user_id,
+            'conduct_id': conduct_id,
+            'registered_date': registered_date,
+            'total_points': total_points,
+            'entered_by': entered_by,
+            'is_deleted': 0
+        }
+        create_record('User_Conduct', data)
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Tạo mới thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+# --- API route để cập nhật user conduct ---
+@app.route('/api/user_conduct/<int:id>', methods=['PUT'])
+def update_user_conduct_api(id):
+    if 'user_id' in session:
+        user_id = request.json['user_id']
+        conduct_id = request.json['conduct_id']
+        registered_date = request.json['registered_date']
+        entered_by = request.json['entered_by']
+
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT SUM(c.conduct_points) 
+            FROM User_Conduct uc
+            JOIN Conduct c ON uc.conduct_id = c.id
+            WHERE uc.user_id = ? AND uc.registered_date = ? AND uc.id != ? AND uc.is_deleted = 0
+        """, (user_id, registered_date, id))
+        total_points = cursor.fetchone()[0] or 0
+
+        cursor.execute("SELECT conduct_points FROM Conduct WHERE id = ? AND is_deleted = 0", (conduct_id,))
+        conduct_points = cursor.fetchone()[0] or 0
+
+        total_points += conduct_points
+
+        data = {
+            'user_id': user_id,
+            'conduct_id': conduct_id,
+            'registered_date': registered_date,
+            'total_points': total_points,
+            'entered_by': entered_by
+        }
+        update_record('User_Conduct', id, data)
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Cập nhật thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
 # --- User_Conduct ---
 @app.route('/user_conduct', methods=['GET', 'POST'])
 def user_conduct_list():
@@ -859,6 +1213,8 @@ def user_conduct_list():
                                users=users,
                                conducts=conducts,
                                groups=groups,
+                               all_users=users,  # Thêm để dùng trong modal
+                               all_conducts=conducts,  # Thêm để dùng trong modal
                                sort_by=sort_by,
                                sort_order=sort_order,
                                date_from=date_from,
@@ -1066,6 +1422,100 @@ def user_conduct_delete(id):
                             select_all_groups=select_all_groups))
 
 
+# --- API routes for User_Subjects ---
+@app.route('/api/user_subjects/<int:id>')
+def get_user_subjects_api(id):
+    if 'user_id' in session:
+        record = read_record_by_id('User_Subjects', id, 
+                                   ['id', 'user_id', 'subject_id', 'criteria_id', 'registered_date', 'total_points', 'entered_by'])
+        return jsonify({
+            'id': record[0],
+            'user_id': record[1],
+            'subject_id': record[2],
+            'criteria_id': record[3],
+            'registered_date': record[4],
+            'total_points': record[5],
+            'entered_by': record[6]
+        })
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/user_subjects', methods=['POST'])
+def create_user_subjects_api():
+    if 'user_id' in session:
+        user_id = request.json['user_id']
+        subject_id = request.json['subject_id']
+        criteria_id = request.json.get('criteria_id') or None
+        registered_date = request.json['registered_date']
+        entered_by = request.json['entered_by']
+
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT SUM(cr.criterion_points) 
+            FROM User_Subjects us
+            LEFT JOIN Criteria cr ON us.criteria_id = cr.id
+            WHERE us.user_id = ? AND us.registered_date = ? AND us.is_deleted = 0
+        """, (user_id, registered_date))
+        total_points = cursor.fetchone()[0] or 0
+
+        if criteria_id:
+            cursor.execute("SELECT criterion_points FROM Criteria WHERE id = ? AND is_deleted = 0", (criteria_id,))
+            criteria_points = cursor.fetchone()[0] or 0
+            total_points += criteria_points
+
+        data = {
+            'user_id': user_id,
+            'subject_id': subject_id,
+            'criteria_id': criteria_id,
+            'registered_date': registered_date,
+            'total_points': total_points,
+            'entered_by': entered_by,
+            'is_deleted': 0
+        }
+        create_record('User_Subjects', data)
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Tạo mới thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/user_subjects/<int:id>', methods=['PUT'])
+def update_user_subjects_api(id):
+    if 'user_id' in session:
+        user_id = request.json['user_id']
+        subject_id = request.json['subject_id']
+        criteria_id = request.json.get('criteria_id') or None
+        registered_date = request.json['registered_date']
+        entered_by = request.json['entered_by']
+
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT SUM(cr.criterion_points) 
+            FROM User_Subjects us
+            LEFT JOIN Criteria cr ON us.criteria_id = cr.id
+            WHERE us.user_id = ? AND us.registered_date = ? AND us.id != ? AND us.is_deleted = 0
+        """, (user_id, registered_date, id))
+        total_points = cursor.fetchone()[0] or 0
+
+        if criteria_id:
+            cursor.execute("SELECT criterion_points FROM Criteria WHERE id = ? AND is_deleted = 0", (criteria_id,))
+            criteria_points = cursor.fetchone()[0] or 0
+            total_points += criteria_points
+
+        data = {
+            'user_id': user_id,
+            'subject_id': subject_id,
+            'criteria_id': criteria_id,
+            'registered_date': registered_date,
+            'total_points': total_points,
+            'entered_by': entered_by
+        }
+        update_record('User_Subjects', id, data)
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Cập nhật thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
 # --- User_Subjects ---
 @app.route('/user_subjects', methods=['GET', 'POST'])
 def user_subjects_list():
@@ -1222,6 +1672,9 @@ def user_subjects_list():
                                subjects=subjects,
                                criteria=criteria,
                                groups=groups,
+                               all_users=users,  # Thêm để dùng trong modal
+                               all_subjects=subjects,  # Thêm để dùng trong modal  
+                               all_criteria=criteria,  # Thêm để dùng trong modal
                                sort_by=sort_by,
                                sort_order=sort_order,
                                date_from=date_from,
