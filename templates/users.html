@@ -11,20 +11,51 @@
             <table class="table table-bordered table-striped">
                 <thead>
                     <tr>
-                        <th class="text-nowrap">Họ tên</th>
-                        <th class="text-nowrap">Tên đăng nhập</th>
-                        <th class="text-nowrap">Lớp</th>
-                        <th class="text-nowrap">Nhóm</th>
-                        <th class="text-nowrap">Chức vụ</th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('users_list', sort_by='first_name', sort_order='desc' if sort_by == 'first_name' and sort_order == 'asc' else 'asc') }}">
+                                Tên
+                                {% if sort_by == 'first_name' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-nowrap">Họ và tên đệm</th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('users_list', sort_by='username', sort_order='desc' if sort_by == 'username' and sort_order == 'asc' else 'asc') }}">
+                                Tên đăng nhập
+                                {% if sort_by == 'username' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('users_list', sort_by='group_name', sort_order='desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc') }}">
+                                Nhóm
+                                {% if sort_by == 'group_name' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('users_list', sort_by='role_name', sort_order='desc' if sort_by == 'role_name' and sort_order == 'asc' else 'asc') }}">
+                                Chức vụ
+                                {% if sort_by == 'role_name' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
                         <th class="text-nowrap">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for user in users %}
+                        {% set name_parts = user[1].split() %}
+                        {% set first_name = name_parts[-1] if name_parts|length > 0 else '' %}
+                        {% set last_name = ' '.join(name_parts[:-1]) if name_parts|length > 1 else '' %}
                         <tr>
-                            <td>{{ user[1] }}</td>
+                            <td>{{ first_name }}</td>
+                            <td>{{ last_name }}</td>
                             <td>{{ user[2] }}</td>
-                            <td>{{ user[3] or 'None' }}</td>
                             <td>{{ user[5] or 'None' }}</td>
                             <td>{{ user[4] or 'None' }}</td>
                             <td class="text-nowrap">
@@ -61,19 +92,13 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="password" class="form-label">Mật khẩu *</label>
-                                <input type="password" class="form-control" id="password" name="password" required>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                        <i class="fas fa-eye" id="togglePasswordIcon"></i>
+                                    </button>
+                                </div>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="class_id" class="form-label">Lớp</label>
-                                <select class="form-select" id="class_id" name="class_id">
-                                    <option value="">Chọn lớp</option>
-                                    {% for class in classes %}
-                                        <option value="{{ class[0] }}">{{ class[1] }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="group_id" class="form-label">Nhóm</label>
                                 <select class="form-select" id="group_id" name="group_id">
@@ -83,6 +108,8 @@
                                     {% endfor %}
                                 </select>
                             </div>
+                        </div>
+                        <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="role_id" class="form-label">Chức vụ</label>
                                 <select class="form-select" id="role_id" name="role_id">
@@ -135,7 +162,6 @@
             editUserId = userId;
             document.getElementById('userModalLabel').textContent = 'Chỉnh sửa học sinh';
             document.getElementById('password').required = false;
-            
             // Load user data
             fetch(`/api/users/${userId}`)
                 .then(response => response.json())
@@ -144,14 +170,11 @@
                         alert(data.error);
                         return;
                     }
-                    
                     document.getElementById('name').value = data.name || '';
                     document.getElementById('username').value = data.username || '';
                     document.getElementById('password').value = '';
-                    document.getElementById('class_id').value = data.class_id || '';
                     document.getElementById('group_id').value = data.group_id || '';
                     document.getElementById('role_id').value = data.role_id || '';
-                    
                     new bootstrap.Modal(document.getElementById('userModal')).show();
                 })
                 .catch(error => {
@@ -163,30 +186,25 @@
         function saveUser() {
             const form = document.getElementById('userForm');
             const formData = new FormData(form);
-            
             // Validate required fields
             if (!formData.get('name') || !formData.get('username')) {
                 alert('Vui lòng nhập đầy đủ thông tin bắt buộc');
                 return;
             }
-            
             if (!isEditMode && !formData.get('password')) {
                 alert('Vui lòng nhập mật khẩu');
                 return;
             }
-            
             const data = {
                 name: formData.get('name'),
                 username: formData.get('username'),
                 password: formData.get('password'),
-                class_id: formData.get('class_id') || null,
+                class_id: null,
                 group_id: formData.get('group_id') || null,
                 role_id: formData.get('role_id') || null
             };
-            
             const url = isEditMode ? `/api/users/${editUserId}` : '/api/users';
             const method = isEditMode ? 'PUT' : 'POST';
-            
             fetch(url, {
                 method: method,
                 headers: {
@@ -208,6 +226,19 @@
                 console.error('Error:', error);
                 alert('Có lỗi xảy ra khi lưu dữ liệu');
             });
+        }
+
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.getElementById('togglePasswordIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.className = 'fas fa-eye-slash';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.className = 'fas fa-eye';
+            }
         }
     </script>
 {% endblock %}

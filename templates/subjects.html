@@ -11,7 +11,14 @@
             <table class="table table-bordered table-striped">
                 <thead>
                     <tr>
-                        <th class="text-nowrap">Tên môn học</th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('subjects_list', sort_by='name', sort_order='desc' if sort_by == 'name' and sort_order == 'asc' else 'asc') }}">
+                                Tên môn học
+                                {% if sort_by == 'name' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
                         <th class="text-nowrap">Thao tác</th>
                     </tr>
                 </thead>

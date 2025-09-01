@@ -11,9 +11,30 @@
             <table class="table table-bordered table-striped">
                 <thead>
                     <tr>
-                        <th class="text-nowrap">Tên kết quả</th>
-                        <th class="text-nowrap">Loại kết quả</th>
-                        <th class="text-nowrap">Điểm kết quả</th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('criteria_list', sort_by='name', sort_order='desc' if sort_by == 'name' and sort_order == 'asc' else 'asc') }}">
+                                Tên kết quả
+                                {% if sort_by == 'name' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('criteria_list', sort_by='criterion_type', sort_order='desc' if sort_by == 'criterion_type' and sort_order == 'asc' else 'asc') }}">
+                                Loại kết quả
+                                {% if sort_by == 'criterion_type' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('criteria_list', sort_by='criterion_points', sort_order='desc' if sort_by == 'criterion_points' and sort_order == 'asc' else 'asc') }}">
+                                Điểm kết quả
+                                {% if sort_by == 'criterion_points' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
+                        </th>
                         <th class="text-nowrap">Thao tác</th>
                     </tr>
                 </thead>

@@ -4,7 +4,10 @@
         <h2 class="mt-4 mb-4">Danh sách lớp</h2>
         <div class="row mb-3">
             <div class="col-12">
-                <button type="button" class="btn btn-success w-100 w-md-auto" onclick="openCreateModal()">Tạo lớp mới</button>
+                <button type="button" class="btn btn-success w-100 w-md-auto" onclick="openCreateModal()" {% if has_existing_class %}disabled{% endif %}>
+                    Tạo lớp mới
+                    {% if has_existing_class %}<span class="text-muted">(Chỉ được phép có 1 lớp)</span>{% endif %}
+                </button>
             </div>
         </div>
         <div class="table-responsive">

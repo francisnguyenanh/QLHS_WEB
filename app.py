@@ -240,7 +240,15 @@ def get_class_api(id):
 def create_class_api():
     if 'user_id' in session:
         data = {'name': request.json['name'], 'is_deleted': 0}
-        create_record('Classes', data)
+        class_id = create_record('Classes', data)
+        
+        # Cập nhật tất cả users có class_id = null thành class mới tạo
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE Users SET class_id = ? WHERE class_id IS NULL AND is_deleted = 0", (class_id,))
+        conn.commit()
+        conn.close()
+        
         return jsonify({'success': True, 'message': 'Tạo mới thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -257,7 +265,9 @@ def update_class_api(id):
 def classes_list():
     if 'user_id' in session:
         classes = read_all_records('Classes', ['id', 'name'])
-        return render_template('classes.html', classes=classes, is_gvcn=is_user_gvcn())
+        # Kiểm tra xem đã có class nào tồn tại chưa
+        has_existing_class = len(classes) > 0
+        return render_template('classes.html', classes=classes, has_existing_class=has_existing_class, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
 
@@ -290,6 +300,13 @@ def class_edit(id):
 
 @app.route('/classes/delete/<int:id>')
 def class_delete(id):
+    # Cập nhật tất cả users có class_id = id thành null
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE Users SET class_id = NULL WHERE class_id = ?", (id,))
+    conn.commit()
+    conn.close()
+    
     delete_record('Classes', id)
     return redirect(url_for('classes_list'))
 
@@ -357,7 +374,19 @@ def group_edit(id):
 
 @app.route('/groups/delete/<int:id>')
 def group_delete(id):
-    delete_record('Groups', id)
+    # Kiểm tra xem có user nào đang thuộc nhóm này không
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM Users WHERE group_id = ? AND is_deleted = 0", (id,))
+    user_count = cursor.fetchone()[0]
+    conn.close()
+    
+    if user_count > 0:
+        flash(f'Không thể xóa nhóm này vì đang có {user_count} người liên kết với nhóm', 'error')
+    else:
+        delete_record('Groups', id)
+        flash('Xóa nhóm thành công', 'success')
+    
     return redirect(url_for('groups_list'))
 
 # --- API routes for Roles ---
@@ -424,7 +453,19 @@ def role_edit(id):
 
 @app.route('/roles/delete/<int:id>')
 def role_delete(id):
-    delete_record('Roles', id)
+    # Kiểm tra xem có user nào đang liên kết với role này không
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM Users WHERE role_id = ? AND is_deleted = 0", (id,))
+    user_count = cursor.fetchone()[0]
+    conn.close()
+    
+    if user_count > 0:
+        flash(f'Không thể xóa chức vụ này vì đang có {user_count} người liên kết với chức vụ', 'error')
+    else:
+        delete_record('Roles', id)
+        flash('Xóa chức vụ thành công', 'success')
+    
     return redirect(url_for('roles_list'))
 
 
@@ -470,8 +511,34 @@ def update_conduct_api(id):
 @app.route('/conducts')
 def conducts_list():
     if 'user_id' in session:
-        conducts = read_all_records('Conduct', ['id', 'name', 'conduct_type', 'conduct_points'])
-        return render_template('conducts.html', conducts=conducts, is_gvcn=is_user_gvcn())
+        # Lấy tham số sắp xếp
+        sort_by = request.args.get('sort_by', 'name')
+        sort_order = request.args.get('sort_order', 'asc')
+        
+        # Validate sort parameters
+        valid_sort_fields = ['name', 'conduct_type', 'conduct_points']
+        if sort_by not in valid_sort_fields:
+            sort_by = 'name'
+        if sort_order not in ['asc', 'desc']:
+            sort_order = 'asc'
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        order_clause = f"{sort_by} {sort_order.upper()}"
+        
+        query = f"""
+                SELECT id, name, conduct_type, conduct_points
+                FROM Conduct 
+                WHERE is_deleted = 0
+                ORDER BY {order_clause}
+            """
+        
+        cursor.execute(query)
+        conducts = cursor.fetchall()
+        conn.close()
+        
+        return render_template('conducts.html', conducts=conducts, sort_by=sort_by, sort_order=sort_order, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
 
@@ -547,8 +614,34 @@ def update_subject_api(id):
 @app.route('/subjects')
 def subjects_list():
     if 'user_id' in session:
-        subjects = read_all_records('Subjects', ['id', 'name'])
-        return render_template('subjects.html', subjects=subjects, is_gvcn=is_user_gvcn())
+        # Lấy tham số sắp xếp
+        sort_by = request.args.get('sort_by', 'name')
+        sort_order = request.args.get('sort_order', 'asc')
+        
+        # Validate sort parameters
+        valid_sort_fields = ['name']
+        if sort_by not in valid_sort_fields:
+            sort_by = 'name'
+        if sort_order not in ['asc', 'desc']:
+            sort_order = 'asc'
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        order_clause = f"{sort_by} {sort_order.upper()}"
+        
+        query = f"""
+                SELECT id, name
+                FROM Subjects 
+                WHERE is_deleted = 0
+                ORDER BY {order_clause}
+            """
+        
+        cursor.execute(query)
+        subjects = cursor.fetchall()
+        conn.close()
+        
+        return render_template('subjects.html', subjects=subjects, sort_by=sort_by, sort_order=sort_order, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
 
@@ -629,8 +722,34 @@ def update_criteria_api(id):
 @app.route('/criteria')
 def criteria_list():
     if 'user_id' in session:
-        criteria = read_all_records('Criteria', ['id', 'name', 'criterion_type', 'criterion_points'])
-        return render_template('criteria.html', criteria=criteria, is_gvcn=is_user_gvcn())
+        # Lấy tham số sắp xếp
+        sort_by = request.args.get('sort_by', 'name')
+        sort_order = request.args.get('sort_order', 'asc')
+        
+        # Validate sort parameters
+        valid_sort_fields = ['name', 'criterion_type', 'criterion_points']
+        if sort_by not in valid_sort_fields:
+            sort_by = 'name'
+        if sort_order not in ['asc', 'desc']:
+            sort_order = 'asc'
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        order_clause = f"{sort_by} {sort_order.upper()}"
+        
+        query = f"""
+                SELECT id, name, criterion_type, criterion_points
+                FROM Criteria 
+                WHERE is_deleted = 0
+                ORDER BY {order_clause}
+            """
+        
+        cursor.execute(query)
+        criteria = cursor.fetchall()
+        conn.close()
+        
+        return render_template('criteria.html', criteria=criteria, sort_by=sort_by, sort_order=sort_order, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
 
@@ -761,17 +880,53 @@ def update_user_api(id):
 @app.route('/users')
 def users_list():
     if 'user_id' in session:
+        # Lấy tham số sắp xếp
+        sort_by = request.args.get('sort_by', 'name')
+        sort_order = request.args.get('sort_order', 'asc')
+        
+        # Validate sort parameters
+        valid_sort_fields = ['first_name', 'username', 'group_name', 'role_name']
+        if sort_by not in valid_sort_fields:
+            sort_by = 'first_name'
+        if sort_order not in ['asc', 'desc']:
+            sort_order = 'asc'
+        
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("""
+        
+        # Build ORDER BY clause based on sort parameters
+        order_clause = ""
+        if sort_by == 'first_name':
+            # Tạm thời sắp xếp theo toàn bộ tên, sau này có thể tối ưu
+            order_clause = f"u.name {sort_order.upper()}"
+        elif sort_by == 'username':
+            order_clause = f"u.username {sort_order.upper()}"
+        elif sort_by == 'group_name':
+            order_clause = f"g.name {sort_order.upper()}"
+        elif sort_by == 'role_name':
+            order_clause = f"r.name {sort_order.upper()}"
+        
+        query = f"""
                 SELECT u.id, u.name, u.username, c.name AS class_name, r.name AS role_name, g.name AS group_name
                 FROM Users u
                 LEFT JOIN Classes c ON u.class_id = c.id
                 LEFT JOIN Roles r ON u.role_id = r.id
                 LEFT JOIN Groups g ON u.group_id = g.id
                 WHERE u.is_deleted = 0
-            """)
+                ORDER BY {order_clause}
+            """
+        
+        cursor.execute(query)
         users = cursor.fetchall()
+        
+        # Nếu sắp xếp theo first_name, thực hiện sắp xếp lại trong Python
+        if sort_by == 'first_name':
+            def get_first_name(user):
+                name_parts = user[1].split() if user[1] else []
+                return name_parts[-1] if name_parts else ''
+            
+            reverse_order = (sort_order == 'desc')
+            users = sorted(users, key=get_first_name, reverse=reverse_order)
         
         # Lấy danh sách classes, roles, groups cho modal
         cursor.execute("SELECT id, name FROM Classes WHERE is_deleted = 0 ORDER BY name")
@@ -784,7 +939,8 @@ def users_list():
         groups = cursor.fetchall()
         
         conn.close()
-        return render_template('users.html', users=users, classes=classes, roles=roles, groups=groups, is_gvcn=is_user_gvcn())
+        return render_template('users.html', users=users, classes=classes, roles=roles, groups=groups, 
+                               sort_by=sort_by, sort_order=sort_order, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
 
@@ -2442,6 +2598,17 @@ def user_summary():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
+    class_name = None
+    
+    # Lấy thông tin lớp nếu có
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name FROM Classes WHERE is_deleted = 0 LIMIT 1")
+    class_result = cursor.fetchone()
+    if class_result:
+        class_name = class_result[0]
+    conn.close()
+    
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
@@ -2454,7 +2621,7 @@ def login():
         else:
             error = 'Invalid username or password'
 
-    return render_template('login.html', error=error)
+    return render_template('login.html', error=error, class_name=class_name)
 
 @app.route('/home')
 def home():
