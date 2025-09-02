@@ -11,6 +11,9 @@ import uuid
 import unicodedata
 import json
 import requests
+import base64
+import hashlib
+import hmac
 from datetime import datetime, timedelta
 from io import BytesIO
 from reportlab.pdfgen import canvas
@@ -56,6 +59,239 @@ def normalize_vietnamese_for_sort(text):
         normalized = normalized.replace(viet_char, base_char)
     
     return normalized
+
+
+# URL Encryption Functions for User Report Security
+def generate_report_token(user_id, date_from=None, date_to=None, expiry_hours=24):
+    """Generate encrypted token for user report access"""
+    # Create timestamp for expiry
+    expiry_timestamp = int((datetime.now() + timedelta(hours=expiry_hours)).timestamp())
+    
+    # Create payload
+    payload = {
+        'user_id': user_id,
+        'date_from': date_from,
+        'date_to': date_to,
+        'expires': expiry_timestamp
+    }
+    
+    # Convert to JSON string
+    payload_json = json.dumps(payload, separators=(',', ':'))
+    
+    # Encode with base64
+    payload_b64 = base64.urlsafe_b64encode(payload_json.encode()).decode()
+    
+    # Create HMAC signature using app secret key
+    signature = hmac.new(
+        app.secret_key.encode(),
+        payload_b64.encode(),
+        hashlib.sha256
+    ).hexdigest()[:16]  # Take first 16 chars for shorter URL
+    
+    # Combine payload and signature
+    token = f"{payload_b64}.{signature}"
+    
+    return token
+
+def verify_report_token(token):
+    """Verify and decode report token"""
+    try:
+        # Split token and signature
+        if '.' not in token:
+            return None
+            
+        payload_b64, signature = token.rsplit('.', 1)
+        
+        # Verify signature
+        expected_signature = hmac.new(
+            app.secret_key.encode(),
+            payload_b64.encode(),
+            hashlib.sha256
+        ).hexdigest()[:16]
+        
+        if not hmac.compare_digest(signature, expected_signature):
+            return None
+        
+        # Decode payload
+        payload_json = base64.urlsafe_b64decode(payload_b64.encode()).decode()
+        payload = json.loads(payload_json)
+        
+        # Check expiry
+        if payload.get('expires', 0) < int(datetime.now().timestamp()):
+            return None
+            
+        return payload
+        
+    except Exception as e:
+        print(f"Token verification error: {e}")
+        return None
+
+
+# Generic URL Encryption Functions for Edit/Delete Operations
+def generate_action_token(action_type, record_id, table_name, expiry_hours=2):
+    """Generate encrypted token for edit/delete operations"""
+    # Create timestamp for expiry (shorter expiry for security)
+    expiry_timestamp = int((datetime.now() + timedelta(hours=expiry_hours)).timestamp())
+    
+    # Create payload
+    payload = {
+        'action': action_type,  # 'edit' or 'delete'
+        'id': record_id,
+        'table': table_name,
+        'expires': expiry_timestamp
+    }
+    
+    # Convert to JSON string
+    payload_json = json.dumps(payload, separators=(',', ':'))
+    
+    # Encode with base64
+    payload_b64 = base64.urlsafe_b64encode(payload_json.encode()).decode()
+    
+    # Create HMAC signature
+    signature = hmac.new(
+        app.secret_key.encode(),
+        payload_b64.encode(),
+        hashlib.sha256
+    ).hexdigest()[:16]
+    
+    # Combine payload and signature
+    token = f"{payload_b64}.{signature}"
+    
+    return token
+
+def verify_action_token(token, expected_action=None, expected_table=None):
+    """Verify and decode action token"""
+    try:
+        # Split token and signature
+        if '.' not in token:
+            return None
+            
+        payload_b64, signature = token.rsplit('.', 1)
+        
+        # Verify signature
+        expected_signature = hmac.new(
+            app.secret_key.encode(),
+            payload_b64.encode(),
+            hashlib.sha256
+        ).hexdigest()[:16]
+        
+        if not hmac.compare_digest(signature, expected_signature):
+            return None
+        
+        # Decode payload
+        payload_json = base64.urlsafe_b64decode(payload_b64.encode()).decode()
+        payload = json.loads(payload_json)
+        
+        # Check expiry
+        if payload.get('expires', 0) < int(datetime.now().timestamp()):
+            return None
+        
+        # Validate action and table if specified
+        if expected_action and payload.get('action') != expected_action:
+            return None
+        
+        if expected_table and payload.get('table') != expected_table:
+            return None
+            
+        return payload
+        
+    except Exception as e:
+        print(f"Action token verification error: {e}")
+        return None
+
+@app.route('/secure/<action>/<table>/<token>')
+def secure_action_handler(action, table, token):
+    """Generic handler for secure edit/delete operations"""
+    # Verify token
+    payload = verify_action_token(token, expected_action=action, expected_table=table)
+    if not payload:
+        flash('Link đã hết hạn hoặc không hợp lệ', 'error')
+        return redirect(url_for('index'))
+    
+    record_id = payload.get('id')
+    
+    # Route to appropriate handler based on action and table
+    if action == 'edit':
+        if table == 'users':
+            return user_edit_secure(record_id, token)
+        elif table == 'user_conduct':
+            return user_conduct_edit_secure(record_id, token)
+        elif table == 'user_subjects':
+            return user_subjects_edit_secure(record_id, token)
+        elif table == 'classes':
+            return class_edit_secure(record_id, token)
+        elif table == 'groups':
+            return group_edit_secure(record_id, token)
+        elif table == 'roles':
+            return role_edit_secure(record_id, token)
+        elif table == 'conducts':
+            return conduct_edit_secure(record_id, token)
+        elif table == 'subjects':
+            return subject_edit_secure(record_id, token)
+        elif table == 'criteria':
+            return criteria_edit_secure(record_id, token)
+        elif table == 'comment_templates':
+            return comment_template_edit_secure(record_id, token)
+    elif action == 'delete':
+        if table == 'users':
+            return user_delete_secure(record_id, token)
+        elif table == 'user_conduct':
+            return user_conduct_delete_secure(record_id, token)
+        elif table == 'user_subjects':
+            return user_subjects_delete_secure(record_id, token)
+        elif table == 'classes':
+            return class_delete_secure(record_id, token)
+        elif table == 'groups':
+            return group_delete_secure(record_id, token)
+        elif table == 'roles':
+            return role_delete_secure(record_id, token)
+        elif table == 'conducts':
+            return conduct_delete_secure(record_id, token)
+        elif table == 'subjects':
+            return subject_delete_secure(record_id, token)
+        elif table == 'criteria':
+            return criteria_delete_secure(record_id, token)
+        elif table == 'comment_templates':
+            return comment_template_delete_secure(record_id, token)
+    
+    flash('Thao tác không hợp lệ', 'error')
+    return redirect(url_for('index'))
+
+@app.route('/generate_action_link', methods=['POST'])
+def generate_action_link():
+    """Generate secure action link for authenticated users"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        data = request.get_json()
+        action = data.get('action')  # 'edit' or 'delete'
+        record_id = data.get('id')
+        table = data.get('table')
+        expiry_hours = data.get('expiry_hours', 2)  # Default 2 hours
+        
+        if not all([action, record_id, table]):
+            return jsonify({'error': 'Missing required parameters'}), 400
+        
+        # Check permissions for the action
+        if not has_permission(f'{table}_management'):
+            return jsonify({'error': 'Permission denied'}), 403
+        
+        # Generate token
+        token = generate_action_token(action, record_id, table, expiry_hours)
+        
+        # Generate URL
+        action_url = url_for('secure_action_handler', action=action, table=table, token=token, _external=True)
+        
+        return jsonify({
+            'success': True,
+            'url': action_url,
+            'token': token,
+            'expires_in_hours': expiry_hours
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 # System config management functions
@@ -1578,6 +1814,93 @@ def user_create():
 
 @app.route('/users/edit/<int:id>', methods=['GET', 'POST'])
 def user_edit(id):
+    """Old route - redirect to secure version"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Generate secure token
+    token = generate_action_token('edit', id, 'users', expiry_hours=2)
+    
+    # Redirect to secure route
+    return redirect(url_for('secure_action_handler', action='edit', table='users', token=token))
+
+def user_edit_secure(id, token):
+    """Secure user edit function"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    error_message = None
+    if request.method == 'POST':
+        name = request.form['name']
+        username = request.form['username']
+        password = request.form['password']
+        class_id = request.form['class_id']
+        role_id = request.form['role_id']
+
+        # Kiểm tra các trường bắt buộc
+        if not all([name, username, password, class_id, role_id]):
+            error_message = 'Vui lòng điền đầy đủ tất cả các trường.'
+            user = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
+            classes = read_all_records('Classes', ['id', 'name'])
+            roles = read_all_records('Roles', ['id', 'name'])
+            return render_template('user_edit.html', user=user, classes=classes, roles=roles, error_message=error_message, is_gvcn=is_user_gvcn(), token=token)
+
+        # Kiểm tra trùng username, ngoại trừ bản ghi hiện tại
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM Users WHERE username = ? AND id != ? AND is_deleted = 0", (username, id))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            conn.close()
+            error_message = 'Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.'
+            user = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
+            classes = read_all_records('Classes', ['id', 'name'])
+            roles = read_all_records('Roles', ['id', 'name'])
+            return render_template('user_edit.html', user=user, classes=classes, roles=roles, error_message=error_message, is_gvcn=is_user_gvcn(), token=token)
+
+        # Cập nhật bản ghi
+        data = {
+            'name': name,
+            'username': username,
+            'password': password,
+            'class_id': class_id,
+            'role_id': role_id
+        }
+        update_record('Users', id, data)
+        conn.close()
+        flash('Cập nhật người dùng thành công', 'success')
+        return redirect(url_for('users_list'))
+
+    user = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
+    if not user:
+        flash('Không tìm thấy người dùng', 'error')
+        return redirect(url_for('users_list'))
+    
+    classes = read_all_records('Classes', ['id', 'name'])
+    roles = read_all_records('Roles', ['id', 'name'])
+    return render_template('user_edit.html', user=user, classes=classes, roles=roles, error_message=error_message, is_gvcn=is_user_gvcn(), token=token)
+
+def user_delete_secure(id, token):
+    """Secure user delete function"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Kiểm tra user có role Master hoặc GVCN không
+    user_data = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
+    if user_data and user_data[6]:  # role_id at index 6
+        role_data = read_record_by_id('Roles', user_data[6], ['id', 'name'])
+        if role_data and role_data[1] in ['Master', 'GVCN']:
+            flash(f'Không thể xóa user {role_data[1]}', 'error')
+            return redirect(url_for('users_list'))
+    
+    if not user_data:
+        flash('Không tìm thấy người dùng', 'error')
+        return redirect(url_for('users_list'))
+    
+    delete_record('Users', id)
+    flash('Xóa người dùng thành công', 'success')
+    return redirect(url_for('users_list'))
     if 'user_id' in session:
         error_message = None  # Biến để lưu thông báo lỗi
         if request.method == 'POST':
@@ -1631,16 +1954,15 @@ def user_edit(id):
 
 @app.route('/users/delete/<int:id>')
 def user_delete(id):
-    # Kiểm tra user có role Master hoặc GVCN không
-    user_data = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
-    if user_data and user_data[6]:  # role_id at index 6
-        role_data = read_record_by_id('Roles', user_data[6], ['id', 'name'])
-        if role_data and role_data[1] in ['Master', 'GVCN']:
-            flash(f'Không thể xóa user {role_data[1]}', 'error')
-            return redirect(url_for('users_list'))
+    """Old route - redirect to secure version"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     
-    delete_record('Users', id)
-    return redirect(url_for('users_list'))
+    # Generate secure token
+    token = generate_action_token('delete', id, 'users', expiry_hours=1)  # Shorter expiry for delete
+    
+    # Redirect to secure route
+    return redirect(url_for('secure_action_handler', action='delete', table='users', token=token))
 
 
 # --- API lấy điểm của Conduct ---
@@ -2115,88 +2437,21 @@ def user_conduct_create():
 
 @app.route('/user_conduct/edit/<int:id>', methods=['GET', 'POST'])
 def user_conduct_edit(id):
-    if 'user_id' in session:
-        # Lấy các tham số lọc từ request.args
-        sort_by = request.args.get('sort_by', 'registered_date')
-        sort_order = request.args.get('sort_order', 'asc')
-        date_from = request.args.get('date_from', '')
-        date_to = request.args.get('date_to', '')
-        selected_users = request.args.getlist('users')
-        selected_conducts = request.args.getlist('conducts')
-        selected_groups = request.args.getlist('groups')
-        select_all_users = request.args.get('select_all_users') == 'on'
-        select_all_conducts = request.args.get('select_all_conducts') == 'on'
-        select_all_groups = request.args.get('select_all_groups') == 'on'
-
-        if request.method == 'POST':
-            user_id = request.form['user_id']
-            conduct_id = request.form['conduct_id']
-            registered_date = request.form['registered_date']
-
-            conn = connect_db()
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT SUM(c.conduct_points) 
-                FROM User_Conduct uc
-                JOIN Conduct c ON uc.conduct_id = c.id
-                WHERE uc.user_id = ? AND uc.registered_date = ? AND uc.id != ? AND uc.is_deleted = 0
-            """, (user_id, registered_date, id))
-            total_points = cursor.fetchone()[0] or 0
-
-            cursor.execute("SELECT conduct_points FROM Conduct WHERE id = ? AND is_deleted = 0", (conduct_id,))
-            conduct_points = cursor.fetchone()[0] or 0
-
-            total_points += conduct_points
-
-            data = {
-                'user_id': user_id,
-                'conduct_id': conduct_id,
-                'registered_date': registered_date,
-                'total_points': total_points,
-                'entered_by': request.form['entered_by']
-            }
-            update_record('User_Conduct', id, data)
-            conn.close()
-
-            # Chuyển hướng với các tham số lọc
-            return redirect(url_for('user_conduct_list',
-                                    sort_by=sort_by,
-                                    sort_order=sort_order,
-                                    date_from=date_from,
-                                    date_to=date_to,
-                                    users=selected_users,
-                                    conducts=selected_conducts,
-                                    groups=selected_groups,
-                                    select_all_users=select_all_users,
-                                    select_all_conducts=select_all_conducts,
-                                    select_all_groups=select_all_groups))
-
-        record = read_record_by_id('User_Conduct', id,
-                                   ['id', 'user_id', 'conduct_id', 'registered_date', 'total_points', 'entered_by'])
-        users = read_all_records('Users', ['id', 'name'])
-        conducts = read_all_records('Conduct', ['id', 'name'])
-        return render_template('user_conduct_edit.html',
-                               record=record,
-                               users=users,
-                               conducts=conducts,
-                               sort_by=sort_by,
-                               sort_order=sort_order,
-                               date_from=date_from,
-                               date_to=date_to,
-                               selected_users=selected_users,
-                               selected_conducts=selected_conducts,
-                               selected_groups=selected_groups,
-                               select_all_users=select_all_users,
-                               select_all_conducts=select_all_conducts,
-                               select_all_groups=select_all_groups,
-                               is_gvcn=is_user_gvcn())
-    else:
+    """Old route - redirect to secure version"""
+    if 'user_id' not in session:
         return redirect(url_for('login'))
+    
+    # Generate secure token
+    token = generate_action_token('edit', id, 'user_conduct', expiry_hours=2)
+    
+    # Redirect to secure route
+    return redirect(url_for('secure_action_handler', action='edit', table='user_conduct', token=token))
 
-
-
-@app.route('/user_conduct/delete/<int:id>')
-def user_conduct_delete(id):
+def user_conduct_edit_secure(id, token):
+    """Secure user conduct edit function"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
     # Lấy các tham số lọc từ request.args
     sort_by = request.args.get('sort_by', 'registered_date')
     sort_order = request.args.get('sort_order', 'asc')
@@ -2209,20 +2464,92 @@ def user_conduct_delete(id):
     select_all_conducts = request.args.get('select_all_conducts') == 'on'
     select_all_groups = request.args.get('select_all_groups') == 'on'
 
-    delete_record('User_Conduct', id)
+    if request.method == 'POST':
+        user_id = request.form['user_id']
+        conduct_id = request.form['conduct_id']
+        registered_date = request.form['registered_date']
 
-    # Chuyển hướng với các tham số lọc
-    return redirect(url_for('user_conduct_list',
-                            sort_by=sort_by,
-                            sort_order=sort_order,
-                            date_from=date_from,
-                            date_to=date_to,
-                            users=selected_users,
-                            conducts=selected_conducts,
-                            groups=selected_groups,
-                            select_all_users=select_all_users,
-                            select_all_conducts=select_all_conducts,
-                            select_all_groups=select_all_groups))
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT SUM(c.conduct_points) 
+            FROM User_Conduct uc
+            JOIN Conduct c ON uc.conduct_id = c.id
+            WHERE uc.user_id = ? AND uc.registered_date = ? AND uc.id != ? AND uc.is_deleted = 0
+        """, (user_id, registered_date, id))
+        total_points = cursor.fetchone()[0] or 0
+
+        cursor.execute("SELECT conduct_points FROM Conduct WHERE id = ? AND is_deleted = 0", (conduct_id,))
+        conduct_points = cursor.fetchone()[0] or 0
+
+        total_points += conduct_points
+
+        data = {
+            'user_id': user_id,
+            'conduct_id': conduct_id,
+            'registered_date': registered_date,
+            'total_points': total_points,
+            'entered_by': request.form['entered_by']
+        }
+        update_record('User_Conduct', id, data)
+        conn.close()
+        
+        flash('Cập nhật hạnh kiểm thành công', 'success')
+        return redirect(url_for('user_conduct_list'))
+
+    record = read_record_by_id('User_Conduct', id,
+                               ['id', 'user_id', 'conduct_id', 'registered_date', 'total_points', 'entered_by'])
+    if not record:
+        flash('Không tìm thấy bản ghi', 'error')
+        return redirect(url_for('user_conduct_list'))
+    
+    users = read_all_records('Users', ['id', 'name'])
+    conducts = read_all_records('Conduct', ['id', 'name'])
+    return render_template('user_conduct_edit.html',
+                           record=record,
+                           users=users,
+                           conducts=conducts,
+                           sort_by=sort_by,
+                           sort_order=sort_order,
+                           date_from=date_from,
+                           date_to=date_to,
+                           selected_users=selected_users,
+                           selected_conducts=selected_conducts,
+                           selected_groups=selected_groups,
+                           select_all_users=select_all_users,
+                           select_all_conducts=select_all_conducts,
+                           select_all_groups=select_all_groups,
+                           is_gvcn=is_user_gvcn(),
+                           token=token)
+
+
+
+@app.route('/user_conduct/delete/<int:id>')
+def user_conduct_delete(id):
+    """Old route - redirect to secure version"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Generate secure token
+    token = generate_action_token('delete', id, 'user_conduct', expiry_hours=1)
+    
+    # Redirect to secure route
+    return redirect(url_for('secure_action_handler', action='delete', table='user_conduct', token=token))
+
+def user_conduct_delete_secure(id, token):
+    """Secure user conduct delete function"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Verify record exists
+    record = read_record_by_id('User_Conduct', id)
+    if not record:
+        flash('Không tìm thấy bản ghi', 'error')
+        return redirect(url_for('user_conduct_list'))
+    
+    delete_record('User_Conduct', id)
+    flash('Xóa bản ghi thành công', 'success')
+    return redirect(url_for('user_conduct_list'))
 
 
 # --- API routes for User_Subjects ---
@@ -2635,94 +2962,21 @@ def user_subjects_create():
 
 @app.route('/user_subjects/edit/<int:id>', methods=['GET', 'POST'])
 def user_subjects_edit(id):
-    if 'user_id' in session:
-        # Lấy các tham số lọc từ request.args
-        sort_by = request.args.get('sort_by', 'registered_date')
-        sort_order = request.args.get('sort_order', 'asc')
-        date_from = request.args.get('date_from', '')
-        date_to = request.args.get('date_to', '')
-        selected_users = request.args.getlist('users')
-        selected_subjects = request.args.getlist('subjects')
-        selected_groups = request.args.getlist('groups')
-        select_all_users = request.args.get('select_all_users') == 'on'
-        select_all_subjects = request.args.get('select_all_subjects') == 'on'
-        select_all_groups = request.args.get('select_all_groups') == 'on'
-
-        if request.method == 'POST':
-            user_id = request.form['user_id']
-            subject_id = request.form['subject_id']
-            criteria_id = request.form['criteria_id'] if request.form['criteria_id'] else None
-            registered_date = request.form['registered_date']
-
-            conn = connect_db()
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT SUM(cr.criterion_points) 
-                FROM User_Subjects us
-                LEFT JOIN Criteria cr ON us.criteria_id = cr.id
-                WHERE us.user_id = ? AND us.registered_date = ? AND us.id != ? AND us.is_deleted = 0
-            """, (user_id, registered_date, id))
-            total_points = cursor.fetchone()[0] or 0
-
-            if criteria_id:
-                cursor.execute("SELECT criterion_points FROM Criteria WHERE id = ? AND is_deleted = 0", (criteria_id,))
-                criteria_points = cursor.fetchone()[0] or 0
-                total_points += criteria_points
-            else:
-                total_points = total_points or 0
-
-            data = {
-                'user_id': user_id,
-                'subject_id': subject_id,
-                'criteria_id': criteria_id,
-                'registered_date': registered_date,
-                'total_points': total_points,
-                'entered_by': request.form['entered_by']
-            }
-            update_record('User_Subjects', id, data)
-            conn.close()
-
-            # Chuyển hướng với các tham số lọc
-            return redirect(url_for('user_subjects_list',
-                                    sort_by=sort_by,
-                                    sort_order=sort_order,
-                                    date_from=date_from,
-                                    date_to=date_to,
-                                    users=selected_users,
-                                    subjects=selected_subjects,
-                                    groups=selected_groups,
-                                    select_all_users=select_all_users,
-                                    select_all_subjects=select_all_subjects,
-                                    select_all_groups=select_all_groups))
-
-        record = read_record_by_id('User_Subjects', id,
-                                   ['id', 'user_id', 'subject_id', 'criteria_id', 'registered_date', 'total_points', 'entered_by'])
-        users = read_all_records('Users', ['id', 'name'])
-        subjects = read_all_records('Subjects', ['id', 'name'])
-        criteria = read_all_records('Criteria', ['id', 'name'])
-        return render_template('user_subjects_edit.html',
-                               record=record,
-                               users=users,
-                               subjects=subjects,
-                               criteria=criteria,
-                               sort_by=sort_by,
-                               sort_order=sort_order,
-                               date_from=date_from,
-                               date_to=date_to,
-                               selected_users=selected_users,
-                               selected_subjects=selected_subjects,
-                               selected_groups=selected_groups,
-                               select_all_users=select_all_users,
-                               select_all_subjects=select_all_subjects,
-                               select_all_groups=select_all_groups,
-                               is_gvcn=is_user_gvcn())
-    else:
+    """Old route - redirect to secure version"""
+    if 'user_id' not in session:
         return redirect(url_for('login'))
+    
+    # Generate secure token
+    token = generate_action_token('edit', id, 'user_subjects', expiry_hours=2)
+    
+    # Redirect to secure route
+    return redirect(url_for('secure_action_handler', action='edit', table='user_subjects', token=token))
 
-
-
-@app.route('/user_subjects/delete/<int:id>')
-def user_subjects_delete(id):
+def user_subjects_edit_secure(id, token):
+    """Secure user subjects edit function"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
     # Lấy các tham số lọc từ request.args
     sort_by = request.args.get('sort_by', 'registered_date')
     sort_order = request.args.get('sort_order', 'asc')
@@ -2735,20 +2989,98 @@ def user_subjects_delete(id):
     select_all_subjects = request.args.get('select_all_subjects') == 'on'
     select_all_groups = request.args.get('select_all_groups') == 'on'
 
-    delete_record('User_Subjects', id)
+    if request.method == 'POST':
+        user_id = request.form['user_id']
+        subject_id = request.form['subject_id']
+        criteria_id = request.form['criteria_id'] if request.form['criteria_id'] else None
+        registered_date = request.form['registered_date']
 
-    # Chuyển hướng với các tham số lọc
-    return redirect(url_for('user_subjects_list',
-                            sort_by=sort_by,
-                            sort_order=sort_order,
-                            date_from=date_from,
-                            date_to=date_to,
-                            users=selected_users,
-                            subjects=selected_subjects,
-                            groups=selected_groups,
-                            select_all_users=select_all_users,
-                            select_all_subjects=select_all_subjects,
-                            select_all_groups=select_all_groups))
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT SUM(cr.criterion_points) 
+            FROM User_Subjects us
+            LEFT JOIN Criteria cr ON us.criteria_id = cr.id
+            WHERE us.user_id = ? AND us.registered_date = ? AND us.id != ? AND us.is_deleted = 0
+        """, (user_id, registered_date, id))
+        total_points = cursor.fetchone()[0] or 0
+
+        if criteria_id:
+            cursor.execute("SELECT criterion_points FROM Criteria WHERE id = ? AND is_deleted = 0", (criteria_id,))
+            criteria_points = cursor.fetchone()[0] or 0
+            total_points += criteria_points
+        else:
+            total_points = total_points or 0
+
+        data = {
+            'user_id': user_id,
+            'subject_id': subject_id,
+            'criteria_id': criteria_id,
+            'registered_date': registered_date,
+            'total_points': total_points,
+            'entered_by': request.form['entered_by']
+        }
+        update_record('User_Subjects', id, data)
+        conn.close()
+        
+        flash('Cập nhật học tập thành công', 'success')
+        return redirect(url_for('user_subjects_list'))
+
+    record = read_record_by_id('User_Subjects', id,
+                               ['id', 'user_id', 'subject_id', 'criteria_id', 'registered_date', 'total_points', 'entered_by'])
+    if not record:
+        flash('Không tìm thấy bản ghi', 'error')
+        return redirect(url_for('user_subjects_list'))
+    
+    users = read_all_records('Users', ['id', 'name'])
+    subjects = read_all_records('Subjects', ['id', 'name'])
+    criteria = read_all_records('Criteria', ['id', 'name'])
+    return render_template('user_subjects_edit.html',
+                           record=record,
+                           users=users,
+                           subjects=subjects,
+                           criteria=criteria,
+                           sort_by=sort_by,
+                           sort_order=sort_order,
+                           date_from=date_from,
+                           date_to=date_to,
+                           selected_users=selected_users,
+                           selected_subjects=selected_subjects,
+                           selected_groups=selected_groups,
+                           select_all_users=select_all_users,
+                           select_all_subjects=select_all_subjects,
+                           select_all_groups=select_all_groups,
+                           is_gvcn=is_user_gvcn(),
+                           token=token)
+
+
+
+@app.route('/user_subjects/delete/<int:id>')
+def user_subjects_delete(id):
+    """Old route - redirect to secure version"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Generate secure token
+    token = generate_action_token('delete', id, 'user_subjects', expiry_hours=1)
+    
+    # Redirect to secure route
+    return redirect(url_for('secure_action_handler', action='delete', table='user_subjects', token=token))
+
+def user_subjects_delete_secure(id, token):
+    """Secure user subjects delete function"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Verify record exists
+    record = read_record_by_id('User_Subjects', id)
+    if not record:
+        flash('Không tìm thấy bản ghi', 'error')
+        return redirect(url_for('user_subjects_list'))
+    
+    delete_record('User_Subjects', id)
+    flash('Xóa bản ghi thành công', 'success')
+    return redirect(url_for('user_subjects_list'))
 
 
 @app.route('/group_summary', methods=['GET', 'POST'])
@@ -3942,10 +4274,28 @@ def save_user_comment():
 
 
 @app.route('/user_report/<int:user_id>')
-def user_report(user_id):
-    """Public route for user report - no login required"""
+def user_report_old(user_id):
+    """Old route - redirect to generate secure token"""
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
+    
+    # Generate secure token
+    token = generate_report_token(user_id, date_from, date_to, expiry_hours=72)  # 3 days expiry
+    
+    # Redirect to secure route
+    return redirect(url_for('user_report_secure', token=token))
+
+@app.route('/report/<token>')
+def user_report_secure(token):
+    """Secure user report route with encrypted token"""
+    # Verify token
+    payload = verify_report_token(token)
+    if not payload:
+        return "Link đã hết hạn hoặc không hợp lệ", 403
+    
+    user_id = payload.get('user_id')
+    date_from = payload.get('date_from')
+    date_to = payload.get('date_to')
     
     conn = connect_db()
     cursor = conn.cursor()
@@ -4061,7 +4411,98 @@ def user_report(user_id):
                          conduct_entries=conduct_entries,
                          grouped_data=grouped_data,
                          sorted_dates=sorted_dates,
-                         user_comment=user_comment)
+                         user_comment=user_comment,
+                         token=token)  # Add token to template for regeneration if needed
+
+@app.route('/generate_report_link', methods=['POST'])
+def generate_report_link():
+    """Generate secure report link for authenticated users"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        data = request.get_json()
+        target_user_id = data.get('user_id')
+        date_from = data.get('date_from')
+        date_to = data.get('date_to')
+        expiry_hours = data.get('expiry_hours', 72)  # Default 3 days
+        
+        if not target_user_id:
+            return jsonify({'error': 'Missing user_id'}), 400
+        
+        # Generate token
+        token = generate_report_token(target_user_id, date_from, date_to, expiry_hours)
+        
+        # Generate full URL
+        report_url = url_for('user_report_secure', token=token, _external=True)
+        
+        return jsonify({
+            'success': True,
+            'url': report_url,
+            'token': token,
+            'expires_in_hours': expiry_hours
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Placeholder functions for remaining secure routes (to be implemented)
+def class_edit_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('classes'))
+
+def class_delete_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('classes'))
+
+def group_edit_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('groups'))
+
+def group_delete_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('groups'))
+
+def role_edit_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('roles'))
+
+def role_delete_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('roles'))
+
+def conduct_edit_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('conducts'))
+
+def conduct_delete_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('conducts'))
+
+def subject_edit_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('subjects'))
+
+def subject_delete_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('subjects'))
+
+def criteria_edit_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('criteria'))
+
+def criteria_delete_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('criteria'))
+
+def comment_template_edit_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('comment_management'))
+
+def comment_template_delete_secure(id, token):
+    flash('Chức năng đang được phát triển', 'info')
+    return redirect(url_for('comment_management'))
 
 
 if __name__ == '__main__':
