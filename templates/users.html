@@ -67,7 +67,7 @@
                                     <button class="btn btn-sm btn-secondary" disabled title="Không thể xóa user GVCN">Xoá</button>
                                 {% else %}
                                     <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ user[0] }})">Sửa</button>
-                                    <a href="{{ url_for('user_delete', id=user[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Xoá</a>
+                                    <button class="btn btn-sm btn-danger" onclick="confirmDelete('Bạn có chắc chắn muốn xóa user này?', () => deleteItem('{{ url_for('user_delete', id=user[0]) }}'))">Xoá</button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -194,7 +194,7 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
-                        alert(data.error);
+                        showError(data.error);
                         return;
                     }
                     document.getElementById('name').value = data.name || '';
@@ -232,7 +232,7 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Có lỗi xảy ra khi tải dữ liệu');
+                    showError('Có lỗi xảy ra khi tải dữ liệu');
                 });
         }
 
@@ -241,11 +241,11 @@
             const formData = new FormData(form);
             // Validate required fields
             if (!formData.get('name') || !formData.get('username')) {
-                alert('Vui lòng nhập đầy đủ thông tin bắt buộc');
+                showWarning('Vui lòng nhập đầy đủ thông tin bắt buộc');
                 return;
             }
             if (!isEditMode && !formData.get('password')) {
-                alert('Vui lòng nhập mật khẩu');
+                showWarning('Vui lòng nhập mật khẩu');
                 return;
             }
             
@@ -282,16 +282,19 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(data.message);
-                    bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
-                    location.reload();
+                        bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+                        showSuccess(data.message);
+                        // Chờ toast hiển thị xong rồi mới reload (giả sử toast mặc định 2s)
+                        setTimeout(function() {
+                            location.reload();
+                        }, 2000); // 2000ms = 2s, chỉnh theo thời gian toast
                 } else {
-                    alert(data.error || 'Có lỗi xảy ra');
+                    showError(data.error || 'Có lỗi xảy ra');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Có lỗi xảy ra khi lưu dữ liệu');
+                showError('Có lỗi xảy ra khi lưu dữ liệu');
             });
         }
 

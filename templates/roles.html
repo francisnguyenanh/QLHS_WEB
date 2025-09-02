@@ -41,7 +41,7 @@
                             <td class="text-nowrap">
                                 {% if role[1] not in ['GVCN', 'Master'] %}
                                     <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ role[0] }})">Sửa</button>
-                                    <a href="{{ url_for('role_delete', id=role[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Xoá</a>
+                                    <button class="btn btn-sm btn-danger" onclick="confirmDelete('Bạn có chắc chắn muốn xóa chức vụ này?', () => deleteItem('{{ url_for('role_delete', id=role[0]) }}'))">Xoá</button>
                                 {% else %}
                                     <button class="btn btn-sm btn-secondary me-1" disabled title="Không thể sửa role hệ thống">Sửa</button>
                                     <button class="btn btn-sm btn-secondary" disabled title="Không thể xóa role hệ thống">Xoá</button>
@@ -155,7 +155,7 @@
                 })
                 .catch(error => {
                     console.error('Error fetching record:', error);
-                    alert('Có lỗi xảy ra khi tải dữ liệu');
+                    showError('Có lỗi xảy ra khi tải dữ liệu');
                 });
         }
 
@@ -177,7 +177,7 @@
             })
             .catch(error => {
                 console.error('Error loading permissions:', error);
-                alert('Có lỗi xảy ra khi tải phân quyền');
+                showError('Có lỗi xảy ra khi tải phân quyền');
             });
         }
 
@@ -332,7 +332,7 @@
 
             // Validate required fields
             if (!data.name) {
-                alert('Vui lòng nhập tên chức vụ');
+                showWarning('Vui lòng nhập tên chức vụ');
                 return;
             }
 
@@ -349,15 +349,22 @@
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    alert(result.message);
-                    location.reload(); // Reload page to show updated data
+                    // Đóng modal trước khi hiển thị toast
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('roleModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                    showSuccess(result.message);
+                    setTimeout(function() {
+                        location.reload(); // Reload page to show updated data
+                    }, 2000);
                 } else {
-                    alert('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+                    showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
                 }
             })
             .catch(error => {
                 console.error('Error saving role:', error);
-                alert('Có lỗi xảy ra khi lưu dữ liệu');
+                showError('Có lỗi xảy ra khi lưu dữ liệu');
             });
         }
 
@@ -402,17 +409,19 @@
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    alert('Lưu phân quyền thành công!');
                     const modal = bootstrap.Modal.getInstance(document.getElementById('permissionsModal'));
                     modal.hide();
-                    window.location.reload(); // Reload the page to update roles table
+                    showSuccess('Lưu phân quyền thành công!');
+                    setTimeout(function() {
+                        window.location.reload(); // Reload the page to update roles table
+                    }, 2000);
                 } else {
-                    alert('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+                    showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Có lỗi xảy ra khi lưu phân quyền');
+                showError('Có lỗi xảy ra khi lưu phân quyền');
             });
         }
     </script>
@@ -461,6 +470,15 @@
         .btn-permissions:hover {
             background: linear-gradient(45deg, #138496, #0056b3);
             color: white;
+        }
+
+        function deleteItem(url) {
+            // Hiển thị toast thành công trước
+            showSuccess('Đang xóa...');
+            // Delay redirect để toast hiển thị
+            setTimeout(function() {
+                window.location.href = url;
+            }, 1000); // 1 giây để hiển thị toast "Đang xóa..."
         }
     </style>
 {% endblock %}

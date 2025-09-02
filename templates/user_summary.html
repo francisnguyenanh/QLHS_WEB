@@ -194,7 +194,7 @@
                 .map(cb => cb.name.split('_')[1]);
 
             if (selectedUserIds.length === 0) {
-                alert("Please select at least one user to print.");
+                showWarning("Please select at least one user to print.");
                 event.preventDefault();
                 return;
             }
@@ -241,7 +241,7 @@
             .then(data => {
                 if (data.success) {
                     if (showAlert) {
-                        alert('Đã lưu nhận xét thành công!');
+                        showSuccess('Đã lưu nhận xét thành công!');
                     }
                     if (statusElement) {
                         statusElement.innerHTML = '<i class="fas fa-check"></i> Đã lưu';
@@ -256,7 +256,7 @@
                         statusElement.className = 'save-status text-danger small';
                     }
                     if (showAlert) {
-                        alert('Lỗi: ' + data.error);
+                        showError('Lỗi: ' + data.error);
                     }
                 }
             })
@@ -266,7 +266,7 @@
                     statusElement.className = 'save-status text-danger small';
                 }
                 if (showAlert) {
-                    alert('Lỗi kết nối: ' + error);
+                    showError('Lỗi kết nối: ' + error);
                 }
             });
         }
@@ -418,7 +418,7 @@
                         document.execCommand('copy');
                         document.body.removeChild(textArea);
                         
-                        alert('Đã copy link báo cáo: ' + reportUrl);
+                        showSuccess('Đã copy link báo cáo: ' + reportUrl);
                     });
                 });
             });

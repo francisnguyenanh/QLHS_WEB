@@ -211,7 +211,7 @@
                                     <button class="btn btn-sm btn-info me-1" onclick="openEditModal({{ record[0] }})">Edit</button>
                                 {% endif %}
                                 {% if permissions.get('master', False) or permissions.get('conduct_management_delete', False) %}
-                                    <a href="{{ url_for('user_conduct_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Delete</a>
+                                    <button class="btn btn-sm btn-danger" onclick="confirmDelete('Bạn có chắc chắn muốn xóa dữ liệu này?', () => deleteItem('{{ url_for('user_conduct_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}'))">Delete</button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -346,7 +346,7 @@
                 })
                 .catch(error => {
                     console.error('Error fetching record:', error);
-                    alert('Có lỗi xảy ra khi tải dữ liệu');
+                    showError('Có lỗi xảy ra khi tải dữ liệu');
                 });
         }
 
@@ -406,7 +406,7 @@
 
             // Validate required fields
             if (!data.user_id || !data.conduct_id || !data.registered_date || !data.entered_by) {
-                alert('Vui lòng điền đầy đủ thông tin');
+                showWarning('Vui lòng điền đầy đủ thông tin');
                 return;
             }
 
@@ -423,15 +423,22 @@
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    alert(result.message);
-                    location.reload(); // Reload page to show updated data
+                    // Đóng modal trước khi hiển thị toast
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('conductModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                    showSuccess(result.message);
+                    setTimeout(function() {
+                        location.reload(); // Reload page to show updated data
+                    }, 2000);
                 } else {
-                    alert('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+                    showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
                 }
             })
             .catch(error => {
                 console.error('Error saving conduct:', error);
-                alert('Có lỗi xảy ra khi lưu dữ liệu');
+                showError('Có lỗi xảy ra khi lưu dữ liệu');
             });
         }
 
@@ -727,5 +734,15 @@
                 });
             }
         });
+
+        // Function để xóa item - đặt ngoài DOMContentLoaded để có thể truy cập global
+        function deleteItem(url) {
+            // Hiển thị toast thành công trước
+            showSuccess('Đang xóa...');
+            // Delay redirect để toast hiển thị
+            setTimeout(function() {
+                window.location.href = url;
+            }, 1000); // 1 giây để hiển thị toast "Đang xóa..."
+        }
     </script>
 {% endblock %}

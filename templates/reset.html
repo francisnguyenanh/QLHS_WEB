@@ -160,7 +160,7 @@
                 modal.hide();
                 
                 if (data.success) {
-                    alert(`✅ ${data.message}`);
+                    showSuccess(`✅ ${data.message}`);
                     
                     // Thêm bảng vào danh sách đã xóa
                     if (!deletedTables.includes(tableName)) {
@@ -179,12 +179,12 @@
                         currentButton.classList.remove('btn-danger');
                     }
                 } else {
-                    alert(`❌ Lỗi: ${data.error}`);
+                    showError(`❌ Lỗi: ${data.error}`);
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('❌ Có lỗi xảy ra khi xóa dữ liệu');
+                showError('❌ Có lỗi xảy ra khi xóa dữ liệu');
             });
         }
 

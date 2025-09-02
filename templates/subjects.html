@@ -28,7 +28,7 @@
                             <td>{{ subject[1] }}</td>
                             <td class="text-nowrap">
                                 <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ subject[0] }})">Sửa</button>
-                                <a href="{{ url_for('subject_delete', id=subject[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Xoá</a>
+                                <button class="btn btn-sm btn-danger" onclick="confirmDelete('Bạn có chắc chắn muốn xóa môn học này?', () => deleteItem('{{ url_for('subject_delete', id=subject[0]) }}'))">Xoá</button>
                             </td>
                         </tr>
                     {% endfor %}
@@ -93,7 +93,7 @@
                 })
                 .catch(error => {
                     console.error('Error fetching record:', error);
-                    alert('Có lỗi xảy ra khi tải dữ liệu');
+                    showError('Có lỗi xảy ra khi tải dữ liệu');
                 });
         }
 
@@ -107,7 +107,7 @@
 
             // Validate required fields
             if (!data.name) {
-                alert('Vui lòng nhập tên môn học');
+                showWarning('Vui lòng nhập tên môn học');
                 return;
             }
 
@@ -124,16 +124,32 @@
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    alert(result.message);
-                    location.reload(); // Reload page to show updated data
+                    // Đóng modal trước khi hiển thị toast
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('subjectModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                    showSuccess(result.message);
+                    setTimeout(function() {
+                        location.reload(); // Reload page to show updated data
+                    }, 2000);
                 } else {
-                    alert('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+                    showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
                 }
             })
             .catch(error => {
                 console.error('Error saving subject:', error);
-                alert('Có lỗi xảy ra khi lưu dữ liệu');
+                showError('Có lỗi xảy ra khi lưu dữ liệu');
             });
+        }
+
+        function deleteItem(url) {
+            // Hiển thị toast thành công trước
+            showSuccess('Đang xóa...');
+            // Delay redirect để toast hiển thị
+            setTimeout(function() {
+                window.location.href = url;
+            }, 1000); // 1 giây để hiển thị toast "Đang xóa..."
         }
     </script>
 
