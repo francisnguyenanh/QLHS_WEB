@@ -9,6 +9,7 @@ import calendar
 import os
 import uuid
 import unicodedata
+import json
 from datetime import datetime, timedelta
 from io import BytesIO
 from reportlab.pdfgen import canvas
@@ -54,6 +55,73 @@ def normalize_vietnamese_for_sort(text):
         normalized = normalized.replace(viet_char, base_char)
     
     return normalized
+
+
+# System config management functions
+def load_system_config():
+    """Load system configuration from JSON file"""
+    try:
+        with open('system_config.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        # Create default config if file doesn't exist or is invalid
+        default_config = {
+            "system_expiry_date": None,
+            "created_date": datetime.now().strftime("%Y-%m-%d"),
+            "last_updated": None
+        }
+        save_system_config_to_file(default_config)
+        return default_config
+
+def save_system_config_to_file(config):
+    """Save system configuration to JSON file"""
+    try:
+        config['last_updated'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open('system_config.json', 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=4, ensure_ascii=False)
+        return True
+    except Exception as e:
+        print(f"Error saving config: {e}")
+        return False
+
+def check_system_expiry():
+    """Check if system has expired"""
+    config = load_system_config()
+    expiry_date = config.get('system_expiry_date')
+    
+    if not expiry_date:
+        return False  # No expiry date set
+    
+    try:
+        expiry = datetime.strptime(expiry_date, "%Y-%m-%d").date()
+        today = datetime.now().date()
+        return today > expiry
+    except ValueError:
+        return False  # Invalid date format
+
+def is_master_user(user_id):
+    """Check if user has master role"""
+    if not user_id:
+        return False
+    
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT r.name 
+            FROM Users u 
+            JOIN Roles r ON u.role_id = r.id 
+            WHERE u.id = ? AND u.is_deleted = 0
+        """, (user_id,))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result and result[0].lower() == 'master':
+            return True
+        return False
+    except Exception as e:
+        print(f"Error checking master role: {e}")
+        return False
 
 
 # Tạo dữ liệu mẫu
@@ -427,6 +495,8 @@ def render_template_with_permissions(template_name, **kwargs):
         kwargs['is_gvcn'] = is_user_gvcn()
         # Thêm thông tin user hiện tại cho footer
         kwargs['current_user_info'] = get_current_user_info()
+        # Thêm thông tin master role để kiểm tra trong template
+        kwargs['is_master'] = is_master_user(session['user_id'])
     return render_template(template_name, **kwargs)
 
 def get_current_user_info():
@@ -3371,7 +3441,15 @@ def login():
         user = read_all_records('Users', condition=f"username = '{username}' AND password = '{password}'")
         print(user)
         if user:
-            session['user_id'] = user[0][0]
+            user_id = user[0][0]
+            
+            # Kiểm tra nếu user không phải master thì check ngày hiệu lực
+            if not is_master_user(user_id):
+                if check_system_expiry():
+                    error = 'Hệ thống đã hết hiệu lực. Vui lòng liên hệ quản trị viên.'
+                    return render_template('login.html', error=error, class_name=class_name, permissions={})
+            
+            session['user_id'] = user_id
             return redirect(url_for('home'))
         else:
             error = 'Invalid username or password'
@@ -3401,7 +3479,16 @@ def settings():
             return redirect(url_for('index'))
         
         current_background = get_setting('background_image', '')
-        return render_template_with_permissions('settings.html', current_background=current_background)
+        
+        # Load system config for expiry date
+        system_config = load_system_config()
+        system_expiry_date = system_config.get('system_expiry_date', '')
+        current_date = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        
+        return render_template_with_permissions('settings.html', 
+                                               current_background=current_background,
+                                               system_expiry_date=system_expiry_date,
+                                               current_date=current_date)
     else:
         return redirect(url_for('login'))
 
@@ -3473,6 +3560,31 @@ def settings_remove_background():
         flash(f'Lỗi: {str(e)}', 'error')
     
     return redirect(url_for('settings'))
+
+@app.route('/save_system_config', methods=['POST'])
+def save_system_config():
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'Not authenticated'})
+    
+    if not can_access_master():
+        return jsonify({'success': False, 'error': 'Access denied'})
+    
+    try:
+        data = request.get_json()
+        expiry_date = data.get('system_expiry_date')
+        
+        # Load current config
+        config = load_system_config()
+        config['system_expiry_date'] = expiry_date
+        
+        # Save to file
+        if save_system_config_to_file(config):
+            return jsonify({'success': True, 'message': 'Cấu hình đã được lưu thành công'})
+        else:
+            return jsonify({'success': False, 'error': 'Không thể lưu cấu hình'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 # --- Reset Data Page ---
 @app.route('/reset')

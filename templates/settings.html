@@ -6,6 +6,77 @@
     <h2 class="mb-4"><i class="fas fa-cog"></i> Cài Đặt Hệ Thống</h2>
     
     <div class="row">
+        <!-- Phần quản lý thời gian hiệu lực hệ thống - chỉ master mới thấy -->
+        {% if is_master %}
+        <div class="col-12 mb-4">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5><i class="fas fa-clock"></i> Quản Lý Thời Gian Hiệu Lực Hệ Thống</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="expiry_date" class="form-label">
+                                    <i class="fas fa-calendar-alt"></i> Ngày hết hiệu lực:
+                                </label>
+                                <input type="date" 
+                                       class="form-control" 
+                                       id="expiry_date" 
+                                       value="{{ system_expiry_date or '' }}">
+                                <div class="form-text">
+                                    {% if system_expiry_date %}
+                                        Hiệu lực đến: <strong>{{ system_expiry_date }}</strong>
+                                    {% else %}
+                                        <span class="text-success">Hệ thống không giới hạn thời gian</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-magic"></i> Thiết lập nhanh:
+                                </label>
+                                <div class="btn-group d-block" role="group">
+                                    <button type="button" class="btn btn-outline-primary btn-sm me-2 mb-2" onclick="setExpiryDate(1)">
+                                        <i class="fas fa-calendar"></i> 1 tháng
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm me-2 mb-2" onclick="setExpiryDate(3)">
+                                        <i class="fas fa-calendar-week"></i> 3 tháng
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm me-2 mb-2" onclick="setExpiryDate(12)">
+                                        <i class="fas fa-calendar-year"></i> 1 năm
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm mb-2" onclick="clearExpiryDate()">
+                                        <i class="fas fa-infinity"></i> Không giới hạn
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-info-circle"></i> Thông tin:</h6>
+                                <ul class="mb-0">
+                                    <li>User có role <strong>Master</strong> luôn được đăng nhập</li>
+                                    <li>User khác sẽ bị chặn sau ngày hết hiệu lực</li>
+                                    <li>Để trống = không giới hạn thời gian</li>
+                                    <li>Ngày hiện tại: <strong id="current_date">{{ current_date }}</strong></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button type="button" class="btn btn-warning" onclick="saveSystemConfig()">
+                            <i class="fas fa-save"></i> Lưu Cấu Hình Hệ Thống
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
         <div class="col-md-8">
             <div class="card">
                 <div class="card-header">
@@ -104,5 +175,65 @@ function deleteBackground() {
         window.location.href = '{{ url_for('settings_remove_background') }}';
     }, 1000);
 }
+
+// Hàm thiết lập ngày hết hiệu lực
+function setExpiryDate(months) {
+    const today = new Date();
+    const expiryDate = new Date(today);
+    expiryDate.setMonth(today.getMonth() + months);
+    
+    const formattedDate = expiryDate.toISOString().split('T')[0];
+    document.getElementById('expiry_date').value = formattedDate;
+}
+
+// Hàm xóa ngày hết hiệu lực (không giới hạn)
+function clearExpiryDate() {
+    document.getElementById('expiry_date').value = '';
+}
+
+// Hàm lưu cấu hình hệ thống
+function saveSystemConfig() {
+    const expiryDate = document.getElementById('expiry_date').value;
+    
+    const data = {
+        system_expiry_date: expiryDate || null
+    };
+    
+    fetch('{{ url_for('save_system_config') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showSuccess('Cấu hình hệ thống đã được lưu thành công!');
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Có lỗi xảy ra khi lưu cấu hình');
+    });
+}
+
+// Cập nhật ngày hiện tại mỗi giây
+function updateCurrentDate() {
+    const now = new Date();
+    const formatted = now.toLocaleDateString('vi-VN') + ' ' + now.toLocaleTimeString('vi-VN');
+    const currentDateElement = document.getElementById('current_date');
+    if (currentDateElement) {
+        currentDateElement.textContent = formatted;
+    }
+}
+
+// Update ngày hiện tại mỗi giây
+setInterval(updateCurrentDate, 1000);
 </script>
 {% endblock %}
