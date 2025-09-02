@@ -92,7 +92,7 @@
                         <div class="btn-group w-100" role="group">
                             <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" checked>
                             <label class="btn btn-outline-primary" for="week_type">Tuần</label>
-                            <input type="radio" class="btn-check" name="period_type" id="month_type" value="month">
+                            <input type="radio" class="btn-check" name="period_type" id="month_type" value="month" >
                             <label class="btn btn-outline-primary" for="month_type">Tháng</label>
                         </div>
                     </div>
@@ -104,7 +104,7 @@
                                 <i class="fas fa-chevron-left"></i>
                             </button>
                             <div class="text-center flex-grow-1 mx-2">
-                                <strong id="periodDisplay">Tuần hiện tại</strong>
+                                <strong id="periodDisplay">Đang tải...</strong>
                             </div>
                             <button type="button" class="btn btn-outline-secondary" id="nextPeriod">
                                 <i class="fas fa-chevron-right"></i>
@@ -573,25 +573,10 @@
             }
             
             // ===== PERIOD NAVIGATION LOGIC =====
-            // Khởi tạo với ngày từ backend (nếu có)
-            const dateFromInput = document.getElementById('date_from');
-            const dateToInput = document.getElementById('date_to');
-            
-            if (dateFromInput.value && dateToInput.value) {
-                const fromDate = new Date(dateFromInput.value);
-                const toDate = new Date(dateToInput.value);
-                
-                const dayDiff = (toDate - fromDate) / (1000 * 60 * 60 * 24);
-                if (dayDiff === 6) {
-                    currentPeriodType = 'week';
-                    currentDate = fromDate;
-                    document.getElementById('week_type').checked = true;
-                } else {
-                    currentPeriodType = 'month';
-                    currentDate = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
-                    document.getElementById('month_type').checked = true;
-                }
-            }
+            // Luôn khởi tạo với tuần hiện tại dựa trên ngày hiện tại để đảm bảo tất cả trang đều hiển thị cùng tuần
+            currentDate = getMonday(new Date());
+            currentPeriodType = 'week';
+            document.getElementById('week_type').checked = true;
             updatePeriodDisplay();
 
             // Xử lý thay đổi loại thời gian
