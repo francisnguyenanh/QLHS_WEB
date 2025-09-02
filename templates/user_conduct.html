@@ -2,6 +2,16 @@
 
 {% block extra_css %}
 <style>
+    /* Ngăn chặn FOUC - ẩn content cho đến khi JavaScript load xong */
+    .page-content {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+    
+    .page-content.loaded {
+        opacity: 1;
+    }
+    
     .row.g-3 {
         height: 100%;
     }
@@ -25,11 +35,33 @@
             min-height: 100%;
         }
     }
+    
+    /* Tối ưu hóa search form animation */
+    .search-form-card {
+        transition: all 0.3s ease-in-out;
+        transform-origin: top;
+    }
+    
+    .search-form-card.collapsed {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        margin-bottom: 0 !important;
+        transform: scaleY(0);
+    }
+    
+    .search-form-card.collapsing {
+        transition: all 0.3s ease-in-out;
+    }
+    
+    .search-form-card.expanding {
+        transition: all 0.3s ease-in-out;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-    <div class="container">
+    <div class="container page-content">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="mb-0">Quản lý hạnh kiểm</h2>
             
@@ -211,7 +243,9 @@
                                     <button class="btn btn-sm btn-info me-1" onclick="openEditModal({{ record[0] }})">Edit</button>
                                 {% endif %}
                                 {% if permissions.get('master', False) or permissions.get('conduct_management_delete', False) %}
-                                    <button class="btn btn-sm btn-danger" onclick="confirmDelete('Bạn có chắc chắn muốn xóa dữ liệu này?', () => deleteItem('{{ url_for('user_conduct_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}'))">Delete</button>
+                                    <button class="btn btn-sm btn-danger" 
+                                            data-delete-url="{{ url_for('user_conduct_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}"
+                                            onclick="confirmDeleteRecord(this)">Delete</button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -430,8 +464,8 @@
                     }
                     showSuccess(result.message);
                     setTimeout(function() {
-                        location.reload(); // Reload page to show updated data
-                    }, 2000);
+                        refreshTableData(); // Refresh chỉ bảng thay vì reload page
+                    }, 1500);
                 } else {
                     showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
                 }
@@ -508,8 +542,17 @@
             return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
         }
 
-        // Event listeners cho period navigation
+        // Gộp tất cả DOMContentLoaded logic vào một function duy nhất
         document.addEventListener('DOMContentLoaded', function() {
+            // Hiển thị page content sau khi DOM ready
+            const pageContent = document.querySelector('.page-content');
+            if (pageContent) {
+                setTimeout(() => {
+                    pageContent.classList.add('loaded');
+                }, 50); // Delay nhỏ để đảm bảo mọi thứ đã render
+            }
+            
+            // ===== PERIOD NAVIGATION LOGIC =====
             // Khởi tạo với ngày từ backend (nếu có)
             const dateFromInput = document.getElementById('date_from');
             const dateToInput = document.getElementById('date_to');
@@ -558,6 +601,62 @@
                 }
                 updatePeriodDisplay();
             });
+            
+            // ===== TOGGLE SEARCH FORM LOGIC =====
+            const toggleSearchForm = document.getElementById('toggleSearchForm');
+            const searchFormCard = document.getElementById('searchFormCard');
+            let isCollapsed = false;
+            
+            // Initialize tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Toggle search form
+            if (toggleSearchForm && searchFormCard) {
+                toggleSearchForm.addEventListener('click', function() {
+                    if (isCollapsed) {
+                        // Expand
+                        searchFormCard.classList.remove('collapsed', 'collapsing');
+                        searchFormCard.classList.add('expanding');
+                        this.classList.add('active');
+                        this.innerHTML = '<i class="fas fa-eye-slash"></i><span class="d-none d-md-inline ms-1">Ẩn lọc</span>';
+                        isCollapsed = false;
+                        
+                        // Remove animation class after animation completes
+                        setTimeout(() => {
+                            searchFormCard.classList.remove('expanding');
+                        }, 300);
+                    } else {
+                        // Collapse
+                        searchFormCard.classList.remove('expanding');
+                        searchFormCard.classList.add('collapsing');
+                        this.classList.remove('active');
+                        this.innerHTML = '<i class="fas fa-filter"></i><span class="d-none d-md-inline ms-1">Bộ lọc</span>';
+                        
+                        // Add collapsed class after animation completes
+                        setTimeout(() => {
+                            searchFormCard.classList.remove('collapsing');
+                            searchFormCard.classList.add('collapsed');
+                            isCollapsed = true;
+                        }, 300);
+                    }
+                });
+            }
+            
+            // ===== SELECT ALL FUNCTIONALITY =====
+            // Select all functionality đã được implement ở phần đầu file
+            // Không cần duplicate code ở đây
+            
+            // ===== SEARCH FORM AJAX SUBMISSION =====
+            const searchForm = document.getElementById('searchForm');
+            if (searchForm) {
+                searchForm.addEventListener('submit', function(e) {
+                    e.preventDefault(); // Ngăn form submit bình thường
+                    refreshTableData(); // Dùng AJAX thay vì submit form
+                });
+            }
         });
     </script>
 
@@ -691,58 +790,99 @@
     </style>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const toggleSearchForm = document.getElementById('toggleSearchForm');
-            const searchFormCard = document.getElementById('searchFormCard');
-            let isCollapsed = false;
-            
-            // Initialize tooltips
-            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-                return new bootstrap.Tooltip(tooltipTriggerEl);
-            });
-
-            // Toggle search form
-            if (toggleSearchForm && searchFormCard) {
-                toggleSearchForm.addEventListener('click', function() {
-                    if (isCollapsed) {
-                        // Expand
-                        searchFormCard.classList.remove('collapsed', 'collapsing');
-                        searchFormCard.classList.add('expanding');
-                        this.classList.add('active');
-                        this.innerHTML = '<i class="fas fa-eye-slash"></i><span class="d-none d-md-inline ms-1">Ẩn lọc</span>';
-                        isCollapsed = false;
-                        
-                        // Remove animation class after animation completes
-                        setTimeout(() => {
-                            searchFormCard.classList.remove('expanding');
-                        }, 300);
-                    } else {
-                        // Collapse
-                        searchFormCard.classList.remove('expanding');
-                        searchFormCard.classList.add('collapsing');
-                        this.classList.remove('active');
-                        this.innerHTML = '<i class="fas fa-filter"></i><span class="d-none d-md-inline ms-1">Bộ lọc</span>';
-                        
-                        // Add collapsed class after animation completes
-                        setTimeout(() => {
-                            searchFormCard.classList.remove('collapsing');
-                            searchFormCard.classList.add('collapsed');
-                            isCollapsed = true;
-                        }, 300);
-                    }
-                });
-            }
-        });
-
         // Function để xóa item - đặt ngoài DOMContentLoaded để có thể truy cập global
         function deleteItem(url) {
             // Hiển thị toast thành công trước
             showSuccess('Đang xóa...');
-            // Delay redirect để toast hiển thị
+            // Delay để gọi API delete và refresh table
             setTimeout(function() {
-                window.location.href = url;
-            }, 1000); // 1 giây để hiển thị toast "Đang xóa..."
+                fetch(url, {
+                    method: 'GET' // Vì route delete đang dùng GET
+                })
+                .then(response => {
+                    if (response.ok) {
+                        showSuccess('Xóa thành công!');
+                        setTimeout(function() {
+                            refreshTableData(); // Refresh chỉ bảng thay vì redirect
+                        }, 1000);
+                    } else {
+                        showError('Có lỗi xảy ra khi xóa');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('Có lỗi xảy ra khi xóa');
+                });
+            }, 1000);
+        }
+        
+        // Function để xử lý delete với data attribute
+        function confirmDeleteRecord(button) {
+            const deleteUrl = button.getAttribute('data-delete-url');
+            confirmDelete('Bạn có chắc chắn muốn xóa dữ liệu này?', () => deleteItem(deleteUrl));
+        }
+        
+        // Function để refresh bảng data mà không reload page
+        function refreshTableData() {
+            // Show loading indicator
+            const tbody = document.querySelector('tbody');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="100%" class="text-center"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>';
+            }
+            
+            // Lấy current form data để maintain filter state
+            const form = document.getElementById('searchForm');
+            const formData = new FormData(form);
+            
+            // Convert FormData to URLSearchParams
+            const params = new URLSearchParams();
+            for (let [key, value] of formData.entries()) {
+                if (value) { // Chỉ add param nếu có value
+                    params.append(key, value);
+                }
+            }
+            
+            // Thêm current sort parameters từ URL
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('sort_by')) params.set('sort_by', urlParams.get('sort_by'));
+            if (urlParams.get('sort_order')) params.set('sort_order', urlParams.get('sort_order'));
+            
+            // Update URL without page reload
+            const newUrl = `/user_conduct${params.toString() ? '?' + params.toString() : ''}`;
+            history.pushState(null, '', newUrl);
+            
+            // Fetch updated table data
+            fetch(newUrl, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.text();
+            })
+            .then(html => {
+                // Parse response để lấy chỉ phần table
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newTableBody = doc.querySelector('tbody');
+                
+                if (newTableBody && tbody) {
+                    tbody.innerHTML = newTableBody.innerHTML;
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="100%" class="text-center">Không có dữ liệu</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Error refreshing table:', error);
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="100%" class="text-center text-danger">Có lỗi xảy ra khi tải dữ liệu</td></tr>';
+                }
+                showError('Có lỗi xảy ra khi tải lại dữ liệu');
+            });
         }
     </script>
 {% endblock %}
