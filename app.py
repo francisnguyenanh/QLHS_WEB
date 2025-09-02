@@ -1727,7 +1727,7 @@ def users_list():
                 LEFT JOIN Classes c ON u.class_id = c.id
                 LEFT JOIN Roles r ON u.role_id = r.id
                 LEFT JOIN Groups g ON u.group_id = g.id
-                WHERE u.is_deleted = 0
+                WHERE u.is_deleted = 0 AND (r.name != 'Master' OR r.name IS NULL)
                 ORDER BY {order_clause}
             """
         
