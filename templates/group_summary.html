@@ -32,12 +32,12 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="date_from" class="form-label">Từ ngày:</label>
-                        <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from or '' }}" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label for="date_to" class="form-label">Đến ngày:</label>
-                        <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to or '' }}" readonly>
+                        <label for="date_from" class="form-label">Thời gian:</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ date_from or '' }}" readonly style="flex: 1;">
+                            <span class="text-muted">~</span>
+                            <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}" readonly style="flex: 1;">
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="groups" class="form-label">Nhóm:</label>

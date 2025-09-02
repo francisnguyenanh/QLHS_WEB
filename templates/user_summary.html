@@ -52,16 +52,16 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="date_from">Từ ngày:</label>
-                        <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from or '' }}" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label for="date_to">Đến ngày:</label>
-                        <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to or '' }}" readonly>
+                        <label for="date_from">Thời gian:</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ date_from or '' }}" readonly style="flex: 1;">
+                            <span class="text-muted">~</span>
+                            <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}" readonly style="flex: 1;">
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="users">Học sinh:</label>
-                        <select name="users" id="users" multiple class="form-control" style="height: 80px;">
+                        <select name="users" id="users" multiple class="form-control" style="height: 120px;">
                             {% for user in all_users %}
                                 <option value="{{ user[0] }}" {% if user[0]|string in selected_users %}selected{% endif %}>{{ user[1] }}</option>
                             {% endfor %}
@@ -73,7 +73,7 @@
                     </div>
                     <div class="form-group">
                         <label for="groups">Nhóm:</label>
-                        <select name="groups" id="groups" multiple class="form-control" style="height: 80px;">
+                        <select name="groups" id="groups" multiple class="form-control" style="height: 120px;">
                             {% for group in groups %}
                                 <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
                             {% endfor %}
