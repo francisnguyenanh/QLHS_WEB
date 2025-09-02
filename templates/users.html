@@ -62,6 +62,9 @@
                                 {% if user[4] == 'Master' %}
                                     <button class="btn btn-sm btn-secondary me-1" disabled title="Không thể sửa user Master">Sửa</button>
                                     <button class="btn btn-sm btn-secondary" disabled title="Không thể xóa user Master">Xoá</button>
+                                {% elif user[4] == 'GVCN' %}
+                                <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ user[0] }})">Sửa</button>
+                                    <button class="btn btn-sm btn-secondary" disabled title="Không thể xóa user GVCN">Xoá</button>
                                 {% else %}
                                     <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ user[0] }})">Sửa</button>
                                     <a href="{{ url_for('user_delete', id=user[0]) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure?')">Xoá</a>
@@ -104,7 +107,7 @@
                                     </button>
                                 </div>
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6 mb-3" id="group_field">
                                 <label for="group_id" class="form-label">Nhóm</label>
                                 <select class="form-select" id="group_id" name="group_id">
                                     <option value="">Chọn nhóm</option>
@@ -115,12 +118,14 @@
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6 mb-3" id="role_field">
                                 <label for="role_id" class="form-label">Chức vụ</label>
-                                <select class="form-select" id="role_id" name="role_id">
+                                <select class="form-select" id="role_id" name="role_id" onchange="handleRoleChange()">
                                     <option value="">Chọn chức vụ</option>
                                     {% for role in roles %}
-                                        <option value="{{ role[0] }}">{{ role[1] }}</option>
+                                        {% if role[1] not in ['Master', 'GVCN'] %}
+                                            <option value="{{ role[0] }}">{{ role[1] }}</option>
+                                        {% endif %}
                                     {% endfor %}
                                 </select>
                             </div>
@@ -159,7 +164,24 @@
             document.getElementById('userModalLabel').textContent = 'Tạo mới học sinh';
             document.getElementById('userForm').reset();
             document.getElementById('password').required = true;
+            // Show and enable all fields for create mode
+            document.getElementById('group_field').style.display = 'block';
+            document.getElementById('role_field').style.display = 'block';
+            document.getElementById('group_id').disabled = false;
+            document.getElementById('role_id').disabled = false;
             new bootstrap.Modal(document.getElementById('userModal')).show();
+        }
+
+        function handleRoleChange() {
+            // This function is called when role changes, but since we don't allow GVCN selection
+            // it's mainly for future extensibility
+        }
+
+        function checkUserRole(roleId) {
+            // Check if user has GVCN role by getting role name
+            const roleSelect = document.getElementById('role_id');
+            const selectedOption = roleSelect.querySelector(`option[value="${roleId}"]`);
+            return selectedOption ? selectedOption.textContent === 'GVCN' : false;
         }
 
         function openEditModal(userId) {
@@ -177,9 +199,35 @@
                     }
                     document.getElementById('name').value = data.name || '';
                     document.getElementById('username').value = data.username || '';
-                    document.getElementById('password').value = '';
+                    document.getElementById('password').value = data.password || '';
                     document.getElementById('group_id').value = data.group_id || '';
                     document.getElementById('role_id').value = data.role_id || '';
+                    
+                    // Check if current user has GVCN role (need to get role name from backend)
+                    fetch(`/api/roles/${data.role_id}`)
+                        .then(response => response.json())
+                        .then(roleData => {
+                            if (roleData.name === 'GVCN') {
+                                // Hide group and role selection for GVCN users
+                                document.getElementById('group_field').style.display = 'none';
+                                document.getElementById('role_field').style.display = 'none';
+                            } else {
+                                // Show and enable fields for non-GVCN users
+                                document.getElementById('group_field').style.display = 'block';
+                                document.getElementById('role_field').style.display = 'block';
+                                document.getElementById('group_id').disabled = false;
+                                document.getElementById('role_id').disabled = false;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error loading role data:', error);
+                            // Default to showing fields if can't load role data
+                            document.getElementById('group_field').style.display = 'block';
+                            document.getElementById('role_field').style.display = 'block';
+                            document.getElementById('group_id').disabled = false;
+                            document.getElementById('role_id').disabled = false;
+                        });
+                    
                     new bootstrap.Modal(document.getElementById('userModal')).show();
                 })
                 .catch(error => {
@@ -200,14 +248,28 @@
                 alert('Vui lòng nhập mật khẩu');
                 return;
             }
+            
+            // Check if fields are hidden (for GVCN users)
+            const groupField = document.getElementById('group_field');
+            const roleField = document.getElementById('role_field');
+            const groupSelect = document.getElementById('group_id');
+            const roleSelect = document.getElementById('role_id');
+            
             const data = {
                 name: formData.get('name'),
                 username: formData.get('username'),
                 password: formData.get('password'),
                 class_id: null,
-                group_id: formData.get('group_id') || null,
-                role_id: formData.get('role_id') || null
+                group_id: (groupField.style.display === 'none') ? null : (formData.get('group_id') || null),
+                role_id: (roleField.style.display === 'none') ? null : (formData.get('role_id') || null)
             };
+            
+            // For edit mode, if fields are hidden, keep current values
+            if (isEditMode && (groupField.style.display === 'none' || roleField.style.display === 'none')) {
+                data.group_id = groupSelect.value || null;
+                data.role_id = roleSelect.value || null;
+            }
+            
             const url = isEditMode ? `/api/users/${editUserId}` : '/api/users';
             const method = isEditMode ? 'PUT' : 'POST';
             fetch(url, {

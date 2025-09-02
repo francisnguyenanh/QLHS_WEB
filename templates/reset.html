@@ -25,17 +25,37 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for table in tables %}
-                                    <tr>
-                                        <td><strong>{{ table.name }}</strong></td>
-                                        <td>{{ table.description }}</td>
-                                        <td>
-                                            <button class="btn btn-danger btn-sm" 
-                                                    onclick="confirmDelete('{{ table.name }}', '{{ table.description }}')">
-                                                <i class="fas fa-trash"></i> Xóa Dữ Liệu
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    {% set table_order = [
+                                        'User_Conduct', 
+                                        'User_Subjects', 
+                                        'Criteria', 
+                                        'Subjects', 
+                                        'Conduct', 
+                                        'Groups', 
+                                        'Role_Permissions', 
+                                        'Roles', 
+                                        'Classes', 
+                                        'Users'
+                                    ] %}
+                                    
+                                    {% for table_name in table_order %}
+                                        {% for table in tables %}
+                                            {% if table.name == table_name %}
+                                                <tr data-table="{{ table.name }}" data-order="{{ loop.index0 }}">
+                                                    <td><strong>{{ table.name }}</strong></td>
+                                                    <td>{{ table.description }}</td>
+                                                    <td>
+                                                        <button class="btn btn-danger btn-sm delete-btn" 
+                                                                data-table="{{ table.name }}"
+                                                                data-order="{{ loop.index0 }}"
+                                                                onclick="confirmDelete('{{ table.name }}', '{{ table.description }}')"
+                                                                {% if loop.index0 > 0 %}disabled{% endif %}>
+                                                            <i class="fas fa-trash"></i> Xóa Dữ Liệu
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            {% endif %}
+                                        {% endfor %}
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -75,6 +95,42 @@
 
     <script>
         let currentTableName = '';
+        let deletedTables = [];
+
+        // Kiểm tra và cập nhật trạng thái nút
+        function updateButtonStates() {
+            const buttons = document.querySelectorAll('.delete-btn');
+            const tableOrder = ['User_Conduct', 'User_Subjects', 'Criteria', 'Subjects', 'Conduct', 'Groups', 'Role_Permissions', 'Roles', 'Classes', 'Users'];
+            
+            buttons.forEach(button => {
+                const tableName = button.getAttribute('data-table');
+                const order = parseInt(button.getAttribute('data-order'));
+                
+                // Nút đầu tiên luôn được kích hoạt
+                if (order === 0) {
+                    button.disabled = false;
+                    return;
+                }
+                
+                // Kiểm tra xem tất cả các bảng trước đó đã được xóa chưa
+                let canEnable = true;
+                for (let i = 0; i < order; i++) {
+                    if (!deletedTables.includes(tableOrder[i])) {
+                        canEnable = false;
+                        break;
+                    }
+                }
+                
+                button.disabled = !canEnable;
+                
+                // Thêm class để styling
+                if (button.disabled) {
+                    button.classList.add('btn-disabled');
+                } else {
+                    button.classList.remove('btn-disabled');
+                }
+            });
+        }
 
         function confirmDelete(tableName, description) {
             currentTableName = tableName;
@@ -105,8 +161,23 @@
                 
                 if (data.success) {
                     alert(`✅ ${data.message}`);
-                    // Có thể reload trang để cập nhật trạng thái
-                    window.location.reload();
+                    
+                    // Thêm bảng vào danh sách đã xóa
+                    if (!deletedTables.includes(tableName)) {
+                        deletedTables.push(tableName);
+                    }
+                    
+                    // Cập nhật trạng thái các nút
+                    updateButtonStates();
+                    
+                    // Disable nút vừa được sử dụng
+                    const currentButton = document.querySelector(`[data-table="${tableName}"]`);
+                    if (currentButton) {
+                        currentButton.disabled = true;
+                        currentButton.innerHTML = '<i class="fas fa-check"></i> Đã Xóa';
+                        currentButton.classList.add('btn-success');
+                        currentButton.classList.remove('btn-danger');
+                    }
                 } else {
                     alert(`❌ Lỗi: ${data.error}`);
                 }
@@ -116,6 +187,11 @@
                 alert('❌ Có lỗi xảy ra khi xóa dữ liệu');
             });
         }
+
+        // Khởi tạo trạng thái nút khi trang load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateButtonStates();
+        });
     </script>
 
     <style>
@@ -128,13 +204,36 @@
             box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
         }
         
-        .btn-danger:hover {
+        .btn-danger:hover:not(:disabled) {
             transform: translateY(-1px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
         
         .alert-danger {
             border-left: 4px solid #dc3545;
+        }
+
+        .btn-disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .delete-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-success {
+            background-color: #198754;
+            border-color: #198754;
+        }
+
+        .table tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .table tbody tr:hover {
+            background-color: rgba(0, 0, 0, 0.05);
         }
     </style>
 {% endblock %}

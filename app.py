@@ -274,6 +274,8 @@ def setup_sample_data():
 def is_user_gvcn():
     if 'user_id' in session:
         user = read_record_by_id('Users', session['user_id'])
+        if not user or not user[6]:  # Check if user exists and has role_id
+            return False
         role = read_record_by_id('Roles', user[6]) # role_id is at index 6
         return (role and role[1] == 'GVCN') # role name is at index 1
     return False
@@ -1321,12 +1323,12 @@ def create_user_api():
 @app.route('/api/users/<int:id>', methods=['PUT'])
 def update_user_api(id):
     if 'user_id' in session:
-        # Kiểm tra user hiện tại có role Master không
+        # Kiểm tra user hiện tại có role Master hoặc GVCN không
         user_data = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
         if user_data and user_data[6]:  # role_id at index 6
             role_data = read_record_by_id('Roles', user_data[6], ['id', 'name'])
-            if role_data and role_data[1] == 'Master':
-                return jsonify({'success': False, 'error': 'Không thể thay đổi user Master'}), 400
+            if role_data and role_data[1] in ['Master', 'GVCN']:
+                return jsonify({'success': False, 'error': f'Không thể thay đổi user {role_data[1]}'}), 400
         
         name = request.json['name']
         username = request.json['username']
@@ -1535,12 +1537,12 @@ def user_edit(id):
 
 @app.route('/users/delete/<int:id>')
 def user_delete(id):
-    # Kiểm tra user có role Master không
+    # Kiểm tra user có role Master hoặc GVCN không
     user_data = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
     if user_data and user_data[6]:  # role_id at index 6
         role_data = read_record_by_id('Roles', user_data[6], ['id', 'name'])
-        if role_data and role_data[1] == 'Master':
-            flash('Không thể xóa user Master', 'error')
+        if role_data and role_data[1] in ['Master', 'GVCN']:
+            flash(f'Không thể xóa user {role_data[1]}', 'error')
             return redirect(url_for('users_list'))
     
     delete_record('Users', id)
@@ -3480,18 +3482,18 @@ def reset_page():
             flash('Bạn không có quyền truy cập chức năng này', 'error')
             return redirect(url_for('index'))
         
-        # Danh sách các table và mô tả
+        # Danh sách các table và mô tả theo thứ tự xóa
         tables = [
-            {'name': 'Users', 'description': 'Dữ liệu người dùng'},
-            {'name': 'Classes', 'description': 'Dữ liệu lớp học'},
-            {'name': 'Groups', 'description': 'Dữ liệu nhóm'},
-            {'name': 'Roles', 'description': 'Dữ liệu chức vụ'},
-            {'name': 'Role_Permissions', 'description': 'Dữ liệu phân quyền'},
-            {'name': 'Conduct', 'description': 'Dữ liệu hạnh kiểm'},
-            {'name': 'Subjects', 'description': 'Dữ liệu môn học'},
-            {'name': 'Criteria', 'description': 'Dữ liệu tiêu chí đánh giá'},
             {'name': 'User_Conduct', 'description': 'Dữ liệu hạnh kiểm học sinh'},
-            {'name': 'User_Subjects', 'description': 'Dữ liệu học tập học sinh'}
+            {'name': 'User_Subjects', 'description': 'Dữ liệu học tập học sinh'},
+            {'name': 'Criteria', 'description': 'Dữ liệu tiêu chí đánh giá'},
+            {'name': 'Subjects', 'description': 'Dữ liệu môn học'},
+            {'name': 'Conduct', 'description': 'Dữ liệu hạnh kiểm'},
+            {'name': 'Groups', 'description': 'Dữ liệu nhóm'},
+            {'name': 'Role_Permissions', 'description': 'Dữ liệu phân quyền'},
+            {'name': 'Roles', 'description': 'Dữ liệu chức vụ'},
+            {'name': 'Classes', 'description': 'Dữ liệu lớp học'},
+            {'name': 'Users', 'description': 'Dữ liệu người dùng'}
         ]
         
         return render_template_with_permissions('reset.html', tables=tables)
@@ -3504,9 +3506,9 @@ def reset_table(table_name):
         if not can_access_master():
             return jsonify({'error': 'Không có quyền truy cập'}), 403
         
-        # Danh sách table được phép xóa
-        allowed_tables = ['Users', 'Classes', 'Groups', 'Roles', 'Role_Permissions', 
-                         'Conduct', 'Subjects', 'Criteria', 'User_Conduct', 'User_Subjects']
+        # Danh sách table được phép xóa theo thứ tự
+        allowed_tables = ['User_Conduct', 'User_Subjects', 'Criteria', 'Subjects', 'Conduct', 
+                         'Groups', 'Role_Permissions', 'Roles', 'Classes', 'Users']
         
         if table_name not in allowed_tables:
             return jsonify({'error': 'Table không hợp lệ'}), 400
@@ -3515,20 +3517,28 @@ def reset_table(table_name):
             conn = connect_db()
             cursor = conn.cursor()
             
-            # Xóa dữ liệu với điều kiện đặc biệt cho bảng Roles và Users
-            if table_name == 'Roles':
-                # Không xóa role GVCN và Master
-                cursor.execute("DELETE FROM Roles WHERE name NOT IN ('GVCN', 'Master')")
+            # Xóa dữ liệu với điều kiện đặc biệt
+            if table_name == 'Role_Permissions':
+                # Không xóa phân quyền của role Master, GVCN
+                cursor.execute("""
+                    DELETE FROM Role_Permissions 
+                    WHERE role_id NOT IN (
+                        SELECT id FROM Roles WHERE name IN ('Master', 'GVCN')
+                    )
+                """)
+            elif table_name == 'Roles':
+                # Không xóa role Master, GVCN
+                cursor.execute("DELETE FROM Roles WHERE name NOT IN ('Master', 'GVCN')")
             elif table_name == 'Users':
-                # Không xóa user có role Master
+                # Không xóa user có role Master, GVCN
                 cursor.execute("""
                     DELETE FROM Users 
                     WHERE role_id NOT IN (
-                        SELECT id FROM Roles WHERE name = 'Master'
+                        SELECT id FROM Roles WHERE name IN ('Master', 'GVCN')
                     )
                 """)
-            elif table_name in ['Classes', 'Groups', 'Role_Permissions', 
-                             'Conduct', 'Subjects', 'Criteria', 'User_Conduct', 'User_Subjects']:
+            else:
+                # Xóa toàn bộ dữ liệu các bảng khác
                 cursor.execute(f"DELETE FROM {table_name}")
             
             conn.commit()
