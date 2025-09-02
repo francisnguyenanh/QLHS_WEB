@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Cài Đặt - School Management{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4"><i class="fas fa-cog"></i> Cài Đặt Hệ Thống</h2>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-image"></i> Thay Đổi Hình Nền Trang Chủ</h5>
+                </div>
+                <div class="card-body">
+                    {% if current_background %}
+                        <div class="mb-3">
+                            <label class="form-label">Hình nền hiện tại:</label>
+                            <div class="current-background-preview">
+                                <img src="{{ url_for('static', filename='uploads/backgrounds/' + current_background) }}" 
+                                     alt="Current Background" 
+                                     style="max-width: 300px; max-height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <form method="POST" action="{{ url_for('settings_update_background') }}" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="background_image" class="form-label">Chọn hình nền mới:</label>
+                            <input type="file" 
+                                   class="form-control" 
+                                   id="background_image" 
+                                   name="background_image" 
+                                   accept=".png,.jpg,.jpeg,.gif,.webp"
+                                   required>
+                            <div class="form-text">
+                                Hỗ trợ các định dạng: PNG, JPG, JPEG, GIF, WEBP. Kích thước tối đa: 10MB.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div id="imagePreview" class="d-none">
+                                <label class="form-label">Xem trước:</label>
+                                <div>
+                                    <img id="previewImg" src="" alt="Preview" 
+                                         style="max-width: 300px; max-height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload"></i> Cập Nhật Hình Nền
+                            </button>
+                            {% if current_background %}
+                                <a href="{{ url_for('settings_remove_background') }}" 
+                                   class="btn btn-outline-danger"
+                                   onclick="return confirm('Bạn có chắc chắn muốn xóa hình nền hiện tại?')">
+                                    <i class="fas fa-trash"></i> Xóa Hình Nền
+                                </a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6><i class="fas fa-info-circle"></i> Hướng Dẫn</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li><i class="fas fa-check text-success"></i> Chọn ảnh chất lượng cao để có kết quả tốt nhất</li>
+                        <li><i class="fas fa-check text-success"></i> Ảnh sẽ được tự động điều chỉnh kích thước</li>
+                        <li><i class="fas fa-check text-success"></i> Hỗ trợ ảnh từ điện thoại và máy tính</li>
+                        <li><i class="fas fa-check text-success"></i> Ảnh ngang hoặc dọc đều được hỗ trợ</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('background_image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('previewImg').src = e.target.result;
+            document.getElementById('imagePreview').classList.remove('d-none');
+        };
+        reader.readAsDataURL(file);
+    } else {
+        document.getElementById('imagePreview').classList.add('d-none');
+    }
+});
+</script>
+{% endblock %}

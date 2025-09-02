@@ -1,4 +1,24 @@
 {% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .save-status {
+        min-width: 80px;
+        display: inline-block;
+        white-space: nowrap;
+    }
+    
+    .auto-save-comment {
+        resize: vertical;
+    }
+    
+    .auto-save-comment:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
     <div class="container">
         <h2 class="mt-4 mb-4">Thống kê học sinh</h2>
@@ -8,7 +28,6 @@
                 <form method="POST" id="searchForm">
                     <!-- Chọn loại thời gian -->
                     <div class="form-group mb-3">
-                        <label class="form-label">Loại thời gian:</label>
                         <div class="btn-group w-100" role="group">
                             <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" checked>
                             <label class="btn btn-outline-primary" for="week_type">Tuần</label>
@@ -82,7 +101,7 @@
                 <table class="table table-bordered table-striped">
                     <thead>
                         <tr>
-                            <th>
+                            <th style="width: 100px;">
                                 <input type="checkbox" id="select_all_in">
                                 <a href="{{ url_for('user_summary', sort_by='in', sort_order='desc' if sort_by == 'in' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, groups=selected_groups, select_all_users=select_all_users, select_all_groups=select_all_groups) }}">
                                     Xuất
@@ -91,7 +110,7 @@
                                     {% endif %}
                                 </a>
                             </th>
-                            <th>
+                            <th style="width: 250px;">
                                 <a href="{{ url_for('user_summary', sort_by='user_name', sort_order='desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, groups=selected_groups, select_all_users=select_all_users, select_all_groups=select_all_groups) }}">
                                     Họ tên
                                     {% if sort_by == 'user_name' %}
@@ -99,7 +118,7 @@
                                     {% endif %}
                                 </a>
                             </th>
-                            <th>
+                            <th style="width: 100px;">
                                 <a href="{{ url_for('user_summary', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, groups=selected_groups, select_all_users=select_all_users, select_all_groups=select_all_groups) }}">
                                     Tổng điểm
                                     {% if sort_by == 'total_points' %}
@@ -107,7 +126,7 @@
                                     {% endif %}
                                 </a>
                             </th>
-                            <th style="width: 300px;">Nhận xét</th>
+                            <th >Nhận xét</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -130,10 +149,8 @@
                                 <td>{{ record[1] }}</td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <textarea class="form-control me-2" id="comment_{{ record[3] }}" rows="2" placeholder="Nhận xét...">{{ (record[4] if record[4] else record[5]) if record|length > 4 else '' }}</textarea>
-                                        <button type="button" class="btn btn-sm btn-success" onclick="saveComment({{ record[3] }})">
-                                            <i class="fas fa-save"></i>
-                                        </button>
+                                        <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[3] }}" data-user-id="{{ record[3] }}" rows="2" placeholder="Nhận xét...">{{ (record[4] if record[4] else record[5]) if record|length > 4 else '' }}</textarea>
+                                        <span class="save-status text-muted small" id="status_{{ record[3] }}"></span>
                                     </div>
                                 </td>
                             </tr>
@@ -197,10 +214,17 @@
         });
 
         // Hàm lưu nhận xét
-        function saveComment(userId) {
+        function saveComment(userId, showAlert = false) {
             const commentText = document.getElementById(`comment_${userId}`).value;
             const dateFrom = document.getElementById('date_from').value;
             const dateTo = document.getElementById('date_to').value;
+            const statusElement = document.getElementById(`status_${userId}`);
+            
+            // Show saving status
+            if (statusElement) {
+                statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+                statusElement.className = 'save-status text-info small';
+            }
             
             fetch('/save_user_comment', {
                 method: 'POST',
@@ -217,13 +241,34 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Đã lưu nhận xét thành công!');
+                    if (showAlert) {
+                        alert('Đã lưu nhận xét thành công!');
+                    }
+                    if (statusElement) {
+                        statusElement.innerHTML = '<i class="fas fa-check"></i> Đã lưu';
+                        statusElement.className = 'save-status text-success small';
+                        setTimeout(() => {
+                            statusElement.innerHTML = '';
+                        }, 2000);
+                    }
                 } else {
-                    alert('Lỗi: ' + data.error);
+                    if (statusElement) {
+                        statusElement.innerHTML = '<i class="fas fa-times"></i> Lỗi';
+                        statusElement.className = 'save-status text-danger small';
+                    }
+                    if (showAlert) {
+                        alert('Lỗi: ' + data.error);
+                    }
                 }
             })
             .catch(error => {
-                alert('Lỗi kết nối: ' + error);
+                if (statusElement) {
+                    statusElement.innerHTML = '<i class="fas fa-times"></i> Lỗi kết nối';
+                    statusElement.className = 'save-status text-danger small';
+                }
+                if (showAlert) {
+                    alert('Lỗi kết nối: ' + error);
+                }
             });
         }
 
@@ -300,7 +345,27 @@
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
-            // Khởi tạo
+            // Khởi tạo với ngày từ backend (nếu có)
+            const dateFromInput = document.getElementById('date_from');
+            const dateToInput = document.getElementById('date_to');
+            
+            if (dateFromInput.value && dateToInput.value) {
+                // Sử dụng ngày đã có từ backend, không reset
+                const fromDate = new Date(dateFromInput.value);
+                const toDate = new Date(dateToInput.value);
+                
+                // Xác định period type dựa trên khoảng thời gian
+                const dayDiff = (toDate - fromDate) / (1000 * 60 * 60 * 24);
+                if (dayDiff === 6) {
+                    currentPeriodType = 'week';
+                    currentDate = fromDate;
+                    document.getElementById('week_type').checked = true;
+                } else {
+                    currentPeriodType = 'month';
+                    currentDate = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+                    document.getElementById('month_type').checked = true;
+                }
+            }
             updatePeriodDisplay();
 
             // Xử lý click vào tên user để copy link báo cáo
@@ -394,6 +459,84 @@
             document.getElementById('date_to').addEventListener('change', function() {
                 document.getElementById('searchForm').submit();
             });
+
+            // Xử lý click vào tên học sinh
+            document.querySelectorAll('.user-name-clickable').forEach(element => {
+                element.addEventListener('click', function() {
+                    const userId = this.dataset.userId;
+                    const dateFrom = this.dataset.dateFrom;
+                    const dateTo = this.dataset.dateTo;
+                    
+                    // Tạo URL báo cáo
+                    let reportUrl = `{{ request.url_root }}user_report/${userId}`;
+                    if (dateFrom && dateTo) {
+                        reportUrl += `?date_from=${dateFrom}&date_to=${dateTo}`;
+                    }
+                    
+                    // Copy link vào clipboard
+                    navigator.clipboard.writeText(reportUrl).then(() => {
+                        // Hiển thị thông báo đã copy
+                        const originalText = this.innerHTML;
+                        this.innerHTML = '<i class="fas fa-check text-success"></i> Đã copy link!';
+                        setTimeout(() => {
+                            this.innerHTML = originalText;
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('Không thể copy link: ', err);
+                        // Fallback cho browsers không hỗ trợ clipboard API
+                        const textArea = document.createElement('textarea');
+                        textArea.value = reportUrl;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        
+                        const originalText = this.innerHTML;
+                        this.innerHTML = '<i class="fas fa-check text-success"></i> Đã copy link!';
+                        setTimeout(() => {
+                            this.innerHTML = originalText;
+                        }, 2000);
+                    });
+                    
+                    // Mở link trong tab mới
+                    window.open(reportUrl, '_blank');
+                });
+            });
+
+            // Auto-save functionality for comments
+            function initAutoSave() {
+                // Auto-save suggested comments on page load for non-empty suggestions
+                document.querySelectorAll('.auto-save-comment').forEach(textarea => {
+                    const userId = textarea.dataset.userId;
+                    const currentValue = textarea.value.trim();
+                    
+                    // If there's a suggested comment (auto-generated), save it automatically
+                    if (currentValue && !currentValue.includes('Nhận xét')) {
+                        // Small delay to ensure page is fully loaded
+                        setTimeout(() => {
+                            saveComment(userId, false);
+                        }, 500);
+                    }
+                    
+                    // Add focus out auto-save
+                    textarea.addEventListener('blur', function() {
+                        const newValue = this.value.trim();
+                        saveComment(userId, false);
+                    });
+                    
+                    // Optional: Add auto-save on input with debounce
+                    let saveTimeout;
+                    textarea.addEventListener('input', function() {
+                        clearTimeout(saveTimeout);
+                        saveTimeout = setTimeout(() => {
+                            saveComment(userId, false);
+                        }, 2000); // Auto-save 2 seconds after user stops typing
+                    });
+                });
+            }
+
+            // Initialize auto-save when page loads
+            initAutoSave();
         });
     </script>
 {% endblock %}

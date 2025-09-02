@@ -201,6 +201,21 @@
             opacity: 0.4;
         }
         
+        .comment-content {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-left: 4px solid #3498db;
+        }
+        
+        .comment-text {
+            color: #2c3e50;
+            line-height: 1.6;
+            font-size: 0.95rem;
+            white-space: pre-line;
+        }
+        
         .print-btn {
             background: #3498db;
             border: none;
@@ -314,6 +329,22 @@
                     <p><i class="fas fa-heart me-2"></i>Hoạt động hạnh kiểm</p>
                 </div>
             </div>
+            
+            <!-- Comments Section -->
+            {% if user_comment %}
+                <div class="details-section">
+                    <h2 class="section-title">
+                        <i class="fas fa-comment-alt"></i>
+                        Nhận xét của giáo viên
+                    </h2>
+                    
+                    <div class="comment-content">
+                        <div class="comment-text">
+                            {{ user_comment|safe }}
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
             
             <!-- Details Section -->
             {% if subject_entries or conduct_entries %}

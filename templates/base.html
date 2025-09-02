@@ -105,39 +105,54 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNavDropdown">
             <ul class="navbar-nav mr-auto">
+                {% if permissions is defined and permissions.get('master', False) %}
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         Master
                     </a>
                     <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-                        <a class="dropdown-item {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="{{ url_for('classes_list') }}">Lớp học</a>
-                        <a class="dropdown-item {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="{{ url_for('groups_list') }}">Nhóm</a>
-                        <a class="dropdown-item {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="{{ url_for('roles_list') }}">Chức vụ</a>
-                        <a class="dropdown-item {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="{{ url_for('users_list') }}">Danh sách người dùng</a>
-                        <a class="dropdown-item {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="{{ url_for('subjects_list') }}">Môn học</a>
-                        <a class="dropdown-item {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="{{ url_for('criteria_list') }}">Kết quả học tập</a>
-                        <a class="dropdown-item {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="{{ url_for('conducts_list') }}">Hạnh kiểm</a>
+                        <a class="dropdown-item" href="{{ url_for('classes_list') }}">Lớp học</a>
+                        <a class="dropdown-item" href="{{ url_for('groups_list') }}">Nhóm</a>
+                        <a class="dropdown-item" href="{{ url_for('roles_list') }}">Chức vụ</a>
+                        <a class="dropdown-item" href="{{ url_for('users_list') }}">Danh sách người dùng</a>
+                        <a class="dropdown-item" href="{{ url_for('subjects_list') }}">Môn học</a>
+                        <a class="dropdown-item" href="{{ url_for('criteria_list') }}">Kết quả học tập</a>
+                        <a class="dropdown-item" href="{{ url_for('conducts_list') }}">Hạnh kiểm</a>
                         <div class="dropdown-divider"></div>
-                        <a class="dropdown-item {% if not (permissions is defined and (permissions.get('master', False) or permissions.get('comment_management', 'none') != 'none')) %}disabled-link{% endif %}" href="{{ url_for('comment_management') }}">
+                        {% if permissions.get('master', False) or permissions.get('comment_management', 'none') != 'none' %}
+                        <a class="dropdown-item" href="{{ url_for('comment_management') }}">
                             <i class="fas fa-comments"></i> Quản lý nhận xét
                         </a>
-                        <a class="dropdown-item text-danger {% if not (permissions is defined and permissions.get('master', False)) %}disabled-link{% endif %}" href="{{ url_for('reset_page') }}">
+                        {% endif %}
+                        <a class="dropdown-item" href="{{ url_for('settings') }}">
+                            <i class="fas fa-cog"></i> Cài đặt
+                        </a>
+                        <a class="dropdown-item text-danger" href="{{ url_for('reset_page') }}">
                             <i class="fas fa-trash"></i> Reset Dữ Liệu
                         </a>
                     </div>
                 </li>
+                {% endif %}
+                {% if permissions is defined and (permissions.get('master', False) or permissions.get('conduct_management', 'none') != 'none') %}
                 <li class="nav-item">
-                    <a class="nav-link {% if not (permissions is defined and (permissions.get('master', False) or permissions.get('conduct_management', 'none') != 'none')) %}disabled-link{% endif %}" href="{{ url_for('user_conduct_list') }}">Quản lý hạnh kiểm</a>
+                    <a class="nav-link" href="{{ url_for('user_conduct_list') }}">Quản lý hạnh kiểm</a>
                 </li>
+                {% endif %}
+                {% if permissions is defined and (permissions.get('master', False) or permissions.get('academic_management', 'none') != 'none') %}
                 <li class="nav-item">
-                    <a class="nav-link {% if not (permissions is defined and (permissions.get('master', False) or permissions.get('academic_management', 'none') != 'none')) %}disabled-link{% endif %}" href="{{ url_for('user_subjects_list') }}">Quản lý học tập</a>
+                    <a class="nav-link" href="{{ url_for('user_subjects_list') }}">Quản lý học tập</a>
                 </li>
+                {% endif %}
+                {% if permissions is defined and (permissions.get('master', False) or permissions.get('student_statistics', 'none') != 'none') %}
                 <li class="nav-item">
-                    <a class="nav-link {% if not (permissions is defined and (permissions.get('master', False) or permissions.get('student_statistics', 'none') != 'none')) %}disabled-link{% endif %}" href="{{ url_for('group_summary') }}">Thống kê nhóm</a>
+                    <a class="nav-link" href="{{ url_for('group_summary') }}">Thống kê nhóm</a>
                 </li>
+                {% endif %}
+                {% if permissions is defined and (permissions.get('master', False) or permissions.get('student_statistics', 'none') != 'none') %}
                 <li class="nav-item">
-                    <a class="nav-link {% if not (permissions is defined and (permissions.get('master', False) or permissions.get('student_statistics', 'none') != 'none')) %}disabled-link{% endif %}" href="{{ url_for('user_summary') }}">Thống kê học sinh</a>
+                    <a class="nav-link" href="{{ url_for('user_summary') }}">Thống kê học sinh</a>
                 </li>
+                {% endif %}
             </ul>
             <ul class="navbar-nav ml-auto">
                 {% if session.user_id %}
@@ -160,7 +175,25 @@
     </main>
 
     <footer>
-        <p>© 2025 Quản Lý Rèn Luyện Học Sinh</p>
+        <div class="container">
+            <div class="row">
+                <!-- Mobile: User info trên, copyright dưới và căn giữa -->
+                <!-- Desktop: User info trái, copyright phải -->
+                <div class="col-12 col-md-6 order-2 order-md-1 text-center text-md-left">
+                    {% if session.user_id and current_user_info %}
+                        <p class="mb-0">
+                            <i class="fas fa-user"></i> {{ current_user_info.name }} 
+                            {% if current_user_info.role_name %}
+                                | <i class="fas fa-id-badge"></i> {{ current_user_info.role_name }}
+                            {% endif %}
+                        </p>
+                    {% endif %}
+                </div>
+                <div class="col-12 col-md-6 order-1 order-md-2 text-center text-md-right">
+                    <p class="mb-0">© 2025 Quản Lý Rèn Luyện Học Sinh</p>
+                </div>
+            </div>
+        </div>
     </footer>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>

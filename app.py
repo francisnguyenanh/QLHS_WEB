@@ -6,6 +6,9 @@ from flask import  redirect, session
 from flask import Flask, render_template
 import config
 import calendar
+import os
+import uuid
+import unicodedata
 from datetime import datetime, timedelta
 from io import BytesIO
 from reportlab.pdfgen import canvas
@@ -13,10 +16,44 @@ from reportlab.lib.pagesizes import A4, A5
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from flask import make_response, request, url_for
+from werkzeug.utils import secure_filename
 
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
+
+
+# Helper function to normalize Vietnamese text for sorting
+def normalize_vietnamese_for_sort(text):
+    """Normalize Vietnamese text for proper sorting"""
+    if not text:
+        return ""
+    
+    # Define Vietnamese character mapping for proper sorting
+    vietnamese_map = {
+        'á': 'a', 'à': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
+        'ă': 'a', 'ắ': 'a', 'ằ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'ặ': 'a',
+        'â': 'a', 'ấ': 'a', 'ầ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
+        'é': 'e', 'è': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
+        'ê': 'e', 'ế': 'e', 'ề': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
+        'í': 'i', 'ì': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
+        'ó': 'o', 'ò': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
+        'ô': 'o', 'ố': 'o', 'ồ': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
+        'ơ': 'o', 'ớ': 'o', 'ờ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
+        'ú': 'u', 'ù': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
+        'ư': 'u', 'ứ': 'u', 'ừ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
+        'ý': 'y', 'ỳ': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y',
+        'đ': 'd'
+    }
+    
+    # Convert to lowercase and normalize
+    normalized = text.lower()
+    
+    # Replace Vietnamese characters with base characters for sorting
+    for viet_char, base_char in vietnamese_map.items():
+        normalized = normalized.replace(viet_char, base_char)
+    
+    return normalized
 
 
 # Tạo dữ liệu mẫu
@@ -113,7 +150,22 @@ def setup_sample_data():
                 FOREIGN KEY (subject_id) REFERENCES Subjects(id),
                 FOREIGN KEY (criteria_id) REFERENCES Criteria(id)
             );
+
+            CREATE TABLE IF NOT EXISTS Settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                setting_key TEXT UNIQUE NOT NULL,
+                setting_value TEXT,
+                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_by INTEGER,
+                FOREIGN KEY (updated_by) REFERENCES Users(id)
+            );
         """)
+    
+    # Thêm setting mặc định cho background
+    conn.execute("""
+        INSERT OR IGNORE INTO Settings (setting_key, setting_value) 
+        VALUES ('background_image', '')
+    """)
     # conn.executescript("""
     #     CREATE TABLE IF NOT EXISTS Classes (
     #         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -371,7 +423,78 @@ def render_template_with_permissions(template_name, **kwargs):
         permissions = get_user_permissions()
         kwargs['permissions'] = permissions
         kwargs['is_gvcn'] = is_user_gvcn()
+        # Thêm thông tin user hiện tại cho footer
+        kwargs['current_user_info'] = get_current_user_info()
     return render_template(template_name, **kwargs)
+
+def get_current_user_info():
+    """Get current user information for display"""
+    if 'user_id' not in session:
+        return None
+    
+    user = read_record_by_id('Users', session['user_id'])
+    if not user:
+        return None
+    
+    role = None
+    if user[6]:  # role_id
+        role = read_record_by_id('Roles', user[6])
+    
+    return {
+        'id': user[0],
+        'name': user[1],
+        'username': user[2],
+        'role_name': role[1] if role else None
+    }
+
+def get_setting(key, default_value=''):
+    """Get setting value from Settings table"""
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT setting_value FROM Settings WHERE setting_key = ?", (key,))
+        result = cursor.fetchone()
+        conn.close()
+        return result[0] if result else default_value
+    except:
+        return default_value
+
+def set_setting(key, value, updated_by=None):
+    """Set setting value in Settings table"""
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO Settings (setting_key, setting_value, updated_at, updated_by)
+            VALUES (?, ?, CURRENT_TIMESTAMP, ?)
+        """, (key, value, updated_by))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Error setting value: {e}")
+        return False
+
+def allowed_file(filename):
+    """Check if uploaded file is allowed"""
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def save_uploaded_file(file, upload_folder):
+    """Save uploaded file and return filename"""
+    if file and allowed_file(file.filename):
+        # Tạo tên file unique để tránh trùng lặp
+        file_extension = file.filename.rsplit('.', 1)[1].lower()
+        filename = f"{uuid.uuid4().hex}.{file_extension}"
+        
+        # Đảm bảo thư mục tồn tại
+        os.makedirs(upload_folder, exist_ok=True)
+        
+        file_path = os.path.join(upload_folder, filename)
+        file.save(file_path)
+        return filename
+    return None
 
 def filter_users_by_permission(users, permission_type):
     """Filter users based on permission level"""
@@ -1283,7 +1406,8 @@ def users_list():
         if sort_by == 'first_name':
             def get_first_name(user):
                 name_parts = user[1].split() if user[1] else []
-                return name_parts[-1] if name_parts else ''
+                last_name = name_parts[-1] if name_parts else ''
+                return normalize_vietnamese_for_sort(last_name)
             
             reverse_order = (sort_order == 'desc')
             users = sorted(users, key=get_first_name, reverse=reverse_order)
@@ -1639,6 +1763,8 @@ def user_conduct_list():
         else:
             cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
         all_users = cursor.fetchall()
+        # Sort users by last word in name using Vietnamese normalization
+        all_users.sort(key=lambda u: (normalize_vietnamese_for_sort(u[1].split()[-1]), normalize_vietnamese_for_sort(u[1])))
         cursor.execute("SELECT id, name FROM Conduct WHERE is_deleted = 0")
         conducts = cursor.fetchall()
         if teacher_group_id is not None:
@@ -1668,6 +1794,9 @@ def user_conduct_list():
                 modal_users = users
         else:
             modal_users = users
+        
+        # Sort modal_users by last word in name using Vietnamese normalization  
+        modal_users.sort(key=lambda u: (normalize_vietnamese_for_sort(u[1].split()[-1]), normalize_vietnamese_for_sort(u[1])))
 
         # Tính toán ngày mặc định: Thứ 2~6 gần ngày hệ thống nhất
         today = datetime.today()
@@ -2144,6 +2273,8 @@ def user_subjects_list():
         else:
             cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
         all_users = cursor.fetchall()
+        # Sort users by last word in name using Vietnamese normalization
+        all_users.sort(key=lambda u: (normalize_vietnamese_for_sort(u[1].split()[-1]), normalize_vietnamese_for_sort(u[1])))
         cursor.execute("SELECT id, name FROM Subjects WHERE is_deleted = 0")
         subjects = cursor.fetchall()
         cursor.execute("SELECT id, name FROM Criteria WHERE is_deleted = 0")
@@ -2175,6 +2306,9 @@ def user_subjects_list():
                 modal_users = users
         else:
             modal_users = users
+        
+        # Sort modal_users by last word in name using Vietnamese normalization  
+        modal_users.sort(key=lambda u: (normalize_vietnamese_for_sort(u[1].split()[-1]), normalize_vietnamese_for_sort(u[1])))
 
         # Tính toán ngày mặc định: Thứ 2~6 gần ngày hệ thống nhất
         today = datetime.today()
@@ -3187,7 +3321,7 @@ def user_summary():
             records.append((user_name, total_points if total_points else 0, has_data, user_id, current_comment, auto_comment))
 
         if sort_by == 'user_name':
-            records.sort(key=lambda x: x[0], reverse=(sort_order == 'desc'))
+            records.sort(key=lambda x: normalize_vietnamese_for_sort(x[0].split()[-1]) if x[0] else '', reverse=(sort_order == 'desc'))
         elif sort_by == 'total_points':
             records.sort(key=lambda x: x[1], reverse=(sort_order == 'desc'))
         elif sort_by == 'in':
@@ -3236,7 +3370,7 @@ def login():
         print(user)
         if user:
             session['user_id'] = user[0][0]
-            return redirect(url_for('index'))
+            return redirect(url_for('home'))
         else:
             error = 'Invalid username or password'
 
@@ -3245,8 +3379,9 @@ def login():
 @app.route('/home')
 def home():
     if 'user_id' in session:
-        user = read_record_by_id('Users', session['user_id'])
-        return f'Welcome {user[1]} to the home page!'  # Hiển thị tên người dùng
+        # Lấy hình nền từ settings
+        background_image = get_setting('background_image', '')
+        return render_template_with_permissions('home.html', background_image=background_image)
     else:
         return redirect(url_for('login'))
 
@@ -3254,6 +3389,88 @@ def home():
 def logout():
     session.pop('user_id', None)  # Xóa user_id khỏi session
     return redirect(url_for('login'))
+
+# --- Settings Page ---
+@app.route('/settings')
+def settings():
+    if 'user_id' in session:
+        if not can_access_master():
+            flash('Bạn không có quyền truy cập chức năng này', 'error')
+            return redirect(url_for('index'))
+        
+        current_background = get_setting('background_image', '')
+        return render_template_with_permissions('settings.html', current_background=current_background)
+    else:
+        return redirect(url_for('login'))
+
+@app.route('/settings/update_background', methods=['POST'])
+def settings_update_background():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if not can_access_master():
+        flash('Bạn không có quyền thực hiện chức năng này', 'error')
+        return redirect(url_for('settings'))
+    
+    if 'background_image' not in request.files:
+        flash('Không có file được chọn', 'error')
+        return redirect(url_for('settings'))
+    
+    file = request.files['background_image']
+    if file.filename == '':
+        flash('Không có file được chọn', 'error')
+        return redirect(url_for('settings'))
+    
+    if file and allowed_file(file.filename):
+        try:
+            # Xóa hình nền cũ nếu có
+            old_background = get_setting('background_image', '')
+            if old_background:
+                old_path = os.path.join('static', 'uploads', 'backgrounds', old_background)
+                if os.path.exists(old_path):
+                    os.remove(old_path)
+            
+            # Lưu file mới
+            upload_folder = os.path.join('static', 'uploads', 'backgrounds')
+            filename = save_uploaded_file(file, upload_folder)
+            
+            if filename:
+                # Cập nhật setting
+                set_setting('background_image', filename, session['user_id'])
+                flash('Cập nhật hình nền thành công!', 'success')
+            else:
+                flash('Lỗi khi lưu file', 'error')
+        except Exception as e:
+            flash(f'Lỗi: {str(e)}', 'error')
+    else:
+        flash('File không hợp lệ. Chỉ hỗ trợ PNG, JPG, JPEG, GIF, WEBP', 'error')
+    
+    return redirect(url_for('settings'))
+
+@app.route('/settings/remove_background')
+def settings_remove_background():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    if not can_access_master():
+        flash('Bạn không có quyền thực hiện chức năng này', 'error')
+        return redirect(url_for('settings'))
+    
+    try:
+        # Xóa file hình nền
+        current_background = get_setting('background_image', '')
+        if current_background:
+            file_path = os.path.join('static', 'uploads', 'backgrounds', current_background)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        
+        # Xóa setting
+        set_setting('background_image', '', session['user_id'])
+        flash('Đã xóa hình nền', 'success')
+    except Exception as e:
+        flash(f'Lỗi: {str(e)}', 'error')
+    
+    return redirect(url_for('settings'))
 
 # --- Reset Data Page ---
 @app.route('/reset')
@@ -3634,6 +3851,18 @@ def user_report(user_id):
     cursor.execute(uc_query, uc_params)
     conduct_entries = cursor.fetchall()
     
+    # Get user comments for this period
+    user_comment = ""
+    if date_from and date_to:
+        cursor.execute('''
+            SELECT comment_text FROM User_Comments 
+            WHERE user_id = ? AND period_start = ? AND period_end = ?
+            ORDER BY updated_date DESC LIMIT 1
+        ''', (user_id, date_from, date_to))
+        comment_result = cursor.fetchone()
+        if comment_result and comment_result[0]:
+            user_comment = comment_result[0]
+    
     conn.close()
     
     # Process data for template
@@ -3678,13 +3907,15 @@ def user_report(user_id):
     
     return render_template('user_report.html',
                          user_name=user_name,
+                         user_id=user_id,
                          date_from=date_from,
                          date_to=date_to,
                          total_points=total_points,
                          subject_entries=subject_entries,
                          conduct_entries=conduct_entries,
                          grouped_data=grouped_data,
-                         sorted_dates=sorted_dates)
+                         sorted_dates=sorted_dates,
+                         user_comment=user_comment)
 
 
 if __name__ == '__main__':
