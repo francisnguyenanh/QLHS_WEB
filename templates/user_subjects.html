@@ -30,9 +30,29 @@
 
 {% block content %}
     <div class="container">
-        <h2 class="mt-4 mb-4">Quản lý kết quả học tập</h2>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Quản lý kết quả học tập</h2>
+            
+            <!-- Toggle button for search form -->
+            <div class="d-flex gap-2">
+                {% if permissions.get('master', False) or permissions.get('academic_management_create', False) %}
+                    <button type="button" class="btn btn-success btn-compact" onclick="openCreateModal()" data-bs-toggle="tooltip" title="Tạo mới kết quả học tập">
+                        <i class="fas fa-plus"></i>
+                        <span class="d-none d-md-inline ms-1">Tạo mới</span>
+                    </button>
+                {% endif %}
+                
+                <button type="button" class="btn btn-primary btn-compact" id="toggleSearchForm" data-bs-toggle="tooltip" title="Hiện/Ẩn bộ lọc">
+                    <i class="fas fa-filter"></i>
+                    <span class="d-none d-md-inline ms-1">Bộ lọc</span>
+                </button>
+            </div>
+        </div>
 
-        <form method="POST" id="searchForm">
+        <!-- Collapsible search form -->
+        <div class="card search-form-card" id="searchFormCard">
+            <div class="card-body">
+                <form method="POST" id="searchForm">
             <div class="row g-3">
                 <div class="col-12 col-md-3">
                     <!-- Chọn loại thời gian -->
@@ -114,17 +134,14 @@
             </div>
             <div class="row mt-3">
                 <div class="col-12 text-center">
-                    <button type="submit" class="btn btn-primary w-100 w-md-auto">Tìm kiếm</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search me-1"></i>Tìm kiếm
+                    </button>
                 </div>
             </div>
-            <div class="row mt-3">
-                <div class="col-12">
-                    {% if permissions.get('master', False) or permissions.get('academic_management_create', False) %}
-                        <button type="button" class="btn btn-success w-100 w-md-auto" onclick="openCreateModal()">Tạo mới</button>
-                    {% endif %}
-                </div>
+                </form>
             </div>
-        </form>
+        </div>
 
         <div class="table-responsive mt-4">
             <table class="table table-bordered table-striped">
@@ -580,5 +597,156 @@
                 padding: 0.2rem !important;
             }
         }
+
+        /* Toggle button and search form styling */
+        .btn-compact {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-compact:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-compact.btn-success {
+            background: linear-gradient(135deg, #198754, #20c997);
+            border: none;
+            color: white;
+        }
+
+        .btn-compact.btn-primary {
+            background: linear-gradient(135deg, #0d6efd, #6610f2);
+            border: none;
+            color: white;
+        }
+
+        .btn-compact.active {
+            background: linear-gradient(135deg, #6610f2, #0d6efd);
+            transform: scale(1.05);
+        }
+
+        /* Search form card styling */
+        .search-form-card {
+            margin-bottom: 20px;
+            border: none;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .search-form-card.collapsed {
+            max-height: 0;
+            overflow: hidden;
+            margin-bottom: 0;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+        }
+
+        .search-form-card.collapsed .card-body {
+            padding: 0;
+        }
+
+        .search-form-card .card-body {
+            padding: 20px;
+            transition: padding 0.3s ease;
+        }
+
+        /* Animation for collapse/expand */
+        @keyframes slideDown {
+            from {
+                max-height: 0;
+                opacity: 0;
+            }
+            to {
+                max-height: 500px;
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                max-height: 500px;
+                opacity: 1;
+            }
+            to {
+                max-height: 0;
+                opacity: 0;
+            }
+        }
+
+        .search-form-card.expanding {
+            animation: slideDown 0.3s ease-out forwards;
+        }
+
+        .search-form-card.collapsing {
+            animation: slideUp 0.3s ease-out forwards;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .d-flex.gap-2 {
+                flex-wrap: wrap;
+                gap: 8px !important;
+            }
+            
+            .btn-compact {
+                min-width: 40px;
+            }
+        }
     </style>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleSearchForm = document.getElementById('toggleSearchForm');
+            const searchFormCard = document.getElementById('searchFormCard');
+            let isCollapsed = false;
+            
+            // Initialize tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Toggle search form
+            if (toggleSearchForm && searchFormCard) {
+                toggleSearchForm.addEventListener('click', function() {
+                    if (isCollapsed) {
+                        // Expand
+                        searchFormCard.classList.remove('collapsed', 'collapsing');
+                        searchFormCard.classList.add('expanding');
+                        this.classList.add('active');
+                        this.innerHTML = '<i class="fas fa-eye-slash"></i><span class="d-none d-md-inline ms-1">Ẩn lọc</span>';
+                        isCollapsed = false;
+                        
+                        // Remove animation class after animation completes
+                        setTimeout(() => {
+                            searchFormCard.classList.remove('expanding');
+                        }, 300);
+                    } else {
+                        // Collapse
+                        searchFormCard.classList.remove('expanding');
+                        searchFormCard.classList.add('collapsing');
+                        this.classList.remove('active');
+                        this.innerHTML = '<i class="fas fa-filter"></i><span class="d-none d-md-inline ms-1">Bộ lọc</span>';
+                        
+                        // Add collapsed class after animation completes
+                        setTimeout(() => {
+                            searchFormCard.classList.remove('collapsing');
+                            searchFormCard.classList.add('collapsed');
+                            isCollapsed = true;
+                        }, 300);
+                    }
+                });
+            }
+        });
+    </script>
 {% endblock %}
