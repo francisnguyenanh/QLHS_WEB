@@ -10,6 +10,7 @@ import os
 import uuid
 import unicodedata
 import json
+import requests
 from datetime import datetime, timedelta
 from io import BytesIO
 from reportlab.pdfgen import canvas
@@ -84,8 +85,26 @@ def save_system_config_to_file(config):
         print(f"Error saving config: {e}")
         return False
 
+def get_current_date_online():
+    """Get current date from online API (Vietnam timezone)"""
+    try:
+        # Use World Time API for Vietnam timezone
+        response = requests.get('http://worldtimeapi.org/api/timezone/Asia/Ho_Chi_Minh', timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            # Parse the datetime string and extract date
+            datetime_str = data['datetime']
+            # Format: 2024-01-15T10:30:45.123456+07:00
+            current_datetime = datetime.fromisoformat(datetime_str.replace('Z', '+00:00'))
+            return current_datetime.date()
+        else:
+            return None
+    except Exception as e:
+        print(f"Error getting online time: {e}")
+        return None
+
 def check_system_expiry():
-    """Check if system has expired"""
+    """Check if system has expired using online time API"""
     config = load_system_config()
     expiry_date = config.get('system_expiry_date')
     
@@ -93,9 +112,14 @@ def check_system_expiry():
         return False  # No expiry date set
     
     try:
+        # Get current date from online API (Vietnam timezone)
+        current_date = get_current_date_online()
+        if current_date is None:
+            # Fallback to local time if API fails
+            current_date = datetime.now().date()
+        
         expiry = datetime.strptime(expiry_date, "%Y-%m-%d").date()
-        today = datetime.now().date()
-        return today > expiry
+        return current_date > expiry
     except ValueError:
         return False  # Invalid date format
 
