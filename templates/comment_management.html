@@ -8,105 +8,364 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2><i class="fas fa-comments"></i> Quản lý nhận xét</h2>
-                <a href="{{ url_for('comment_template_create') }}" class="btn btn-success">
+                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#commentModal" onclick="openCreateModal()">
                     <i class="fas fa-plus"></i> Thêm mẫu nhận xét
-                </a>
+                </button>
             </div>
 
             <!-- Tabs -->
             <ul class="nav nav-tabs" id="commentTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="encouragement-tab" data-bs-toggle="tab" data-bs-target="#encouragement" type="button" role="tab">
-                        <i class="fas fa-thumbs-up text-success"></i> Khích lệ
+                    <button class="nav-link active" id="academic-tab" data-bs-toggle="tab" data-bs-target="#academic" type="button" role="tab">
+                        <i class="fas fa-book text-primary"></i> Học tập
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="reminder-tab" data-bs-toggle="tab" data-bs-target="#reminder" type="button" role="tab">
-                        <i class="fas fa-exclamation-triangle text-warning"></i> Nhắc nhở
+                    <button class="nav-link" id="conduct-tab" data-bs-toggle="tab" data-bs-target="#conduct" type="button" role="tab">
+                        <i class="fas fa-heart text-danger"></i> Hạnh kiểm
                     </button>
                 </li>
             </ul>
 
             <div class="tab-content mt-3" id="commentTabsContent">
-                <!-- Tab Khích lệ -->
-                <div class="tab-pane fade show active" id="encouragement" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead class="table-success">
-                                <tr>
-                                    <th>Khoảng điểm</th>
-                                    <th>Nội dung nhận xét</th>
-                                    <th>Ngày tạo</th>
-                                    <th width="150">Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for template in templates %}
-                                    {% if template[1] == 'encouragement' %}
-                                    <tr>
-                                        <td>
-                                            <span class="badge bg-success">{{ template[2] }} - {{ template[3] }} điểm</span>
-                                        </td>
-                                        <td>{{ template[4] }}</td>
-                                        <td>{{ template[5] }}</td>
-                                        <td>
-                                            <a href="{{ url_for('comment_template_edit', template_id=template[0]) }}" class="btn btn-sm btn-primary">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <button class="btn btn-sm btn-danger" onclick="confirmDelete('Bạn có chắc chắn muốn xóa mẫu nhận xét này?', () => deleteTemplate({{ template[0] }}))">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% endif %}
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <!-- Tab Học tập -->
+                <div class="tab-pane fade show active" id="academic" role="tabpanel">
+                    <!-- Subtabs cho học tập -->
+                    <ul class="nav nav-pills mb-3" id="academicTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="academic-encouragement-tab" data-bs-toggle="pill" data-bs-target="#academic-encouragement" type="button" role="tab">
+                                <i class="fas fa-thumbs-up"></i> Khích lệ
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="academic-reminder-tab" data-bs-toggle="pill" data-bs-target="#academic-reminder" type="button" role="tab">
+                                <i class="fas fa-exclamation-triangle text-warning"></i> Nhắc nhở
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="academicTabContent">
+                        <!-- Academic Encouragement -->
+                        <div class="tab-pane fade show active" id="academic-encouragement" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-success">
+                                        <tr>
+                                            <th>Khoảng điểm</th>
+                                            <th>Nội dung nhận xét</th>
+                                            <th>Ngày tạo</th>
+                                            <th width="150">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for template in templates %}
+                                            {% if template[1] == 'academic' and template[2] == 'encouragement' %}
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-success">{{ template[3] }} - {{ template[4] }} điểm</span>
+                                                </td>
+                                                <td>{{ template[5] }}</td>
+                                                <td>{{ template[6] }}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-warning me-2 edit-template" data-id="{{ template[0] }}">
+                                                        <i class="fas fa-edit"></i> Sửa
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger delete-template" data-id="{{ template[0] }}">
+                                                        <i class="fas fa-trash"></i> Xóa
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Academic Reminder -->
+                        <div class="tab-pane fade" id="academic-reminder" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-warning">
+                                        <tr>
+                                            <th>Khoảng điểm</th>
+                                            <th>Nội dung nhận xét</th>
+                                            <th>Ngày tạo</th>
+                                            <th width="150">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for template in templates %}
+                                            {% if template[1] == 'academic' and template[2] == 'reminder' %}
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-warning">{{ template[3] }} - {{ template[4] }} điểm</span>
+                                                </td>
+                                                <td>{{ template[5] }}</td>
+                                                <td>{{ template[6] }}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-warning me-2 edit-template" data-id="{{ template[0] }}">
+                                                        <i class="fas fa-edit"></i> Sửa
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger delete-template" data-id="{{ template[0] }}">
+                                                        <i class="fas fa-trash"></i> Xóa
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Tab Nhắc nhở -->
-                <div class="tab-pane fade" id="reminder" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead class="table-warning">
-                                <tr>
-                                    <th>Khoảng điểm</th>
-                                    <th>Nội dung nhận xét</th>
-                                    <th>Ngày tạo</th>
-                                    <th width="150">Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for template in templates %}
-                                    {% if template[1] == 'reminder' %}
-                                    <tr>
-                                        <td>
-                                            <span class="badge bg-warning">{{ template[2] }} - {{ template[3] }} điểm</span>
-                                        </td>
-                                        <td>{{ template[4] }}</td>
-                                        <td>{{ template[5] }}</td>
-                                        <td>
-                                            <a href="{{ url_for('comment_template_edit', template_id=template[0]) }}" class="btn btn-sm btn-primary">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            <button class="btn btn-sm btn-danger" onclick="confirmDelete('Bạn có chắc chắn muốn xóa mẫu nhận xét này?', () => deleteTemplate({{ template[0] }}))">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    {% endif %}
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <!-- Tab Hạnh kiểm -->
+                <div class="tab-pane fade" id="conduct" role="tabpanel">
+                    <!-- Subtabs cho hạnh kiểm -->
+                    <ul class="nav nav-pills mb-3" id="conductTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="conduct-encouragement-tab" data-bs-toggle="pill" data-bs-target="#conduct-encouragement" type="button" role="tab">
+                                <i class="fas fa-thumbs-up"></i> Khích lệ
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="conduct-reminder-tab" data-bs-toggle="pill" data-bs-target="#conduct-reminder" type="button" role="tab">
+                                <i class="fas fa-exclamation-triangle text-warning"></i> Nhắc nhở
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="conductTabContent">
+                        <!-- Conduct Encouragement -->
+                        <div class="tab-pane fade show active" id="conduct-encouragement" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-success">
+                                        <tr>
+                                            <th>Khoảng điểm</th>
+                                            <th>Nội dung nhận xét</th>
+                                            <th>Ngày tạo</th>
+                                            <th width="150">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for template in templates %}
+                                            {% if template[1] == 'conduct' and template[2] == 'encouragement' %}
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-success">{{ template[3] }} - {{ template[4] }} điểm</span>
+                                                </td>
+                                                <td>{{ template[5] }}</td>
+                                                <td>{{ template[6] }}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-warning me-2 edit-template" data-id="{{ template[0] }}">
+                                                        <i class="fas fa-edit"></i> Sửa
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger delete-template" data-id="{{ template[0] }}">
+                                                        <i class="fas fa-trash"></i> Xóa
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Conduct Reminder -->
+                        <div class="tab-pane fade" id="conduct-reminder" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-warning">
+                                        <tr>
+                                            <th>Khoảng điểm</th>
+                                            <th>Nội dung nhận xét</th>
+                                            <th>Ngày tạo</th>
+                                            <th width="150">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for template in templates %}
+                                            {% if template[1] == 'conduct' and template[2] == 'reminder' %}
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-warning">{{ template[3] }} - {{ template[4] }} điểm</span>
+                                                </td>
+                                                <td>{{ template[5] }}</td>
+                                                <td>{{ template[6] }}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-warning me-2 edit-template" data-id="{{ template[0] }}">
+                                                        <i class="fas fa-edit"></i> Sửa
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger delete-template" data-id="{{ template[0] }}">
+                                                        <i class="fas fa-trash"></i> Xóa
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for Create/Edit Comment Template -->
+<div class="modal fade" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="commentModalLabel">Thêm mẫu nhận xét</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            <form id="commentForm">
+                <div class="modal-body">
+                    <input type="hidden" id="templateId" name="template_id">
+                    
+                    <div class="mb-3">
+                        <label for="commentCategory" class="form-label">Danh mục <span class="text-danger">*</span></label>
+                        <select class="form-select" id="commentCategory" name="comment_category" required>
+                            <option value="">-- Chọn danh mục --</option>
+                            <option value="academic">Học tập</option>
+                            <option value="conduct">Hạnh kiểm</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="commentType" class="form-label">Loại nhận xét <span class="text-danger">*</span></label>
+                        <select class="form-select" id="commentType" name="comment_type" required>
+                            <option value="">-- Chọn loại nhận xét --</option>
+                            <option value="encouragement">Khích lệ</option>
+                            <option value="reminder">Nhắc nhở</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="scoreRangeMin" class="form-label">Điểm tối thiểu <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="scoreRangeMin" name="score_range_min" min="1" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="scoreRangeMax" class="form-label">Điểm tối đa <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="scoreRangeMax" name="score_range_max" min="1" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="commentText" class="form-label">Nội dung nhận xét <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="commentText" name="comment_text" rows="4" required placeholder="Nhập nội dung nhận xét..."></textarea>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Hướng dẫn:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Danh mục:</strong> Chọn "Học tập" cho nhận xét về điểm học tập, "Hạnh kiểm" cho nhận xét về điểm rèn luyện</li>
+                            <li><strong>Khích lệ:</strong> Sử dụng khi điểm số tăng so với kỳ trước</li>
+                            <li><strong>Nhắc nhở:</strong> Sử dụng khi điểm số giảm so với kỳ trước</li>
+                            <li><strong>Khoảng điểm:</strong> Chênh lệch điểm số giữa 2 kỳ (ví dụ: 2-5 điểm)</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
 
 <script>
+let isEditMode = false;
+
+// Mở modal tạo mới
+function openCreateModal() {
+    isEditMode = false;
+    document.getElementById('commentModalLabel').textContent = 'Thêm mẫu nhận xét';
+    document.getElementById('commentForm').reset();
+    document.getElementById('templateId').value = '';
+}
+
+// Mở modal chỉnh sửa
+function openEditModal(id, category, type, minScore, maxScore, text) {
+    isEditMode = true;
+    document.getElementById('commentModalLabel').textContent = 'Chỉnh sửa mẫu nhận xét';
+    document.getElementById('templateId').value = id;
+    document.getElementById('commentCategory').value = category;
+    document.getElementById('commentType').value = type;
+    document.getElementById('scoreRangeMin').value = minScore;
+    document.getElementById('scoreRangeMax').value = maxScore;
+    document.getElementById('commentText').value = text;
+    
+    // Mở modal
+    const modal = new bootstrap.Modal(document.getElementById('commentModal'));
+    modal.show();
+}
+
+// Xử lý submit form
+document.getElementById('commentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const url = isEditMode ? '/api/comment_template/edit' : '/api/comment_template/create';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess(data.message);
+            // Đóng modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
+            modal.hide();
+            // Reload trang
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showError('Lỗi: ' + data.error);
+        }
+    })
+    .catch(error => {
+        showError('Lỗi kết nối: ' + error);
+    });
+});
+
+// Xử lý edit và xóa template
+document.addEventListener('DOMContentLoaded', function() {
+    // Xử lý button edit
+    const editButtons = document.querySelectorAll('.edit-template');
+    editButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const templateId = this.getAttribute('data-id');
+            editTemplate(templateId);
+        });
+    });
+
+    // Xử lý button delete
+    const deleteButtons = document.querySelectorAll('.delete-template');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const templateId = this.getAttribute('data-id');
+            if (confirm('Bạn có chắc chắn muốn xóa mẫu nhận xét này?')) {
+                deleteTemplate(templateId);
+            }
+        });
+    });
+});
+
 function deleteTemplate(templateId) {
     fetch(`/comment_template/delete/${templateId}`, {
         method: 'POST',
@@ -121,6 +380,34 @@ function deleteTemplate(templateId) {
             setTimeout(function() {
                 location.reload();
             }, 2000);
+        } else {
+            showError('Lỗi: ' + data.error);
+        }
+    })
+    .catch(error => {
+        showError('Lỗi kết nối: ' + error);
+    });
+}
+
+function editTemplate(templateId) {
+    // Fetch template data
+    fetch(`/api/comment_template/${templateId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const template = data.template;
+            // Populate modal fields
+            document.getElementById('editTemplateId').value = template.id;
+            document.getElementById('editCommentCategory').value = template.comment_category;
+            document.getElementById('editCommentType').value = template.comment_type;
+            document.getElementById('editScoreRangeMin').value = template.score_range_min;
+            document.getElementById('editScoreRangeMax').value = template.score_range_max;
+            document.getElementById('editCommentText').value = template.comment_text;
+            document.getElementById('editIsActive').checked = template.is_active;
+            
+            // Show modal
+            const editModal = new bootstrap.Modal(document.getElementById('editTemplateModal'));
+            editModal.show();
         } else {
             showError('Lỗi: ' + data.error);
         }

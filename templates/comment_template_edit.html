@@ -13,10 +13,18 @@
                 <div class="card-body">
                     <form method="POST">
                         <div class="mb-3">
+                            <label for="comment_category" class="form-label">Danh mục <span class="text-danger">*</span></label>
+                            <select class="form-select" id="comment_category" name="comment_category" required>
+                                <option value="academic" {% if template[1] == 'academic' %}selected{% endif %}>Học tập</option>
+                                <option value="conduct" {% if template[1] == 'conduct' %}selected{% endif %}>Hạnh kiểm</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
                             <label for="comment_type" class="form-label">Loại nhận xét <span class="text-danger">*</span></label>
                             <select class="form-select" id="comment_type" name="comment_type" required>
-                                <option value="encouragement" {% if template[1] == 'encouragement' %}selected{% endif %}>Khích lệ</option>
-                                <option value="reminder" {% if template[1] == 'reminder' %}selected{% endif %}>Nhắc nhở</option>
+                                <option value="encouragement" {% if template[2] == 'encouragement' %}selected{% endif %}>Khích lệ</option>
+                                <option value="reminder" {% if template[2] == 'reminder' %}selected{% endif %}>Nhắc nhở</option>
                             </select>
                         </div>
 
@@ -24,20 +32,20 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="score_range_min" class="form-label">Điểm tối thiểu <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" id="score_range_min" name="score_range_min" min="1" value="{{ template[2] }}" required>
+                                    <input type="number" class="form-control" id="score_range_min" name="score_range_min" min="1" value="{{ template[3] }}" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="score_range_max" class="form-label">Điểm tối đa <span class="text-danger">*</span></label>
-                                    <input type="number" class="form-control" id="score_range_max" name="score_range_max" min="1" value="{{ template[3] }}" required>
+                                    <input type="number" class="form-control" id="score_range_max" name="score_range_max" min="1" value="{{ template[4] }}" required>
                                 </div>
                             </div>
                         </div>
 
                         <div class="mb-3">
                             <label for="comment_text" class="form-label">Nội dung nhận xét <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="comment_text" name="comment_text" rows="4" required>{{ template[4] }}</textarea>
+                            <textarea class="form-control" id="comment_text" name="comment_text" rows="4" required>{{ template[5] }}</textarea>
                         </div>
 
                         <div class="mb-3">
@@ -45,6 +53,7 @@
                                 <i class="fas fa-info-circle"></i>
                                 <strong>Hướng dẫn:</strong>
                                 <ul class="mb-0 mt-2">
+                                    <li><strong>Danh mục:</strong> Chọn "Học tập" cho nhận xét về điểm học tập, "Hạnh kiểm" cho nhận xét về điểm rèn luyện</li>
                                     <li><strong>Khích lệ:</strong> Sử dụng khi điểm số tăng so với kỳ trước</li>
                                     <li><strong>Nhắc nhở:</strong> Sử dụng khi điểm số giảm so với kỳ trước</li>
                                     <li><strong>Khoảng điểm:</strong> Chênh lệch điểm số giữa 2 kỳ (ví dụ: 2-5 điểm)</li>

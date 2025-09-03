@@ -505,10 +505,11 @@ def setup_sample_data():
 
             CREATE TABLE IF NOT EXISTS Comment_Templates (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                template_name TEXT NOT NULL,
-                template_text TEXT NOT NULL,
-                min_score_diff INTEGER,
-                max_score_diff INTEGER,
+                comment_category TEXT NOT NULL, -- 'academic' hoặc 'conduct'
+                comment_type TEXT NOT NULL, -- 'encouragement' hoặc 'reminder'
+                score_range_min INTEGER,
+                score_range_max INTEGER,
+                comment_text TEXT NOT NULL,
                 is_active BOOLEAN DEFAULT 1,
                 created_date TEXT DEFAULT CURRENT_TIMESTAMP
             );
@@ -3678,9 +3679,11 @@ def user_summary():
 
         records = []
         for user_id, user_name in filtered_users:
-            total_points = 0
+            conduct_points = 0
+            academic_points = 0
             has_data = False
 
+            # Điểm rèn luyện (User_Conduct)
             uc_query = """
                     SELECT SUM(total_points)
                     FROM User_Conduct
@@ -3696,9 +3699,10 @@ def user_summary():
             cursor.execute(uc_query, uc_params)
             uc_points = cursor.fetchone()[0]
             if uc_points:
-                total_points += uc_points
+                conduct_points = uc_points
                 has_data = True
 
+            # Điểm học tập (User_Subjects)
             us_query = """
                     SELECT SUM(total_points)
                     FROM User_Subjects
@@ -3714,7 +3718,7 @@ def user_summary():
             cursor.execute(us_query, us_params)
             us_points = cursor.fetchone()[0]
             if us_points:
-                total_points += us_points
+                academic_points = us_points
                 has_data = True
 
             # Tính toán nhận xét tự động
@@ -3746,7 +3750,8 @@ def user_summary():
                     prev_date_to = prev_period_end.strftime('%Y-%m-%d')
                     
                     # Tính điểm kỳ trước
-                    prev_total_points = 0
+                    prev_conduct_points = 0
+                    prev_academic_points = 0
                     
                     # Điểm hạnh kiểm kỳ trước
                     cursor.execute('''
@@ -3756,7 +3761,7 @@ def user_summary():
                     ''', (user_id, prev_date_from, prev_date_to))
                     prev_uc = cursor.fetchone()[0]
                     if prev_uc:
-                        prev_total_points += prev_uc
+                        prev_conduct_points = prev_uc
                     
                     # Điểm học tập kỳ trước
                     cursor.execute('''
@@ -3766,26 +3771,37 @@ def user_summary():
                     ''', (user_id, prev_date_from, prev_date_to))
                     prev_us = cursor.fetchone()[0]
                     if prev_us:
-                        prev_total_points += prev_us
+                        prev_academic_points = prev_us
                     
-                    # Tính sự thay đổi và gợi ý nhận xét
-                    current_points = total_points if total_points else 0
-                    score_difference = current_points - prev_total_points
+                    # Tính sự thay đổi cho từng loại điểm
+                    current_academic_points = academic_points if academic_points else 0
+                    current_conduct_points = conduct_points if conduct_points else 0
                     
-                    if score_difference != 0:
-                        auto_comment = get_auto_comment(score_difference)
+                    academic_difference = current_academic_points - prev_academic_points
+                    conduct_difference = current_conduct_points - prev_conduct_points
+                    
+                    if academic_difference != 0 or conduct_difference != 0:
+                        auto_comment = get_auto_comment(academic_difference, conduct_difference)
+                        # Thêm debug info để hiểu cách tính
+                        debug_info = f" [Debug: HT {current_academic_points}->{prev_academic_points}={academic_difference:+}, HK {current_conduct_points}->{prev_conduct_points}={conduct_difference:+}]"
+                        if auto_comment:
+                            auto_comment += debug_info
                     
                 except:
                     pass
 
-            records.append((user_name, total_points if total_points else 0, has_data, user_id, current_comment, auto_comment))
+            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, has_data, user_id, current_comment, auto_comment))
 
         if sort_by == 'user_name':
             records.sort(key=lambda x: normalize_vietnamese_for_sort(x[0].split()[-1]) if x[0] else '', reverse=(sort_order == 'desc'))
-        elif sort_by == 'total_points':
+        elif sort_by == 'academic_points':
             records.sort(key=lambda x: x[1], reverse=(sort_order == 'desc'))
-        elif sort_by == 'in':
+        elif sort_by == 'conduct_points':
             records.sort(key=lambda x: x[2], reverse=(sort_order == 'desc'))
+        elif sort_by == 'total_points':
+            records.sort(key=lambda x: x[1] + x[2], reverse=(sort_order == 'desc'))
+        elif sort_by == 'in':
+            records.sort(key=lambda x: x[3], reverse=(sort_order == 'desc'))
 
         conn.close()
 
@@ -4065,10 +4081,10 @@ def comment_management():
             
             # Lấy danh sách mẫu nhận xét
             cursor.execute('''
-                SELECT id, comment_type, score_range_min, score_range_max, comment_text, created_date
+                SELECT id, comment_category, comment_type, score_range_min, score_range_max, comment_text, created_date
                 FROM Comment_Templates 
-                WHERE is_deleted = 0
-                ORDER BY comment_type, score_range_min
+                WHERE is_active = 1
+                ORDER BY comment_category, comment_type, score_range_min
             ''')
             templates = cursor.fetchall()
             
@@ -4090,7 +4106,8 @@ def comment_template_create():
         
         if request.method == 'POST':
             try:
-                comment_type = request.form['comment_type']
+                comment_category = request.form['comment_category']  # 'academic' hoặc 'conduct'
+                comment_type = request.form['comment_type']  # 'encouragement' hoặc 'reminder'
                 score_range_min = int(request.form['score_range_min'])
                 score_range_max = int(request.form['score_range_max'])
                 comment_text = request.form['comment_text']
@@ -4099,9 +4116,9 @@ def comment_template_create():
                 cursor = conn.cursor()
                 
                 cursor.execute('''
-                    INSERT INTO Comment_Templates (comment_type, score_range_min, score_range_max, comment_text)
-                    VALUES (?, ?, ?, ?)
-                ''', (comment_type, score_range_min, score_range_max, comment_text))
+                    INSERT INTO Comment_Templates (comment_category, comment_type, score_range_min, score_range_max, comment_text)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (comment_category, comment_type, score_range_min, score_range_max, comment_text))
                 
                 conn.commit()
                 conn.close()
@@ -4127,6 +4144,7 @@ def comment_template_edit(template_id):
         
         if request.method == 'POST':
             try:
+                comment_category = request.form['comment_category']
                 comment_type = request.form['comment_type']
                 score_range_min = int(request.form['score_range_min'])
                 score_range_max = int(request.form['score_range_max'])
@@ -4134,9 +4152,9 @@ def comment_template_edit(template_id):
                 
                 cursor.execute('''
                     UPDATE Comment_Templates 
-                    SET comment_type=?, score_range_min=?, score_range_max=?, comment_text=?
-                    WHERE id=? AND is_deleted=0
-                ''', (comment_type, score_range_min, score_range_max, comment_text, template_id))
+                    SET comment_category=?, comment_type=?, score_range_min=?, score_range_max=?, comment_text=?
+                    WHERE id=? AND is_active=1
+                ''', (comment_category, comment_type, score_range_min, score_range_max, comment_text, template_id))
                 
                 conn.commit()
                 conn.close()
@@ -4147,7 +4165,7 @@ def comment_template_edit(template_id):
                 flash(f'Lỗi khi cập nhật mẫu nhận xét: {str(e)}', 'error')
         
         # Lấy thông tin mẫu nhận xét
-        cursor.execute('SELECT * FROM Comment_Templates WHERE id=? AND is_deleted=0', (template_id,))
+        cursor.execute('SELECT * FROM Comment_Templates WHERE id=? AND is_active=1', (template_id,))
         template = cursor.fetchone()
         conn.close()
         
@@ -4169,7 +4187,7 @@ def comment_template_delete(template_id):
             conn = connect_db()
             cursor = conn.cursor()
             
-            cursor.execute('UPDATE Comment_Templates SET is_deleted=1 WHERE id=?', (template_id,))
+            cursor.execute('UPDATE Comment_Templates SET is_active=0 WHERE id=?', (template_id,))
             
             conn.commit()
             conn.close()
@@ -4180,8 +4198,109 @@ def comment_template_delete(template_id):
     else:
         return jsonify({'error': 'Chưa đăng nhập'}), 401
 
-def get_auto_comment(score_difference):
-    """Lấy nhận xét tự động dựa trên sự thay đổi điểm số"""
+# API routes for Comment Templates
+@app.route('/api/comment_template/create', methods=['POST'])
+def api_comment_template_create():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Chưa đăng nhập'}), 401
+    
+    if not can_access_comment_management():
+        return jsonify({'error': 'Không có quyền truy cập'}), 403
+    
+    try:
+        comment_category = request.form['comment_category']
+        comment_type = request.form['comment_type']
+        score_range_min = int(request.form['score_range_min'])
+        score_range_max = int(request.form['score_range_max'])
+        comment_text = request.form['comment_text']
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO Comment_Templates (comment_category, comment_type, score_range_min, score_range_max, comment_text)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (comment_category, comment_type, score_range_min, score_range_max, comment_text))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Đã thêm mẫu nhận xét thành công!'})
+    except Exception as e:
+        return jsonify({'error': f'Lỗi khi thêm mẫu nhận xét: {str(e)}'}), 500
+
+@app.route('/api/comment_template/<int:template_id>', methods=['GET'])
+def api_get_comment_template(template_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Chưa đăng nhập'}), 401
+    
+    if not can_access_comment_management():
+        return jsonify({'error': 'Không có quyền truy cập'}), 403
+    
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, comment_category, comment_type, score_range_min, score_range_max, 
+                   comment_text, is_active 
+            FROM Comment_Templates 
+            WHERE id = ?
+        ''', (template_id,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            template = {
+                'id': result[0],
+                'comment_category': result[1],
+                'comment_type': result[2],
+                'score_range_min': result[3],
+                'score_range_max': result[4],
+                'comment_text': result[5],
+                'is_active': bool(result[6])
+            }
+            return jsonify({'success': True, 'template': template})
+        else:
+            return jsonify({'error': 'Không tìm thấy mẫu nhận xét'}), 404
+    except Exception as e:
+        return jsonify({'error': f'Lỗi khi lấy thông tin mẫu nhận xét: {str(e)}'}), 500
+
+@app.route('/api/comment_template/edit', methods=['POST'])
+def api_comment_template_edit():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Chưa đăng nhập'}), 401
+    
+    if not can_access_comment_management():
+        return jsonify({'error': 'Không có quyền truy cập'}), 403
+    
+    try:
+        template_id = request.form['template_id']
+        comment_category = request.form['comment_category']
+        comment_type = request.form['comment_type']
+        score_range_min = int(request.form['score_range_min'])
+        score_range_max = int(request.form['score_range_max'])
+        comment_text = request.form['comment_text']
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            UPDATE Comment_Templates 
+            SET comment_category=?, comment_type=?, score_range_min=?, score_range_max=?, comment_text=?
+            WHERE id=? AND is_active=1
+        ''', (comment_category, comment_type, score_range_min, score_range_max, comment_text, template_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Đã cập nhật mẫu nhận xét thành công!'})
+    except Exception as e:
+        return jsonify({'error': f'Lỗi khi cập nhật mẫu nhận xét: {str(e)}'}), 500
+
+def get_auto_comment_for_category(score_difference, category):
+    """Lấy nhận xét tự động dựa trên sự thay đổi điểm số cho từng danh mục"""
     try:
         conn = connect_db()
         cursor = conn.cursor()
@@ -4191,10 +4310,11 @@ def get_auto_comment(score_difference):
         
         cursor.execute('''
             SELECT comment_text FROM Comment_Templates 
-            WHERE comment_type = ? AND ? BETWEEN score_range_min AND score_range_max 
-            AND is_deleted = 0
+            WHERE comment_category = ? AND comment_type = ? 
+            AND ? BETWEEN score_range_min AND score_range_max 
+            AND is_active = 1
             ORDER BY score_range_min LIMIT 1
-        ''', (comment_type, abs_diff))
+        ''', (category, comment_type, abs_diff))
         
         result = cursor.fetchone()
         conn.close()
@@ -4202,6 +4322,19 @@ def get_auto_comment(score_difference):
         return result[0] if result else None
     except:
         return None
+
+def get_auto_comment(academic_diff, conduct_diff):
+    """Lấy nhận xét tự động cho cả học tập và hạnh kiểm"""
+    academic_comment = get_auto_comment_for_category(academic_diff, 'academic') if academic_diff != 0 else None
+    conduct_comment = get_auto_comment_for_category(conduct_diff, 'conduct') if conduct_diff != 0 else None
+    
+    comments = []
+    if academic_comment:
+        comments.append(f"Học tập: {academic_comment}")
+    if conduct_comment:
+        comments.append(f"Hạnh kiểm: {conduct_comment}")
+    
+    return "; ".join(comments) if comments else None
 
 @app.route('/save_user_comment', methods=['POST'])
 def save_user_comment():

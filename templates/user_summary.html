@@ -110,9 +110,17 @@
                                 </a>
                             </th>
                             <th style="width: 100px;">
-                                <a href="{{ url_for('user_summary', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, period_type=period_type, users=selected_users, groups=selected_groups) }}">
-                                    Tổng điểm
-                                    {% if sort_by == 'total_points' %}
+                                <a href="{{ url_for('user_summary', sort_by='academic_points', sort_order='desc' if sort_by == 'academic_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, period_type=period_type, users=selected_users, groups=selected_groups) }}">
+                                    Điểm học tập
+                                    {% if sort_by == 'academic_points' %}
+                                        {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                    {% endif %}
+                                </a>
+                            </th>
+                            <th style="width: 100px;">
+                                <a href="{{ url_for('user_summary', sort_by='conduct_points', sort_order='desc' if sort_by == 'conduct_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, period_type=period_type, users=selected_users, groups=selected_groups) }}">
+                                    Điểm rèn luyện
+                                    {% if sort_by == 'conduct_points' %}
                                         {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
                                     {% endif %}
                                 </a>
@@ -124,24 +132,25 @@
                         {% for record in records %}
                             <tr>
                                 <td>
-                                    <input type="checkbox" name="in_{{ record[3] }}" value="1" {% if record[2] %}checked{% endif %}>
+                                    <input type="checkbox" name="in_{{ record[4] }}" value="1" {% if record[3] %}checked{% endif %}>
                                 </td>
                                 <td>
                                     <span class="user-name-clickable" 
-                                          data-user-id="{{ record[3] }}" 
+                                          data-user-id="{{ record[4] }}" 
                                           data-date-from="{{ date_from or '' }}" 
                                           data-date-to="{{ date_to or '' }}"
                                           style="cursor: pointer; color: #007bff; text-decoration: underline;"
-                                          title="Click đềEcopy link báo cáo">
+                                          title="Click để copy link báo cáo">
                                         {{ record[0] }}
                                         <i class="fas fa-external-link-alt ms-1"></i>
                                     </span>
                                 </td>
                                 <td>{{ record[1] }}</td>
+                                <td>{{ record[2] }}</td>
                                 <td>
                                     <div class="d-flex align-items-center">
-                                        <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[3] }}" data-user-id="{{ record[3] }}" rows="2" placeholder="Nhận xét...">{{ (record[4] if record[4] else record[5]) if record|length > 4 else '' }}</textarea>
-                                        <span class="save-status text-muted small" id="status_{{ record[3] }}"></span>
+                                        <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" rows="2" placeholder="Nhận xét...">{{ (record[5] if record[5] else record[6]) if record|length > 5 else '' }}</textarea>
+                                        <span class="save-status text-muted small" id="status_{{ record[4] }}"></span>
                                     </div>
                                 </td>
                             </tr>
