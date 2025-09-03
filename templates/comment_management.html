@@ -287,6 +287,72 @@
     </div>
 </div>
 
+<!-- Modal Edit Comment Template -->
+<div class="modal fade" id="editTemplateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="editCommentForm">
+                <div class="modal-header">
+                    <h5 class="modal-title">Sửa mẫu nhận xét</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="editTemplateId" name="template_id">
+                    
+                    <div class="mb-3">
+                        <label for="editCommentCategory" class="form-label">Danh mục <span class="text-danger">*</span></label>
+                        <select class="form-select" id="editCommentCategory" name="comment_category" required>
+                            <option value="">-- Chọn danh mục --</option>
+                            <option value="academic">Học tập</option>
+                            <option value="conduct">Hạnh kiểm</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editCommentType" class="form-label">Loại nhận xét <span class="text-danger">*</span></label>
+                        <select class="form-select" id="editCommentType" name="comment_type" required>
+                            <option value="">-- Chọn loại --</option>
+                            <option value="encouragement">Khích lệ</option>
+                            <option value="reminder">Nhắc nhở</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editScoreRangeMin" class="form-label">Điểm tối thiểu <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="editScoreRangeMin" name="score_range_min" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editScoreRangeMax" class="form-label">Điểm tối đa <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="editScoreRangeMax" name="score_range_max" min="0" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="editCommentText" class="form-label">Nội dung nhận xét <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="editCommentText" name="comment_text" rows="4" required placeholder="Nhập nội dung nhận xét..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editIsActive" name="is_active" checked>
+                            <label class="form-check-label" for="editIsActive">Kích hoạt</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Cập nhật</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
 let isEditMode = false;
 
@@ -329,11 +395,57 @@ document.getElementById('commentForm').addEventListener('submit', function(e) {
     .then(data => {
         if (data.success) {
             showSuccess(data.message);
-            // Đóng modal
+            // Đóng modal đúng cách
             const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
-            modal.hide();
-            // Reload trang
-            setTimeout(() => location.reload(), 1000);
+            if (modal) {
+                modal.hide();
+                // Xóa backdrop thủ công nếu cần
+                setTimeout(() => {
+                    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.removeProperty('overflow');
+                    document.body.style.removeProperty('padding-right');
+                }, 300);
+            }
+            // Refresh grid thay vì reload trang
+            refreshCommentGrid();
+        } else {
+            showError('Lỗi: ' + data.error);
+        }
+    })
+    .catch(error => {
+        showError('Lỗi kết nối: ' + error);
+    });
+});
+
+// Xử lý submit form edit
+document.getElementById('editCommentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    
+    fetch('/api/comment_template/edit', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess(data.message);
+            // Đóng modal đúng cách
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editTemplateModal'));
+            if (modal) {
+                modal.hide();
+                // Xóa backdrop thủ công nếu cần
+                setTimeout(() => {
+                    document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.removeProperty('overflow');
+                    document.body.style.removeProperty('padding-right');
+                }, 300);
+            }
+            // Refresh grid thay vì reload trang
+            refreshCommentGrid();
         } else {
             showError('Lỗi: ' + data.error);
         }
@@ -377,9 +489,8 @@ function deleteTemplate(templateId) {
     .then(data => {
         if (data.success) {
             showSuccess(data.message);
-            setTimeout(function() {
-                location.reload();
-            }, 2000);
+            // Refresh grid thay vì reload trang
+            refreshCommentGrid();
         } else {
             showError('Lỗi: ' + data.error);
         }
@@ -416,5 +527,89 @@ function editTemplate(templateId) {
         showError('Lỗi kết nối: ' + error);
     });
 }
+
+function refreshCommentGrid() {
+    // Lấy tab hiện tại đang active
+    const activeMainTab = document.querySelector('#commentTabs .nav-link.active');
+    let activeSubTab = null;
+    
+    // Tìm subtab active dựa trên main tab hiện tại
+    if (activeMainTab) {
+        const mainTabTarget = activeMainTab.getAttribute('data-bs-target');
+        if (mainTabTarget === '#academic') {
+            activeSubTab = document.querySelector('#academicTabs .nav-link.active');
+        } else if (mainTabTarget === '#conduct') {
+            activeSubTab = document.querySelector('#conductTabs .nav-link.active');
+        }
+    }
+    
+    let tabInfo = '';
+    if (activeMainTab && activeSubTab) {
+        const mainTabTarget = activeMainTab.getAttribute('data-bs-target');
+        const subTabTarget = activeSubTab.getAttribute('data-bs-target');
+        tabInfo = `${mainTabTarget}|${subTabTarget}`;
+    }
+    
+    // Lưu vào sessionStorage
+    if (tabInfo) {
+        sessionStorage.setItem('activeTab', tabInfo);
+        console.log('Đã lưu tab state:', tabInfo); // Debug log
+    }
+    
+    // Reload trang
+    window.location.reload();
+}
+
+// Khôi phục vị trí tab sau khi reload
+document.addEventListener('DOMContentLoaded', function() {
+    // Khôi phục tab từ sessionStorage
+    const savedTabInfo = sessionStorage.getItem('activeTab');
+    console.log('Khôi phục tab state:', savedTabInfo); // Debug log
+    
+    if (savedTabInfo) {
+        const [mainTabTarget, subTabTarget] = savedTabInfo.split('|');
+        console.log('Main tab:', mainTabTarget, 'Sub tab:', subTabTarget); // Debug log
+        
+        // Activate main tab
+        const mainTabElement = document.querySelector(`[data-bs-target="${mainTabTarget}"]`);
+        if (mainTabElement) {
+            const mainTab = new bootstrap.Tab(mainTabElement);
+            mainTab.show();
+            
+            // Wait for main tab to show then activate sub tab
+            setTimeout(() => {
+                const subTabElement = document.querySelector(`[data-bs-target="${subTabTarget}"]`);
+                if (subTabElement) {
+                    const subTab = new bootstrap.Tab(subTabElement);
+                    subTab.show();
+                    console.log('Đã khôi phục tab:', subTabTarget); // Debug log
+                }
+            }, 100);
+        }
+        
+        // Clear saved tab info
+        sessionStorage.removeItem('activeTab');
+    }
+    
+    // Xử lý button edit
+    const editButtons = document.querySelectorAll('.edit-template');
+    editButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const templateId = this.getAttribute('data-id');
+            editTemplate(templateId);
+        });
+    });
+
+    // Xử lý button delete
+    const deleteButtons = document.querySelectorAll('.delete-template');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const templateId = this.getAttribute('data-id');
+            if (confirm('Bạn có chắc chắn muốn xóa mẫu nhận xét này?')) {
+                deleteTemplate(templateId);
+            }
+        });
+    });
+});
 </script>
 {% endblock %}
