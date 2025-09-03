@@ -487,6 +487,31 @@ def setup_sample_data():
                 updated_by INTEGER,
                 FOREIGN KEY (updated_by) REFERENCES Users(id)
             );
+
+            CREATE TABLE IF NOT EXISTS User_Comments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                period_start TEXT NOT NULL,
+                period_end TEXT NOT NULL,
+                previous_score INTEGER DEFAULT 0,
+                current_score INTEGER DEFAULT 0,
+                score_difference INTEGER DEFAULT 0,
+                comment_text TEXT,
+                is_auto_generated BOOLEAN DEFAULT 0,
+                created_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                updated_date TEXT DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES Users(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS Comment_Templates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                template_name TEXT NOT NULL,
+                template_text TEXT NOT NULL,
+                min_score_diff INTEGER,
+                max_score_diff INTEGER,
+                is_active BOOLEAN DEFAULT 1,
+                created_date TEXT DEFAULT CURRENT_TIMESTAMP
+            );
         """)
     
     # Thêm setting mặc định cho background
@@ -3158,6 +3183,7 @@ def group_summary():
         date_from = default_date_from
         date_to = default_date_to
         data_source = 'user_conduct'
+        period_type = 'week'  # Thêm period_type
         select_all_groups = False
 
         # Xử lý yêu cầu POST hoặc GET
@@ -3167,12 +3193,14 @@ def group_summary():
             date_from = request.form.get('date_from') or default_date_from
             date_to = request.form.get('date_to') or default_date_to
             data_source = request.form.get('data_source', 'user_conduct')
+            period_type = request.form.get('period_type', 'week')  # Lấy period_type từ form
         else:
             select_all_groups = request.args.get('select_all_groups') == 'on'
             selected_groups = request.args.getlist('groups')
             date_from = request.args.get('date_from') or default_date_from
             date_to = request.args.get('date_to') or default_date_to
             data_source = request.args.get('data_source', 'user_conduct')
+            period_type = request.args.get('period_type', 'week')  # Lấy period_type từ args
 
         # Kết nối database
         conn = connect_db()
@@ -3302,6 +3330,7 @@ def group_summary():
                                groups=groups,
                                date_from=date_from,
                                date_to=date_to,
+                               period_type=period_type,  # Thêm period_type
                                selected_groups=selected_groups,
                                select_all_groups=select_all_groups,
                                data_source=data_source,
@@ -3570,6 +3599,7 @@ def user_summary():
         selected_groups = []
         date_from = default_date_from
         date_to = default_date_to
+        period_type = 'week'  # Thêm period_type
         select_all_users = False
         select_all_groups = False
 
@@ -3580,6 +3610,7 @@ def user_summary():
             selected_groups = request.form.getlist('groups')
             date_from = request.form.get('date_from') or default_date_from
             date_to = request.form.get('date_to') or default_date_to
+            period_type = request.form.get('period_type', 'week')  # Lấy period_type từ form
         else:
             select_all_users = request.args.get('select_all_users') == 'on'
             selected_users = request.args.getlist('users')
@@ -3587,6 +3618,7 @@ def user_summary():
             selected_groups = request.args.getlist('groups')
             date_from = request.args.get('date_from') or default_date_from
             date_to = request.args.get('date_to') or default_date_to
+            period_type = request.args.get('period_type', 'week')  # Lấy period_type từ args
 
         conn = connect_db()
         cursor = conn.cursor()
@@ -3764,6 +3796,7 @@ def user_summary():
                                groups=groups,
                                date_from=date_from,
                                date_to=date_to,
+                               period_type=period_type,  # Thêm period_type
                                selected_users=selected_users,
                                selected_groups=selected_groups,
                                select_all_users=select_all_users,
@@ -4350,12 +4383,28 @@ def user_report_secure(token):
     # Get user comments for this period
     user_comment = ""
     if date_from and date_to:
+        # Try exact match first
         cursor.execute('''
             SELECT comment_text FROM User_Comments 
             WHERE user_id = ? AND period_start = ? AND period_end = ?
             ORDER BY updated_date DESC LIMIT 1
         ''', (user_id, date_from, date_to))
         comment_result = cursor.fetchone()
+        
+        # If no exact match found, look for overlapping periods
+        if not comment_result:
+            cursor.execute('''
+                SELECT comment_text FROM User_Comments 
+                WHERE user_id = ? 
+                AND (
+                    (period_start <= ? AND period_end >= ?) OR
+                    (period_start >= ? AND period_start <= ?) OR
+                    (period_end >= ? AND period_end <= ?)
+                )
+                ORDER BY updated_date DESC LIMIT 1
+            ''', (user_id, date_from, date_from, date_from, date_to, date_from, date_to))
+            comment_result = cursor.fetchone()
+        
         if comment_result and comment_result[0]:
             user_comment = comment_result[0]
     

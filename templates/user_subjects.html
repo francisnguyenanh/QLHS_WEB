@@ -128,10 +128,6 @@
                                 <option value="{{ user[0] }}" {% if user[0]|string in selected_users %}selected{% endif %}>{{ user[1] }}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-check mt-2">
-                            <input type="checkbox" class="form-check-input" id="select_all_users" name="select_all_users" {% if select_all_users %}checked{% endif %}>
-                            <label class="form-check-label" for="select_all_users">Chọn tất cả</label>
-                        </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-3">
@@ -142,10 +138,6 @@
                                 <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-check mt-2">
-                            <input type="checkbox" class="form-check-input" id="select_all_groups" name="select_all_groups" {% if select_all_groups %}checked{% endif %}>
-                            <label class="form-check-label" for="select_all_groups">Chọn tất cả</label>
-                        </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-3">
@@ -156,10 +148,6 @@
                                 <option value="{{ subject[0] }}" {% if subject[0]|string in selected_subjects %}selected{% endif %}>{{ subject[1] }}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-check mt-2">
-                            <input type="checkbox" class="form-check-input" id="select_all_subjects" name="select_all_subjects" {% if select_all_subjects %}checked{% endif %}>
-                            <label class="form-check-label" for="select_all_subjects">Chọn tất cả</label>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -179,7 +167,7 @@
                 <thead>
                     <tr>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_subjects_list', sort_by='user_name', sort_order='desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups, select_all_users=select_all_users, select_all_subjects=select_all_subjects, select_all_groups=select_all_groups) }}">
+                            <a href="{{ url_for('user_subjects_list', sort_by='user_name', sort_order='desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups) }}">
                                 Họ tên
                                 {% if sort_by == 'user_name' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -187,7 +175,7 @@
                             </a>
                         </th>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_subjects_list', sort_by='subject_name', sort_order='desc' if sort_by == 'subject_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups, select_all_users=select_all_users, select_all_subjects=select_all_subjects, select_all_groups=select_all_groups) }}">
+                            <a href="{{ url_for('user_subjects_list', sort_by='subject_name', sort_order='desc' if sort_by == 'subject_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups) }}">
                                 Môn học
                                 {% if sort_by == 'subject_name' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -195,7 +183,7 @@
                             </a>
                         </th>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_subjects_list', sort_by='criteria_name', sort_order='desc' if sort_by == 'criteria_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups, select_all_users=select_all_users, select_all_subjects=select_all_subjects, select_all_groups=select_all_groups) }}">
+                            <a href="{{ url_for('user_subjects_list', sort_by='criteria_name', sort_order='desc' if sort_by == 'criteria_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups) }}">
                                 Kết quả
                                 {% if sort_by == 'criteria_name' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -203,7 +191,7 @@
                             </a>
                         </th>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_subjects_list', sort_by='group_name', sort_order='desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups, select_all_users=select_all_users, select_all_subjects=select_all_subjects, select_all_groups=select_all_groups) }}">
+                            <a href="{{ url_for('user_subjects_list', sort_by='group_name', sort_order='desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups) }}">
                                 Nhóm
                                 {% if sort_by == 'group_name' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -211,7 +199,7 @@
                             </a>
                         </th>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_subjects_list', sort_by='registered_date', sort_order='desc' if sort_by == 'registered_date' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups, select_all_users=select_all_users, select_all_subjects=select_all_subjects, select_all_groups=select_all_groups) }}">
+                            <a href="{{ url_for('user_subjects_list', sort_by='registered_date', sort_order='desc' if sort_by == 'registered_date' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups) }}">
                                 Dữ liệu ngày
                                 {% if sort_by == 'registered_date' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -219,7 +207,7 @@
                             </a>
                         </th>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_subjects_list', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups, select_all_users=select_all_users, select_all_subjects=select_all_subjects, select_all_groups=select_all_groups) }}">
+                            <a href="{{ url_for('user_subjects_list', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups) }}">
                                 Điểm ngày
                                 {% if sort_by == 'total_points' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -227,7 +215,7 @@
                             </a>
                         </th>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_subjects_list', sort_by='entered_by', sort_order='desc' if sort_by == 'entered_by' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups, select_all_users=select_all_users, select_all_subjects=select_all_subjects, select_all_groups=select_all_groups) }}">
+                            <a href="{{ url_for('user_subjects_list', sort_by='entered_by', sort_order='desc' if sort_by == 'entered_by' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups) }}">
                                 Người đăng ký
                                 {% if sort_by == 'entered_by' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -253,7 +241,7 @@
                                 {% endif %}
                                 {% if permissions.get('master', False) or permissions.get('academic_management_delete', False) %}
                                     <button class="btn btn-sm btn-danger" 
-                                            data-delete-url="{{ url_for('user_subjects_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups, select_all_users=select_all_users, select_all_subjects=select_all_subjects, select_all_groups=select_all_groups) }}"
+                                            data-delete-url="{{ url_for('user_subjects_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups) }}"
                                             onclick="confirmDeleteRecord(this)">Xoá</button>
                                 {% endif %}
                             </td>
@@ -339,27 +327,6 @@
     <script>
         let isEditMode = false;
         let currentEditId = null;
-
-        document.getElementById('select_all_users').addEventListener('change', function() {
-            const userSelect = document.getElementById('users');
-            for (let option of userSelect.options) {
-                option.selected = this.checked;
-            }
-        });
-
-        document.getElementById('select_all_subjects').addEventListener('change', function() {
-            const subjectSelect = document.getElementById('subjects');
-            for (let option of subjectSelect.options) {
-                option.selected = this.checked;
-            }
-        });
-
-        document.getElementById('select_all_groups').addEventListener('change', function() {
-            const groupSelect = document.getElementById('groups');
-            for (let option of groupSelect.options) {
-                option.selected = this.checked;
-            }
-        });
 
         function openCreateModal() {
             isEditMode = false;

@@ -9,9 +9,9 @@
                     <!-- Chọn loại thời gian -->
                     <div class="form-group mb-3">
                         <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" checked>
+                            <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" {% if period_type == 'week' %}checked{% endif %}>
                             <label class="btn btn-outline-primary" for="week_type">Tuần</label>
-                            <input type="radio" class="btn-check" name="period_type" id="month_type" value="month">
+                            <input type="radio" class="btn-check" name="period_type" id="month_type" value="month" {% if period_type == 'month' %}checked{% endif %}>
                             <label class="btn btn-outline-primary" for="month_type">Tháng</label>
                         </div>
                     </div>
@@ -45,10 +45,6 @@
                                 <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-check mt-2">
-                            <input type="checkbox" class="form-check-input" id="select_all_groups" name="select_all_groups" {% if select_all_groups %}checked{% endif %}>
-                            <label class="form-check-label" for="select_all_groups">Chọn tất cả nhóm</label>
-                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Tìm theo:</label>
@@ -175,13 +171,46 @@
             return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
         }
 
+        // Biến để theo dõi việc khởi tạo
+        let isInitializing = true;
+
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
-            // Luôn khởi tạo với tuần hiện tại dựa trên ngày hiện tại để đảm bảo tất cả trang đều hiển thị cùng tuần
-            currentDate = getMonday(new Date());
-            currentPeriodType = 'week';
-            document.getElementById('week_type').checked = true;
+            // Kiểm tra xem có giá trị date_from và date_to từ server không
+            const dateFromValue = document.getElementById('date_from').value;
+            const dateToValue = document.getElementById('date_to').value;
+            
+            // Lấy period_type từ server
+            const serverPeriodType = '{{ period_type }}';
+            
+            if (dateFromValue && dateToValue) {
+                // Nếu có giá trị từ server, sử dụng giá trị đó
+                const fromDate = new Date(dateFromValue);
+                const toDate = new Date(dateToValue);
+                
+                // Sử dụng period_type từ server
+                currentPeriodType = serverPeriodType || 'week';
+                
+                if (currentPeriodType === 'week') {
+                    // Tuần: sử dụng ngày đầu tuần
+                    currentDate = getMonday(fromDate);
+                    document.getElementById('week_type').checked = true;
+                } else {
+                    // Tháng: sử dụng ngày đầu tháng  
+                    currentDate = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+                    document.getElementById('month_type').checked = true;
+                }
+            } else {
+                // Nếu không có giá trị từ server, khởi tạo với tuần hiện tại
+                currentDate = getMonday(new Date());
+                currentPeriodType = 'week';
+                document.getElementById('week_type').checked = true;
+            }
+            
             updatePeriodDisplay();
+            
+            // Hoàn thành khởi tạo
+            isInitializing = false;
 
             // Xử lý thay đổi loại thời gian
             document.querySelectorAll('input[name="period_type"]').forEach(radio => {
@@ -211,19 +240,15 @@
                 updatePeriodDisplay();
             });
 
-            // Tự động submit form khi thay đổi ngày
+            // Tự động submit form khi thay đổi ngày (chỉ sau khi khởi tạo xong)
             document.getElementById('date_from').addEventListener('change', function() {
-                document.getElementById('searchForm').submit();
+                if (!isInitializing) {
+                    document.getElementById('searchForm').submit();
+                }
             });
             document.getElementById('date_to').addEventListener('change', function() {
-                document.getElementById('searchForm').submit();
-            });
-
-            // Xử lý chọn tất cả nhóm
-            document.getElementById('select_all_groups').addEventListener('change', function() {
-                const groupSelect = document.getElementById('groups');
-                for (let option of groupSelect.options) {
-                    option.selected = this.checked;
+                if (!isInitializing) {
+                    document.getElementById('searchForm').submit();
                 }
             });
         });

@@ -29,9 +29,9 @@
                     <!-- Chọn loại thời gian -->
                     <div class="form-group mb-3">
                         <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" checked>
+                            <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" {% if period_type == 'week' %}checked{% endif %}>
                             <label class="btn btn-outline-primary" for="week_type">Tuần</label>
-                            <input type="radio" class="btn-check" name="period_type" id="month_type" value="month">
+                            <input type="radio" class="btn-check" name="period_type" id="month_type" value="month" {% if period_type == 'month' %}checked{% endif %}>
                             <label class="btn btn-outline-primary" for="month_type">Tháng</label>
                         </div>
                     </div>
@@ -65,10 +65,6 @@
                                 <option value="{{ user[0] }}" {% if user[0]|string in selected_users %}selected{% endif %}>{{ user[1] }}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="select_all_users" name="select_all_users" {% if select_all_users %}checked{% endif %}>
-                            <label class="form-check-label" for="select_all_users">Chọn tất cả</label>
-                        </div>
                     </div>
                     <div class="form-group">
                         <label for="groups">Nhóm:</label>
@@ -77,10 +73,6 @@
                                 <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" id="select_all_groups" name="select_all_groups" {% if select_all_groups %}checked{% endif %}>
-                            <label class="form-check-label" for="select_all_groups">Chọn tất cả</label>
-                        </div>
                     </div>
                     <div class="form-group text-center">
                         <button type="submit" class="btn btn-primary">Tìm kiếm</button>
@@ -102,7 +94,7 @@
                         <tr>
                             <th style="width: 100px;">
                                 <input type="checkbox" id="select_all_in">
-                                <a href="{{ url_for('user_summary', sort_by='in', sort_order='desc' if sort_by == 'in' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, groups=selected_groups, select_all_users=select_all_users, select_all_groups=select_all_groups) }}">
+                                <a href="{{ url_for('user_summary', sort_by='in', sort_order='desc' if sort_by == 'in' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, period_type=period_type, users=selected_users, groups=selected_groups) }}">
                                     Xuất
                                     {% if sort_by == 'in' %}
                                         {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -110,15 +102,15 @@
                                 </a>
                             </th>
                             <th style="width: 250px;">
-                                <a href="{{ url_for('user_summary', sort_by='user_name', sort_order='desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, groups=selected_groups, select_all_users=select_all_users, select_all_groups=select_all_groups) }}">
-                                    Họ tên
+                                <a href="{{ url_for('user_summary', sort_by='user_name', sort_order='desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, period_type=period_type, users=selected_users, groups=selected_groups) }}">
+                                    HềEtên
                                     {% if sort_by == 'user_name' %}
                                         {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
                                     {% endif %}
                                 </a>
                             </th>
                             <th style="width: 100px;">
-                                <a href="{{ url_for('user_summary', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, groups=selected_groups, select_all_users=select_all_users, select_all_groups=select_all_groups) }}">
+                                <a href="{{ url_for('user_summary', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, period_type=period_type, users=selected_users, groups=selected_groups) }}">
                                     Tổng điểm
                                     {% if sort_by == 'total_points' %}
                                         {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -140,7 +132,7 @@
                                           data-date-from="{{ date_from or '' }}" 
                                           data-date-to="{{ date_to or '' }}"
                                           style="cursor: pointer; color: #007bff; text-decoration: underline;"
-                                          title="Click để copy link báo cáo">
+                                          title="Click đềEcopy link báo cáo">
                                         {{ record[0] }}
                                         <i class="fas fa-external-link-alt ms-1"></i>
                                     </span>
@@ -161,32 +153,6 @@
     </div>
 
     <script>
-        document.getElementById('select_all_users').addEventListener('change', function() {
-            const userSelect = document.getElementById('users');
-            if (this.checked) {
-                for (let i = 0; i < userSelect.options.length; i++) {
-                    userSelect.options[i].selected = true;
-                }
-            } else {
-                for (let i = 0; i < userSelect.options.length; i++) {
-                    userSelect.options[i].selected = false;
-                }
-            }
-        });
-
-        document.getElementById('select_all_groups').addEventListener('change', function() {
-            const groupSelect = document.getElementById('groups');
-            if (this.checked) {
-                for (let i = 0; i < groupSelect.options.length; i++) {
-                    groupSelect.options[i].selected = true;
-                }
-            } else {
-                for (let i = 0; i < groupSelect.options.length; i++) {
-                    groupSelect.options[i].selected = false;
-                }
-            }
-        });
-
         document.getElementById('printForm').addEventListener('submit', function(event) {
             const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
             const selectedUserIds = Array.from(checkboxes)
@@ -298,7 +264,7 @@
             return new Date(date.getFullYear(), date.getMonth() + 1, 0);
         }
 
-        // Hàm format ngày về yyyy-mm-dd
+        // Hàm format ngày vềEyyyy-mm-dd
         function formatDate(date) {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -306,7 +272,7 @@
             return `${year}-${month}-${day}`;
         }
 
-        // Hàm cập nhật hiển thị thời gian
+        // Hàm cập nhật hiển thềEthời gian
         function updatePeriodDisplay() {
             const periodDisplay = document.getElementById('periodDisplay');
             const dateFromInput = document.getElementById('date_from');
@@ -335,22 +301,55 @@
             }
         }
 
-        // Hàm lấy số tuần trong năm
+        // Hàm lấy sềEtuần trong năm
         function getWeekNumber(date) {
             const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
             const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
             return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
         }
 
+        // Biến để theo dõi việc khởi tạo
+        let isInitializing = true;
+
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
-            // Luôn khởi tạo với tuần hiện tại dựa trên ngày hiện tại để đảm bảo tất cả trang đều hiển thị cùng tuần
-            currentDate = getMonday(new Date());
-            currentPeriodType = 'week';
-            document.getElementById('week_type').checked = true;
+            // Kiểm tra xem có giá trị date_from và date_to từ server không
+            const dateFromValue = document.getElementById('date_from').value;
+            const dateToValue = document.getElementById('date_to').value;
+            
+            // Lấy period_type từ server
+            const serverPeriodType = '{{ period_type }}';
+            
+            if (dateFromValue && dateToValue) {
+                // Nếu có giá trị từ server, sử dụng giá trị đó
+                const fromDate = new Date(dateFromValue);
+                const toDate = new Date(dateToValue);
+                
+                // Sử dụng period_type từ server
+                currentPeriodType = serverPeriodType || 'week';
+                
+                if (currentPeriodType === 'week') {
+                    // Tuần: sử dụng ngày đầu tuần
+                    currentDate = getMonday(fromDate);
+                    document.getElementById('week_type').checked = true;
+                } else {
+                    // Tháng: sử dụng ngày đầu tháng  
+                    currentDate = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+                    document.getElementById('month_type').checked = true;
+                }
+            } else {
+                // Nếu không có giá trị từ server, khởi tạo với tuần hiện tại
+                currentDate = getMonday(new Date());
+                currentPeriodType = 'week';
+                document.getElementById('week_type').checked = true;
+            }
+            
             updatePeriodDisplay();
+            
+            // Hoàn thành khởi tạo
+            isInitializing = false;
 
-            // Xử lý click vào tên user để copy link báo cáo
+            // Xử lý click vào tên user đềEcopy link báo cáo
             document.querySelectorAll('.user-name-clickable').forEach(element => {
                 element.addEventListener('click', function() {
                     const userId = this.getAttribute('data-user-id');
@@ -359,7 +358,7 @@
                     
                     let reportUrl = `${window.location.origin}/user_report/${userId}`;
                     
-                    // Thêm tham số ngày nếu có
+                    // Thêm tham sềEngày nếu có
                     const params = new URLSearchParams();
                     if (dateFrom) params.append('date_from', dateFrom);
                     if (dateTo) params.append('date_to', dateTo);
@@ -434,12 +433,16 @@
                 updatePeriodDisplay();
             });
 
-            // Tự động submit form khi thay đổi ngày
+            // Tự động submit form khi thay đổi ngày (chỉ sau khi khởi tạo xong)
             document.getElementById('date_from').addEventListener('change', function() {
-                document.getElementById('searchForm').submit();
+                if (!isInitializing) {
+                    document.getElementById('searchForm').submit();
+                }
             });
             document.getElementById('date_to').addEventListener('change', function() {
-                document.getElementById('searchForm').submit();
+                if (!isInitializing) {
+                    document.getElementById('searchForm').submit();
+                }
             });
 
             // Xử lý click vào tên học sinh
@@ -457,15 +460,15 @@
                     
                     // Copy link vào clipboard
                     navigator.clipboard.writeText(reportUrl).then(() => {
-                        // Hiển thị thông báo đã copy
+                        // Hiển thềEthông báo đã copy
                         const originalText = this.innerHTML;
                         this.innerHTML = '<i class="fas fa-check text-success"></i> Đã copy link!';
                         setTimeout(() => {
                             this.innerHTML = originalText;
                         }, 2000);
                     }).catch(err => {
-                        console.error('Không thể copy link: ', err);
-                        // Fallback cho browsers không hỗ trợ clipboard API
+                        console.error('Không thềEcopy link: ', err);
+                        // Fallback cho browsers không hềEtrợ clipboard API
                         const textArea = document.createElement('textarea');
                         textArea.value = reportUrl;
                         document.body.appendChild(textArea);
@@ -480,7 +483,7 @@
                         }, 2000);
                     });
                     
-                    // Mở link trong tab mới
+                    // MềElink trong tab mới
                     window.open(reportUrl, '_blank');
                 });
             });

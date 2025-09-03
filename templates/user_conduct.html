@@ -76,7 +76,7 @@
                 
                 <button type="button" class="btn btn-primary btn-compact" id="toggleSearchForm" data-bs-toggle="tooltip" title="Hiện/Ẩn bộ lọc">
                     <i class="fas fa-filter"></i>
-                    <span class="d-none d-md-inline ms-1">Bộ lọc</span>
+                    <span class="d-none d-md-inline ms-1">BềElọc</span>
                 </button>
             </div>
         </div>
@@ -128,10 +128,6 @@
                                 <option value="{{ user[0] }}" {% if user[0]|string in selected_users %}selected{% endif %}>{{ user[1] }}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-check mt-2">
-                            <input type="checkbox" class="form-check-input" id="select_all_users" name="select_all_users" {% if select_all_users %}checked{% endif %}>
-                            <label class="form-check-label" for="select_all_users">Chọn tất cả</label>
-                        </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-3">
@@ -142,10 +138,6 @@
                                 <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-check mt-2">
-                            <input type="checkbox" class="form-check-input" id="select_all_groups" name="select_all_groups" {% if select_all_groups %}checked{% endif %}>
-                            <label class="form-check-label" for="select_all_groups">Chọn tất cả</label>
-                        </div>
                     </div>
                 </div>
                 <div class="col-12 col-md-3">
@@ -156,10 +148,6 @@
                                 <option value="{{ conduct[0] }}" {% if conduct[0]|string in selected_conducts %}selected{% endif %}>{{ conduct[1] }}</option>
                             {% endfor %}
                         </select>
-                        <div class="form-check mt-2">
-                            <input type="checkbox" class="form-check-input" id="select_all_conducts" name="select_all_conducts" {% if select_all_conducts %}checked{% endif %}>
-                            <label class="form-check-label" for="select_all_conducts">Chọn tất cả</label>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -179,15 +167,15 @@
                 <thead>
                     <tr>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_conduct_list', sort_by='user_name', sort_order='desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}">
-                                Họ tên
+                            <a href="{{ url_for('user_conduct_list', sort_by='user_name', sort_order='desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
+                                HềEtên
                                 {% if sort_by == 'user_name' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
                                 {% endif %}
                             </a>
                         </th>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_conduct_list', sort_by='conduct_name', sort_order='desc' if sort_by == 'conduct_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}">
+                            <a href="{{ url_for('user_conduct_list', sort_by='conduct_name', sort_order='desc' if sort_by == 'conduct_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
                                 Hạnh kiểm
                                 {% if sort_by == 'conduct_name' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -195,7 +183,7 @@
                             </a>
                         </th>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_conduct_list', sort_by='group_name', sort_order='desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}">
+                            <a href="{{ url_for('user_conduct_list', sort_by='group_name', sort_order='desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
                                 Nhóm
                                 {% if sort_by == 'group_name' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -203,7 +191,7 @@
                             </a>
                         </th>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_conduct_list', sort_by='registered_date', sort_order='desc' if sort_by == 'registered_date' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}">
+                            <a href="{{ url_for('user_conduct_list', sort_by='registered_date', sort_order='desc' if sort_by == 'registered_date' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
                                 Dữ liệu ngày
                                 {% if sort_by == 'registered_date' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -211,7 +199,7 @@
                             </a>
                         </th>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_conduct_list', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}">
+                            <a href="{{ url_for('user_conduct_list', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
                                 Điểm ngày
                                 {% if sort_by == 'total_points' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -219,7 +207,7 @@
                             </a>
                         </th>
                         <th class="text-nowrap">
-                            <a href="{{ url_for('user_conduct_list', sort_by='entered_by', sort_order='desc' if sort_by == 'entered_by' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}">
+                            <a href="{{ url_for('user_conduct_list', sort_by='entered_by', sort_order='desc' if sort_by == 'entered_by' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
                                 Đăng ký bởi
                                 {% if sort_by == 'entered_by' %}
                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
@@ -244,7 +232,7 @@
                                 {% endif %}
                                 {% if permissions.get('master', False) or permissions.get('conduct_management_delete', False) %}
                                     <button class="btn btn-sm btn-danger" 
-                                            data-delete-url="{{ url_for('user_conduct_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups, select_all_users=select_all_users, select_all_conducts=select_all_conducts, select_all_groups=select_all_groups) }}"
+                                            data-delete-url="{{ url_for('user_conduct_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}"
                                             onclick="confirmDeleteRecord(this)">Delete</button>
                                 {% endif %}
                             </td>
@@ -321,27 +309,6 @@
     <script>
         let isEditMode = false;
         let currentEditId = null;
-
-        document.getElementById('select_all_users').addEventListener('change', function() {
-            const userSelect = document.getElementById('users');
-            for (let option of userSelect.options) {
-                option.selected = this.checked;
-            }
-        });
-
-        document.getElementById('select_all_conducts').addEventListener('change', function() {
-            const conductSelect = document.getElementById('conducts');
-            for (let option of conductSelect.options) {
-                option.selected = this.checked;
-            }
-        });
-
-        document.getElementById('select_all_groups').addEventListener('change', function() {
-            const groupSelect = document.getElementById('groups');
-            for (let option of groupSelect.options) {
-                option.selected = this.checked;
-            }
-        });
 
         function openCreateModal() {
             isEditMode = false;
@@ -457,14 +424,14 @@
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    // Đóng modal trước khi hiển thị toast
+                    // Đóng modal trước khi hiển thềEtoast
                     const modal = bootstrap.Modal.getInstance(document.getElementById('conductModal'));
                     if (modal) {
                         modal.hide();
                     }
                     showSuccess(result.message);
                     setTimeout(function() {
-                        refreshTableData(); // Refresh chỉ bảng thay vì reload page
+                        refreshTableData(); // Refresh chềEbảng thay vì reload page
                     }, 1500);
                 } else {
                     showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
@@ -498,7 +465,7 @@
             return new Date(date.getFullYear(), date.getMonth() + 1, 0);
         }
 
-        // Hàm format ngày về yyyy-mm-dd
+        // Hàm format ngày vềEyyyy-mm-dd
         function formatDate(date) {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -506,7 +473,7 @@
             return `${year}-${month}-${day}`;
         }
 
-        // Hàm cập nhật hiển thị thời gian
+        // Hàm cập nhật hiển thềEthời gian
         function updatePeriodDisplay() {
             const periodDisplay = document.getElementById('periodDisplay');
             const dateFromInput = document.getElementById('date_from');
@@ -535,7 +502,7 @@
             }
         }
 
-        // Hàm lấy số tuần trong năm
+        // Hàm lấy sềEtuần trong năm
         function getWeekNumber(date) {
             const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
             const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
@@ -544,16 +511,16 @@
 
         // Gộp tất cả DOMContentLoaded logic vào một function duy nhất
         document.addEventListener('DOMContentLoaded', function() {
-            // Hiển thị page content sau khi DOM ready
+            // Hiển thềEpage content sau khi DOM ready
             const pageContent = document.querySelector('.page-content');
             if (pageContent) {
                 setTimeout(() => {
                     pageContent.classList.add('loaded');
-                }, 50); // Delay nhỏ để đảm bảo mọi thứ đã render
+                }, 50); // Delay nhềEđềEđảm bảo mọi thứ đã render
             }
             
             // ===== PERIOD NAVIGATION LOGIC =====
-            // Luôn khởi tạo với tuần hiện tại dựa trên ngày hiện tại để đảm bảo tất cả trang đều hiển thị cùng tuần
+            // Luôn khởi tạo với tuần hiện tại dựa trên ngày hiện tại đềEđảm bảo tất cả trang đều hiển thềEcùng tuần
             currentDate = getMonday(new Date());
             currentPeriodType = 'week';
             document.getElementById('week_type').checked = true;
@@ -618,7 +585,7 @@
                         searchFormCard.classList.remove('expanding');
                         searchFormCard.classList.add('collapsing');
                         this.classList.remove('active');
-                        this.innerHTML = '<i class="fas fa-filter"></i><span class="d-none d-md-inline ms-1">Bộ lọc</span>';
+                        this.innerHTML = '<i class="fas fa-filter"></i><span class="d-none d-md-inline ms-1">BềElọc</span>';
                         
                         // Add collapsed class after animation completes
                         setTimeout(() => {
@@ -631,8 +598,8 @@
             }
             
             // ===== SELECT ALL FUNCTIONALITY =====
-            // Select all functionality đã được implement ở phần đầu file
-            // Không cần duplicate code ở đây
+            // Select all functionality đã được implement ềEphần đầu file
+            // Không cần duplicate code ềEđây
             
             // ===== SEARCH FORM AJAX SUBMISSION =====
             const searchForm = document.getElementById('searchForm');
@@ -775,11 +742,11 @@
     </style>
 
     <script>
-        // Function để xóa item - đặt ngoài DOMContentLoaded để có thể truy cập global
+        // Function đềExóa item - đặt ngoài DOMContentLoaded đềEcó thềEtruy cập global
         function deleteItem(url) {
-            // Hiển thị toast thành công trước
+            // Hiển thềEtoast thành công trước
             showSuccess('Đang xóa...');
-            // Delay để gọi API delete và refresh table
+            // Delay đềEgọi API delete và refresh table
             setTimeout(function() {
                 fetch(url, {
                     method: 'GET' // Vì route delete đang dùng GET
@@ -788,7 +755,7 @@
                     if (response.ok) {
                         showSuccess('Xóa thành công!');
                         setTimeout(function() {
-                            refreshTableData(); // Refresh chỉ bảng thay vì redirect
+                            refreshTableData(); // Refresh chềEbảng thay vì redirect
                         }, 1000);
                     } else {
                         showError('Có lỗi xảy ra khi xóa');
@@ -801,13 +768,13 @@
             }, 1000);
         }
         
-        // Function để xử lý delete với data attribute
+        // Function đềExử lý delete với data attribute
         function confirmDeleteRecord(button) {
             const deleteUrl = button.getAttribute('data-delete-url');
             confirmDelete('Bạn có chắc chắn muốn xóa dữ liệu này?', () => deleteItem(deleteUrl));
         }
         
-        // Function để refresh bảng data mà không reload page
+        // Function đềErefresh bảng data mà không reload page
         function refreshTableData() {
             // Show loading indicator
             const tbody = document.querySelector('tbody');
@@ -815,14 +782,14 @@
                 tbody.innerHTML = '<tr><td colspan="100%" class="text-center"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>';
             }
             
-            // Lấy current form data để maintain filter state
+            // Lấy current form data đềEmaintain filter state
             const form = document.getElementById('searchForm');
             const formData = new FormData(form);
             
             // Convert FormData to URLSearchParams
             const params = new URLSearchParams();
             for (let [key, value] of formData.entries()) {
-                if (value) { // Chỉ add param nếu có value
+                if (value) { // ChềEadd param nếu có value
                     params.append(key, value);
                 }
             }
@@ -850,7 +817,7 @@
                 return response.text();
             })
             .then(html => {
-                // Parse response để lấy chỉ phần table
+                // Parse response đềElấy chềEphần table
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
                 const newTableBody = doc.querySelector('tbody');
