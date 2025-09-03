@@ -83,8 +83,10 @@
 
 <div class="home-container">
     {% if background_image %}
-        <img src="{{ url_for('static', filename='uploads/backgrounds/' + background_image) }}" 
-             alt="Background" class="background-image">
+        <img src="{{ url_for('serve_background', filename=background_image) }}" 
+             alt="Background" class="background-image"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+        <div class="background-image default-background" style="display: none;"></div>
     {% else %}
         <div class="background-image default-background"></div>
     {% endif %}

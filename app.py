@@ -3,7 +3,7 @@ from db_utils import (create_record, read_all_records, read_record_by_id,
                       update_record, delete_record, connect_db)
 from flask import flash
 from flask import  redirect, session
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory, abort
 import config
 import calendar
 import os
@@ -846,10 +846,12 @@ def save_uploaded_file(file, upload_folder):
         file_extension = file.filename.rsplit('.', 1)[1].lower()
         filename = f"{uuid.uuid4().hex}.{file_extension}"
         
-        # Đảm bảo thư mục tồn tại
-        os.makedirs(upload_folder, exist_ok=True)
+        # Đảm bảo thư mục tồn tại với đường dẫn tuyệt đối
+        app_root = os.path.dirname(os.path.abspath(__file__))
+        full_upload_folder = os.path.join(app_root, upload_folder)
+        os.makedirs(full_upload_folder, exist_ok=True)
         
-        file_path = os.path.join(upload_folder, filename)
+        file_path = os.path.join(full_upload_folder, filename)
         file.save(file_path)
         return filename
     return None
@@ -3866,9 +3868,30 @@ def home():
     if 'user_id' in session:
         # Lấy hình nền từ settings
         background_image = get_setting('background_image', '')
+        
+        # Kiểm tra file tồn tại
+        if background_image:
+            app_root = os.path.dirname(os.path.abspath(__file__))
+            background_path = os.path.join(app_root, 'static', 'uploads', 'backgrounds', background_image)
+            if not os.path.exists(background_path):
+                # Nếu file không tồn tại, xóa setting
+                set_setting('background_image', '', session['user_id'])
+                background_image = ''
+        
         return render_template_with_permissions('home.html', background_image=background_image)
     else:
         return redirect(url_for('login'))
+
+@app.route('/background/<filename>')
+def serve_background(filename):
+    """Serve background images"""
+    try:
+        app_root = os.path.dirname(os.path.abspath(__file__))
+        backgrounds_dir = os.path.join(app_root, 'static', 'uploads', 'backgrounds')
+        return send_from_directory(backgrounds_dir, filename)
+    except:
+        # Nếu không tìm thấy file, trả về 404
+        abort(404)
 
 @app.route('/logout')
 def logout():
@@ -3920,7 +3943,8 @@ def settings_update_background():
             # Xóa hình nền cũ nếu có
             old_background = get_setting('background_image', '')
             if old_background:
-                old_path = os.path.join('static', 'uploads', 'backgrounds', old_background)
+                app_root = os.path.dirname(os.path.abspath(__file__))
+                old_path = os.path.join(app_root, 'static', 'uploads', 'backgrounds', old_background)
                 if os.path.exists(old_path):
                     os.remove(old_path)
             
@@ -3954,7 +3978,8 @@ def settings_remove_background():
         # Xóa file hình nền
         current_background = get_setting('background_image', '')
         if current_background:
-            file_path = os.path.join('static', 'uploads', 'backgrounds', current_background)
+            app_root = os.path.dirname(os.path.abspath(__file__))
+            file_path = os.path.join(app_root, 'static', 'uploads', 'backgrounds', current_background)
             if os.path.exists(file_path):
                 os.remove(file_path)
         
