@@ -47,15 +47,7 @@
         .report-header h1 {
             font-size: 2rem;
             font-weight: 600;
-            margin-bottom: 10px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .student-name {
-            font-size: 1.3rem;
-            font-weight: 500;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
             position: relative;
             z-index: 1;
         }
@@ -68,6 +60,30 @@
             position: relative;
             z-index: 1;
             font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+        
+        .student-teacher-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+            gap: 20px;
+        }
+        
+        .student-name {
+            font-size: 1.1rem;
+            font-weight: 400;
+            flex: 1;
+            text-align: left;
+        }
+        
+        .teacher-name {
+            font-size: 1.1rem;
+            font-weight: 400;
+            flex: 1;
+            text-align: right;
         }
         
         .report-body {
@@ -270,8 +286,19 @@
                 font-size: 1.8rem;
             }
             
+            .student-teacher-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
             .student-name {
                 font-size: 1.1rem;
+                text-align: center;
+            }
+            
+            .teacher-name {
+                font-size: 1rem;
+                text-align: center;
             }
             
             .report-body {
@@ -305,10 +332,17 @@
         <!-- Header -->
         <div class="report-header">
             <h1><i class="fas fa-graduation-cap me-3"></i>Báo Cáo Rèn Luyện Học Sinh</h1>
-            <div class="student-name">{{ user_name }}</div>
             <div class="period-info">
                 <i class="fas fa-calendar-alt me-2"></i>
                 Từ: {{ date_from or 'Không xác định' }} - Đến: {{ date_to or 'Không xác định' }}
+            </div>
+            <div class="student-teacher-row">
+                <div class="student-name">
+                    <i class="fas fa-user me-2"></i>{{ user_name }}
+                </div>
+                <div class="teacher-name">
+                    <i class="fas fa-chalkboard-teacher me-2"></i>GVCN: {{ teacher_name }}
+                </div>
             </div>
         </div>
         

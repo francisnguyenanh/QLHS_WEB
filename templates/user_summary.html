@@ -103,7 +103,7 @@
                             </th>
                             <th style="width: 250px;">
                                 <a href="{{ url_for('user_summary', sort_by='user_name', sort_order='desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, period_type=period_type, users=selected_users, groups=selected_groups) }}">
-                                    HềEtên
+                                    Họ Tên
                                     {% if sort_by == 'user_name' %}
                                         {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
                                     {% endif %}

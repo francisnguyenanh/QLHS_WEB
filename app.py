@@ -4341,6 +4341,16 @@ def user_report_secure(token):
     
     user_name = user_info[0]
     
+    # Get teacher name (GVCN)
+    cursor.execute("""
+        SELECT u.name FROM Users u
+        INNER JOIN Roles r ON u.role_id = r.id
+        WHERE r.name = 'GVCN' AND u.is_deleted = 0
+        LIMIT 1
+    """)
+    teacher_info = cursor.fetchone()
+    teacher_name = teacher_info[0] if teacher_info else "Chưa có GVCN"
+    
     # Get subject entries
     us_query = """
         SELECT us.registered_date, s.name AS subject_name, c.name AS criteria_name, us.total_points
@@ -4461,6 +4471,7 @@ def user_report_secure(token):
                          grouped_data=grouped_data,
                          sorted_dates=sorted_dates,
                          user_comment=user_comment,
+                         teacher_name=teacher_name,
                          token=token)  # Add token to template for regeneration if needed
 
 @app.route('/generate_report_link', methods=['POST'])
