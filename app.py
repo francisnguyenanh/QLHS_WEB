@@ -3153,9 +3153,13 @@ def group_summary():
         if not can_access_group_statistics():
             flash('Bạn không có quyền truy cập chức năng này', 'error')
             return redirect(url_for('index'))
-        # Lấy tham số sắp xếp từ query string
-        sort_by = request.args.get('sort_by', 'group_name')
-        sort_order = request.args.get('sort_order', 'asc')
+        # Lấy tham số sắp xếp từ query string hoặc form data
+        if request.method == 'POST':
+            sort_by = request.form.get('sort_by', 'group_name')
+            sort_order = request.form.get('sort_order', 'asc')
+        else:
+            sort_by = request.args.get('sort_by', 'group_name')
+            sort_order = request.args.get('sort_order', 'asc')
 
         # Danh sách cột hợp lệ để sắp xếp
         valid_columns = {
@@ -3363,6 +3367,14 @@ def group_summary():
         records_list.sort(key=lambda x: x[0 if sort_column == 'group_name' else 1], reverse=(sort_direction == 'DESC'))
 
         conn.close()
+
+        # Kiểm tra xem có phải AJAX request không
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            # Trả về JSON cho AJAX request
+            return jsonify({
+                'success': True,
+                'records': records_list
+            })
 
         return render_template_with_permissions('group_summary.html',
                                records=records_list,
@@ -3842,6 +3854,14 @@ def user_summary():
             records.sort(key=lambda x: x[3], reverse=(sort_order == 'desc'))
 
         conn.close()
+
+        # Kiểm tra xem có phải AJAX request không
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            # Trả về JSON cho AJAX request
+            return jsonify({
+                'success': True,
+                'records': records
+            })
 
         permissions = get_user_permissions()
         return render_template_with_permissions('user_summary.html',
