@@ -331,17 +331,17 @@
     <div class="report-container">
         <!-- Header -->
         <div class="report-header">
-            <h1><i class="fas fa-graduation-cap me-3"></i>Báo Cáo Rèn Luyện Học Sinh</h1>
+            <h1><i class="fas fa-graduation-cap me-3"></i>Báo Cáo Rèn Luyện</h1>
             <div class="period-info">
                 <i class="fas fa-calendar-alt me-2"></i>
-                Từ: {{ date_from or 'Không xác định' }} - Đến: {{ date_to or 'Không xác định' }}
+                {{ date_from or 'Không xác định' }}～{{ date_to or 'Không xác định' }}
             </div>
             <div class="student-teacher-row">
                 <div class="student-name">
-                    <i class="fas fa-user me-2"></i>{{ user_name }}
+                    <i class="fas fa-user me-2"></i>Học sinh</br> <b>{{ user_name }}</b>
                 </div>
                 <div class="teacher-name">
-                    <i class="fas fa-chalkboard-teacher me-2"></i>GVCN: {{ teacher_name }}
+                    <i class="fas fa-chalkboard-teacher me-2"></i>Giáo viên chủ nhiệm</br> <b>{{ teacher_name }}</b>
                 </div>
             </div>
         </div>
