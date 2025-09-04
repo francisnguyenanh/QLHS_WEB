@@ -516,9 +516,26 @@ function editTemplate(templateId) {
             document.getElementById('editCommentText').value = template.comment_text;
             document.getElementById('editIsActive').checked = template.is_active;
             
-            // Show modal
-            const editModal = new bootstrap.Modal(document.getElementById('editTemplateModal'));
-            editModal.show();
+            // Đảm bảo không có modal nào khác đang mở
+            const existingModals = document.querySelectorAll('.modal.show');
+            existingModals.forEach(modal => {
+                const modalInstance = bootstrap.Modal.getInstance(modal);
+                if (modalInstance) {
+                    modalInstance.hide();
+                }
+            });
+            
+            // Xóa backdrop cũ nếu có
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+            
+            // Delay một chút trước khi mở modal mới
+            setTimeout(() => {
+                const editModal = new bootstrap.Modal(document.getElementById('editTemplateModal'));
+                editModal.show();
+            }, 100);
         } else {
             showError('Lỗi: ' + data.error);
         }
@@ -608,6 +625,22 @@ document.addEventListener('DOMContentLoaded', function() {
             if (confirm('Bạn có chắc chắn muốn xóa mẫu nhận xét này?')) {
                 deleteTemplate(templateId);
             }
+        });
+    });
+    
+    // Xử lý sự kiện đóng modal để đảm bảo backdrop được xóa
+    const commentModal = document.getElementById('commentModal');
+    const editTemplateModal = document.getElementById('editTemplateModal');
+    
+    [commentModal, editTemplateModal].forEach(modal => {
+        modal.addEventListener('hidden.bs.modal', function () {
+            // Xóa tất cả backdrop còn sót lại
+            setTimeout(() => {
+                document.querySelectorAll('.modal-backdrop').forEach(backdrop => backdrop.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+            }, 100);
         });
     });
 });

@@ -918,6 +918,42 @@ def get_user_group_id(user_id):
     except:
         return None
 
+def get_background_image():
+    """Tìm ảnh background trong folder upload"""
+    try:
+        app_root = os.path.dirname(os.path.abspath(__file__))
+        backgrounds_dir = os.path.join(app_root, 'static', 'uploads', 'backgrounds')
+        
+        # Tạo thư mục nếu chưa tồn tại
+        os.makedirs(backgrounds_dir, exist_ok=True)
+        
+        # Tìm ảnh trong thư mục
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+        for filename in os.listdir(backgrounds_dir):
+            if '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                return filename
+        
+        return None
+    except:
+        return None
+
+def clear_all_background_images():
+    """Xóa tất cả ảnh background trong folder upload"""
+    try:
+        app_root = os.path.dirname(os.path.abspath(__file__))
+        backgrounds_dir = os.path.join(app_root, 'static', 'uploads', 'backgrounds')
+        
+        if os.path.exists(backgrounds_dir):
+            allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+            for filename in os.listdir(backgrounds_dir):
+                if '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions:
+                    file_path = os.path.join(backgrounds_dir, filename)
+                    os.remove(file_path)
+        return True
+    except Exception as e:
+        print(f"Error clearing background images: {e}")
+        return False
+
 
 # Trang chủ
 @app.route('/')
@@ -3185,7 +3221,7 @@ def group_summary():
         selected_groups = []
         date_from = default_date_from
         date_to = default_date_to
-        data_source = 'user_conduct'
+        data_source = 'all'
         period_type = 'week'  # Thêm period_type
         select_all_groups = False
 
@@ -3195,14 +3231,14 @@ def group_summary():
             selected_groups = request.form.getlist('groups')
             date_from = request.form.get('date_from') or default_date_from
             date_to = request.form.get('date_to') or default_date_to
-            data_source = request.form.get('data_source', 'user_conduct')
+            data_source = request.form.get('data_source', 'all')
             period_type = request.form.get('period_type', 'week')  # Lấy period_type từ form
         else:
             select_all_groups = request.args.get('select_all_groups') == 'on'
             selected_groups = request.args.getlist('groups')
             date_from = request.args.get('date_from') or default_date_from
             date_to = request.args.get('date_to') or default_date_to
-            data_source = request.args.get('data_source', 'user_conduct')
+            data_source = request.args.get('data_source', 'all')
             period_type = request.args.get('period_type', 'week')  # Lấy period_type từ args
 
         # Kết nối database
@@ -3866,17 +3902,8 @@ def login():
 @app.route('/home')
 def home():
     if 'user_id' in session:
-        # Lấy hình nền từ settings
-        background_image = get_setting('background_image', '')
-        
-        # Kiểm tra file tồn tại
-        if background_image:
-            app_root = os.path.dirname(os.path.abspath(__file__))
-            background_path = os.path.join(app_root, 'static', 'uploads', 'backgrounds', background_image)
-            if not os.path.exists(background_path):
-                # Nếu file không tồn tại, xóa setting
-                set_setting('background_image', '', session['user_id'])
-                background_image = ''
+        # Tự động tìm ảnh background trong folder upload
+        background_image = get_background_image()
         
         return render_template_with_permissions('home.html', background_image=background_image)
     else:
@@ -3906,7 +3933,8 @@ def settings():
             flash('Bạn không có quyền truy cập chức năng này', 'error')
             return redirect(url_for('index'))
         
-        current_background = get_setting('background_image', '')
+        # Tự động tìm ảnh background trong folder upload
+        current_background = get_background_image()
         
         # Load system config for expiry date
         system_config = load_system_config()
@@ -3940,21 +3968,14 @@ def settings_update_background():
     
     if file and allowed_file(file.filename):
         try:
-            # Xóa hình nền cũ nếu có
-            old_background = get_setting('background_image', '')
-            if old_background:
-                app_root = os.path.dirname(os.path.abspath(__file__))
-                old_path = os.path.join(app_root, 'static', 'uploads', 'backgrounds', old_background)
-                if os.path.exists(old_path):
-                    os.remove(old_path)
+            # Xóa tất cả ảnh background cũ
+            clear_all_background_images()
             
             # Lưu file mới
             upload_folder = os.path.join('static', 'uploads', 'backgrounds')
             filename = save_uploaded_file(file, upload_folder)
             
             if filename:
-                # Cập nhật setting
-                set_setting('background_image', filename, session['user_id'])
                 flash('Cập nhật hình nền thành công!', 'success')
             else:
                 flash('Lỗi khi lưu file', 'error')
@@ -3975,16 +3996,8 @@ def settings_remove_background():
         return redirect(url_for('settings'))
     
     try:
-        # Xóa file hình nền
-        current_background = get_setting('background_image', '')
-        if current_background:
-            app_root = os.path.dirname(os.path.abspath(__file__))
-            file_path = os.path.join(app_root, 'static', 'uploads', 'backgrounds', current_background)
-            if os.path.exists(file_path):
-                os.remove(file_path)
-        
-        # Xóa setting
-        set_setting('background_image', '', session['user_id'])
+        # Xóa tất cả ảnh background
+        clear_all_background_images()
         flash('Đã xóa hình nền', 'success')
     except Exception as e:
         flash(f'Lỗi: {str(e)}', 'error')

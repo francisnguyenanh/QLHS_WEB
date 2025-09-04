@@ -87,7 +87,7 @@
                         <div class="mb-3">
                             <label class="form-label">Hình nền hiện tại:</label>
                             <div class="current-background-preview">
-                                <img src="{{ url_for('static', filename='uploads/backgrounds/' + current_background) }}" 
+                                <img src="{{ url_for('serve_background', filename=current_background) }}" 
                                      alt="Current Background" 
                                      style="max-width: 300px; max-height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                             </div>
