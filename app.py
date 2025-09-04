@@ -4650,13 +4650,20 @@ def user_report_secure(token):
     conn = connect_db()
     cursor = conn.cursor()
     
-    # Get user info
+    # Get user name
     cursor.execute("SELECT name FROM Users WHERE id = ? AND is_deleted = 0", (user_id,))
     user_info = cursor.fetchone()
     if not user_info:
         return "Không tìm thấy học sinh", 404
     
     user_name = user_info[0]
+    
+    # Get first class name that is not deleted
+    class_name = None
+    cursor.execute("SELECT name FROM Classes WHERE is_deleted = 0 ORDER BY id LIMIT 1")
+    class_info = cursor.fetchone()
+    if class_info:
+        class_name = class_info[0]
     
     # Get teacher name (GVCN)
     cursor.execute("""
@@ -4776,9 +4783,10 @@ def user_report_secure(token):
     
     # Sort dates
     sorted_dates = sorted(grouped_data.keys(), reverse=True)
-    
+
     return render_template('user_report.html',
                          user_name=user_name,
+                         class_name=class_name,
                          user_id=user_id,
                          date_from=date_from,
                          date_to=date_to,
