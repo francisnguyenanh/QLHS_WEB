@@ -736,6 +736,9 @@
                     
                     // Copy to clipboard
                     navigator.clipboard.writeText(reportUrl).then(function() {
+                        // Mở tab mới với link vừa copy
+                        window.open(reportUrl, '_blank');
+                        
                         // Show success message
                         const toast = document.createElement('div');
                         toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed';
@@ -744,7 +747,7 @@
                             <div class="d-flex">
                                 <div class="toast-body">
                                     <i class="fas fa-check-circle me-2"></i>
-                                    Đã copy link báo cáo!
+                                    Đã copy link và mở báo cáo!
                                 </div>
                                 <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
                             </div>

@@ -57,6 +57,33 @@
     .search-form-card.expanding {
         transition: all 0.3s ease-in-out;
     }
+    
+    /* Highlighted row after create/edit - Text color approach */
+    .table tbody tr.highlight-row {
+        color: #dc3545 !important; /* Bootstrap danger red */
+        font-weight: bold !important;
+        animation: text-highlight-fade 3s ease-in-out;
+    }
+    
+    .table tbody tr.highlight-row td {
+        color: #dc3545 !important; /* Ensure all cells get the color */
+        font-weight: bold !important;
+    }
+    
+    @keyframes text-highlight-fade {
+        0% { 
+            color: #dc3545 !important; 
+            font-weight: bold !important;
+        }
+        50% { 
+            color: #e74c3c !important; 
+            font-weight: bold !important;
+        }
+        100% { 
+            color: inherit !important; 
+            font-weight: normal !important;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -239,7 +266,7 @@
                 </thead>
                 <tbody>
                     {% for record in records %}
-                        <tr>
+                        <tr data-id="{{ record[0] }}">
                             <td>{{ record[1] }}</td>
                             <td>{{ record[2] }}</td>
                             <td>{{ record[3] or 'None' }}</td>
@@ -462,9 +489,18 @@
                         modal.hide();
                     }
                     showSuccess(result.message);
-                    setTimeout(function() {
-                        refreshTableData(); // Refresh chỉ bảng thay vì reload page
-                    }, 1500);
+                    
+                    // Set highlight row ID for newly created/edited record
+                    if (result.id) {
+                        console.log('Setting highlight for new record ID:', result.id);
+                        setHighlightRow(result.id);
+                    } else if (isEditMode && currentEditId) {
+                        console.log('Setting highlight for edited record ID:', currentEditId);
+                        setHighlightRow(currentEditId);
+                    }
+                    
+                    // Refresh table immediately
+                    refreshTableData(); // Refresh chỉ bảng thay vì reload page
                 } else {
                     showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
                 }
@@ -591,6 +627,9 @@
             const searchFormCard = document.getElementById('searchFormCard');
             let isCollapsed = false;
             
+            // Global variable to track highlighted row
+            let highlightRowId = null;
+            
             // Initialize tooltips
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -638,6 +677,7 @@
             if (searchForm) {
                 searchForm.addEventListener('submit', function(e) {
                     e.preventDefault(); // Ngăn form submit bình thường
+                    clearHighlight(); // Clear any existing highlights
                     refreshTableData(); // Dùng AJAX thay vì submit form
                 });
             }
@@ -856,6 +896,46 @@
                 
                 if (newTableBody && tbody) {
                     tbody.innerHTML = newTableBody.innerHTML;
+                    
+                    // Highlight row if specified
+                    if (highlightRowId) {
+                        console.log('Looking for row with ID:', highlightRowId);
+                        const rowToHighlight = tbody.querySelector(`tr[data-id="${highlightRowId}"]`);
+                        console.log('Found row:', rowToHighlight);
+                        if (rowToHighlight) {
+                            console.log('Applying text highlight to row');
+                            rowToHighlight.classList.add('highlight-row');
+                            
+                            // Force text color change for immediate visibility
+                            rowToHighlight.style.color = '#dc3545';
+                            rowToHighlight.style.fontWeight = 'bold';
+                            
+                            // Apply to all cells in the row
+                            const cells = rowToHighlight.querySelectorAll('td');
+                            cells.forEach(cell => {
+                                cell.style.color = '#dc3545';
+                                cell.style.fontWeight = 'bold';
+                            });
+                            
+                            console.log('Text highlight applied. Row should now be red and bold.');
+                            console.log('Row classes after adding highlight:', rowToHighlight.className);
+                            
+                            // Remove highlight after 5 seconds
+                            setTimeout(() => {
+                                rowToHighlight.classList.remove('highlight-row');
+                                rowToHighlight.style.color = '';
+                                rowToHighlight.style.fontWeight = '';
+                                cells.forEach(cell => {
+                                    cell.style.color = '';
+                                    cell.style.fontWeight = '';
+                                });
+                                highlightRowId = null;
+                                console.log('Text highlight removed');
+                            }, 10000);
+                        } else {
+                            console.log('Row not found with data-id:', highlightRowId);
+                        }
+                    }
                 } else {
                     tbody.innerHTML = '<tr><td colspan="100%" class="text-center">Không có dữ liệu</td></tr>';
                 }
@@ -867,6 +947,65 @@
                 }
                 showError('Có lỗi xảy ra khi tải lại dữ liệu');
             });
+        }
+        
+        // Function to set highlighted row after create/edit
+        function setHighlightRow(id) {
+            console.log('setHighlightRow called with ID:', id);
+            highlightRowId = id;
+            
+            // Immediately apply highlight to the row if it exists
+            const targetRow = document.querySelector(`tbody tr[data-id="${id}"]`);
+            if (targetRow) {
+                console.log('Found target row, applying text highlight');
+                targetRow.classList.add('highlight-row');
+                
+                // Force text color change directly for immediate visibility
+                targetRow.style.color = '#dc3545';
+                targetRow.style.fontWeight = 'bold';
+                
+                // Apply to all cells in the row
+                const cells = targetRow.querySelectorAll('td');
+                cells.forEach(cell => {
+                    cell.style.color = '#dc3545';
+                    cell.style.fontWeight = 'bold';
+                });
+                
+                console.log('Text highlight applied successfully');
+                
+                // Remove highlight after 5 seconds
+                setTimeout(() => {
+                    targetRow.classList.remove('highlight-row');
+                    targetRow.style.color = '';
+                    targetRow.style.fontWeight = '';
+                    cells.forEach(cell => {
+                        cell.style.color = '';
+                        cell.style.fontWeight = '';
+                    });
+                    console.log('Text highlight removed');
+                }, 10000);
+            } else {
+                console.log('Target row not found for ID:', id);
+            }
+        }
+        
+        // Function to clear highlight (called when search button is clicked)
+        function clearHighlight() {
+            highlightRowId = null;
+            const highlightedRows = document.querySelectorAll('.highlight-row');
+            highlightedRows.forEach(row => {
+                row.classList.remove('highlight-row');
+                row.style.color = '';
+                row.style.fontWeight = '';
+                
+                // Clear styles from all cells
+                const cells = row.querySelectorAll('td');
+                cells.forEach(cell => {
+                    cell.style.color = '';
+                    cell.style.fontWeight = '';
+                });
+            });
+            console.log('All highlights cleared');
         }
     </script>
 {% endblock %}

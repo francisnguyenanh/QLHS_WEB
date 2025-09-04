@@ -2153,10 +2153,10 @@ def create_user_conduct_api():
             'entered_by': entered_by,
             'is_deleted': 0
         }
-        create_record('User_Conduct', data)
+        new_id = create_record('User_Conduct', data)
         conn.close()
         
-        return jsonify({'success': True, 'message': 'Tạo mới thành công'})
+        return jsonify({'success': True, 'message': 'Tạo mới thành công', 'id': new_id})
     return jsonify({'error': 'Unauthorized'}), 401
 
 # --- API route để cập nhật user conduct ---
@@ -2193,7 +2193,7 @@ def update_user_conduct_api(id):
         update_record('User_Conduct', id, data)
         conn.close()
         
-        return jsonify({'success': True, 'message': 'Cập nhật thành công'})
+        return jsonify({'success': True, 'message': 'Cập nhật thành công', 'id': id})
     return jsonify({'error': 'Unauthorized'}), 401
 
 # --- User_Conduct ---
@@ -2666,10 +2666,10 @@ def create_user_subjects_api():
             'entered_by': entered_by,
             'is_deleted': 0
         }
-        create_record('User_Subjects', data)
+        new_id = create_record('User_Subjects', data)
         conn.close()
         
-        return jsonify({'success': True, 'message': 'Tạo mới thành công'})
+        return jsonify({'success': True, 'message': 'Tạo mới thành công', 'id': new_id})
     return jsonify({'error': 'Unauthorized'}), 401
 
 @app.route('/api/user_subjects/<int:id>', methods=['PUT'])
@@ -2707,7 +2707,7 @@ def update_user_subjects_api(id):
         update_record('User_Subjects', id, data)
         conn.close()
         
-        return jsonify({'success': True, 'message': 'Cập nhật thành công'})
+        return jsonify({'success': True, 'message': 'Cập nhật thành công', 'id': id})
     return jsonify({'error': 'Unauthorized'}), 401
 
 # --- User_Subjects ---
@@ -3837,10 +3837,6 @@ def user_summary():
                     
                     if academic_difference != 0 or conduct_difference != 0:
                         auto_comment = get_auto_comment(academic_difference, conduct_difference)
-                        # Thêm debug info để hiểu cách tính
-                        debug_info = f" [Debug: HT {current_academic_points}->{prev_academic_points}={academic_difference:+}, HK {current_conduct_points}->{prev_conduct_points}={conduct_difference:+}]"
-                        if auto_comment:
-                            auto_comment += debug_info
                     
                 except:
                     pass
