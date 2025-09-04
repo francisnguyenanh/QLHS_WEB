@@ -1,104 +1,246 @@
 {% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    /* Toggle button and search form styling */
+    .btn-compact {
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-compact:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-compact.btn-primary {
+        background: linear-gradient(135deg, #0d6efd, #6610f2);
+        border: none;
+        color: white;
+    }
+
+    .btn-compact.active {
+        background: linear-gradient(135deg, #6610f2, #0d6efd);
+        transform: scale(1.05);
+    }
+
+    /* Search form card styling */
+    .search-form-card {
+        margin-bottom: 20px;
+        border: none;
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease-in-out;
+        overflow: hidden;
+        max-height: 1000px; /* Large enough to show content */
+        opacity: 1;
+    }
+
+    .search-form-card.collapsed {
+        max-height: 0 !important;
+        margin-bottom: 0 !important;
+        opacity: 0 !important;
+        box-shadow: none !important;
+    }
+
+    .search-form-card .card-body {
+        padding: 20px;
+        transition: all 0.3s ease-in-out;
+    }
+
+    .search-form-card.collapsed .card-body {
+        padding: 0 !important;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .d-flex.gap-2 {
+            flex-wrap: wrap;
+            gap: 8px !important;
+        }
+        
+        .btn-compact {
+            min-width: 40px;
+        }
+        
+        .mb-3 {
+            margin-bottom: 1rem !important;
+        }
+
+        select[multiple] {
+            height: auto !important;
+        }
+
+        .btn {
+            margin-bottom: 0.5rem;
+        }
+
+        .table {
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.5rem !important;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-    <div class="container">
-        <h2 class="mt-4 mb-4">Thống kê nhóm</h2>
-
-        <div class="row g-3">
-            <div class="col-12 col-md-3">
-                <form method="POST" id="searchForm">
-                    <!-- Chọn loại thời gian -->
-                    <div class="form-group mb-3">
-                        <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" {% if period_type == 'week' %}checked{% endif %}>
-                            <label class="btn btn-outline-primary" for="week_type">Tuần</label>
-                            <input type="radio" class="btn-check" name="period_type" id="month_type" value="month" {% if period_type == 'month' %}checked{% endif %}>
-                            <label class="btn btn-outline-primary" for="month_type">Tháng</label>
-                        </div>
+    <div class="container-fluid mt-3">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="mb-0">Thống kê nhóm</h2>
+                    
+                    <!-- Toggle button for search form -->
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-primary btn-compact" id="toggleSearchForm" data-bs-toggle="tooltip" title="Hiện/Ẩn điều kiện tìm kiếm">
+                            <i class="fas fa-filter"></i>
+                            <span class="d-none d-md-inline ms-1">Bộ lọc</span>
+                        </button>
                     </div>
+                </div>
 
-                    <!-- Điều hướng thời gian -->
-                    <div class="form-group mb-3">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <button type="button" class="btn btn-outline-secondary" id="prevPeriod">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <div class="text-center flex-grow-1 mx-2">
-                                <strong id="periodDisplay">Đang tải...</strong>
+                <!-- Search Form Card -->
+                <div class="card search-form-card mb-3" id="searchFormCard" style="overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; max-height: 500px; opacity: 1;">
+                    <div class="card-body">
+                        <form method="POST" id="searchForm">
+                            <div class="row g-3">
+                                <!-- Cột bên trái: Điều kiện ngày tháng -->
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <!-- Chọn loại thời gian -->
+                                            <div class="mb-3">
+                                                <div class="btn-group w-100" role="group">
+                                                    <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" {% if period_type == 'week' %}checked{% endif %}>
+                                                    <label class="btn btn-outline-primary" for="week_type">Tuần</label>
+                                                    <input type="radio" class="btn-check" name="period_type" id="month_type" value="month" {% if period_type == 'month' %}checked{% endif %}>
+                                                    <label class="btn btn-outline-primary" for="month_type">Tháng</label>
+                                                </div>
+                                            </div>
+
+                                            <!-- Điều hướng thời gian -->
+                                            <div class="mb-3">
+                                                <div class="d-flex align-items-center justify-content-between">
+                                                    <button type="button" class="btn btn-outline-secondary" id="prevPeriod">
+                                                        <i class="fas fa-chevron-left"></i>
+                                                    </button>
+                                                    <div class="text-center flex-grow-1 mx-2">
+                                                        <strong id="periodDisplay">Đang tải...</strong>
+                                                    </div>
+                                                    <button type="button" class="btn btn-outline-secondary" id="nextPeriod">
+                                                        <i class="fas fa-chevron-right"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ date_from or '' }}" readonly style="flex: 1;">
+                                                    <span class="text-muted">~</span>
+                                                    <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}" readonly style="flex: 1;">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Cột giữa: Nhóm -->
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <label for="groups" class="form-label">Nhóm:</label>
+                                                <select name="groups" id="groups" multiple class="form-control" size="4">
+                                                    {% for group in groups %}
+                                                        <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Cột phải: Nguồn dữ liệu -->
+                                <div class="col-md-4">
+                                    <div class="card h-100">
+                                        <div class="card-body">
+                                            <div class="mb-3">
+                                                <label class="form-label">Tìm theo:</label>
+                                                <div class="form-check">
+                                                    <input type="radio" class="form-check-input" id="user_conduct" name="data_source" value="user_conduct" {% if data_source == 'user_conduct' %}checked{% endif %}>
+                                                    <label class="form-check-label" for="user_conduct">Hạnh kiểm</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input type="radio" class="form-check-input" id="user_subjects" name="data_source" value="user_subjects" {% if data_source == 'user_subjects' %}checked{% endif %}>
+                                                    <label class="form-check-label" for="user_subjects">Học tập</label>
+                                                </div>
+                                                <div class="form-check">
+                                                    <input type="radio" class="form-check-input" id="all" name="data_source" value="all" {% if data_source == 'all' or not data_source %}checked{% endif %}>
+                                                    <label class="form-check-label" for="all">Tất cả</label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <button type="button" class="btn btn-outline-secondary" id="nextPeriod">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </div>
+                            
+                            <div class="row mt-3">
+                                <div class="col-12 text-center">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search"></i> Tìm kiếm
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
                     </div>
+                </div>
 
-                    <div class="mb-3">
-                        <div class="d-flex align-items-center gap-2">
-                            <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ date_from or '' }}" readonly style="flex: 1;">
-                            <span class="text-muted">~</span>
-                            <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}" readonly style="flex: 1;">
+                <!-- Results Table -->
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr>
+                                        <th class="text-nowrap">
+                                            <a href="{{ url_for('group_summary', sort_by='group_name', sort_order='desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, groups=selected_groups, select_all_groups=select_all_groups, data_source=data_source) }}">
+                                                Nhóm
+                                                {% if sort_by == 'group_name' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th class="text-nowrap">
+                                            <a href="{{ url_for('group_summary', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, groups=selected_groups, select_all_groups=select_all_groups, data_source=data_source) }}">
+                                                Tổng điểm
+                                                {% if sort_by == 'total_points' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in records %}
+                                        <tr>
+                                            <td>{{ record[0] }}</td>
+                                            <td>{{ record[1] }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-                    <div class="mb-3">
-                        <label for="groups" class="form-label">Nhóm:</label>
-                        <select name="groups" id="groups" multiple class="form-control" size="4">
-                            {% for group in groups %}
-                                <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Tìm theo:</label>
-                        <div class="form-check">
-                            <input type="radio" class="form-check-input" id="user_conduct" name="data_source" value="user_conduct" {% if data_source == 'user_conduct' %}checked{% endif %}>
-                            <label class="form-check-label" for="user_conduct">Hạnh kiểm</label>
-                        </div>
-                        <div class="form-check">
-                            <input type="radio" class="form-check-input" id="user_subjects" name="data_source" value="user_subjects" {% if data_source == 'user_subjects' %}checked{% endif %}>
-                            <label class="form-check-label" for="user_subjects">Học tập</label>
-                        </div>
-                        <div class="form-check">
-                            <input type="radio" class="form-check-input" id="all" name="data_source" value="all" {% if data_source == 'all' or not data_source %}checked{% endif %}>
-                            <label class="form-check-label" for="all">Tất cả</label>
-                        </div>
-                    </div>
-                    <div class="text-center">
-                        <button type="submit" class="btn btn-primary w-100 w-md-auto">Tìm kiếm</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="col-12 col-md-9">
-                <div class="table-responsive mt-3 mt-md-0">
-                    <table class="table table-bordered table-striped">
-                        <thead>
-                            <tr>
-                                <th class="text-nowrap">
-                                    <a href="{{ url_for('group_summary', sort_by='group_name', sort_order='desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, groups=selected_groups, select_all_groups=select_all_groups, data_source=data_source) }}">
-                                        Nhóm
-                                        {% if sort_by == 'group_name' %}
-                                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                        {% endif %}
-                                    </a>
-                                </th>
-                                <th class="text-nowrap">
-                                    <a href="{{ url_for('group_summary', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, groups=selected_groups, select_all_groups=select_all_groups, data_source=data_source) }}">
-                                        Tổng điểm
-                                        {% if sort_by == 'total_points' %}
-                                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                        {% endif %}
-                                    </a>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for record in records %}
-                                <tr>
-                                    <td>{{ record[0] }}</td>
-                                    <td>{{ record[1] }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
                 </div>
             </div>
         </div>
@@ -108,6 +250,7 @@
         // Biến toàn cục cho việc quản lý thời gian
         let currentDate = new Date();
         let currentPeriodType = 'week';
+        let isCollapsed = false; // Global variable for collapse state
 
         // Hàm lấy thứ Hai của tuần
         function getMonday(date) {
@@ -176,6 +319,61 @@
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded for group_summary');
+            
+            var toggleButton = document.getElementById('toggleSearchForm');
+            var searchFormCard = document.getElementById('searchFormCard');
+            var isCollapsed = localStorage.getItem('groupSummarySearchCollapsed') === 'true';
+            
+            console.log('Toggle button:', toggleButton);
+            console.log('Search form card:', searchFormCard);
+            console.log('Initial collapsed state:', isCollapsed);
+            
+            // Apply initial state
+            if (isCollapsed) {
+                searchFormCard.style.maxHeight = '0px';
+                searchFormCard.style.opacity = '0';
+                console.log('Applied collapsed state');
+            } else {
+                searchFormCard.style.maxHeight = '500px';
+                searchFormCard.style.opacity = '1';
+                console.log('Applied expanded state');
+            }
+
+            // Initialize tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Toggle search form
+            if (toggleButton && searchFormCard) {
+                console.log('Setting up toggle functionality');
+                
+                toggleButton.addEventListener('click', function(e) {
+                    console.log('Toggle button clicked');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    isCollapsed = !isCollapsed;
+                    console.log('New collapsed state:', isCollapsed);
+                    
+                    if (isCollapsed) {
+                        searchFormCard.style.maxHeight = '0px';
+                        searchFormCard.style.opacity = '0';
+                        console.log('Collapsing form');
+                    } else {
+                        searchFormCard.style.maxHeight = '500px';
+                        searchFormCard.style.opacity = '1';
+                        console.log('Expanding form');
+                    }
+                    
+                    localStorage.setItem('groupSummarySearchCollapsed', isCollapsed);
+                });
+            } else {
+                console.error('Toggle elements not found:', {toggleButton, searchFormCard});
+            }
+            
             // Kiểm tra xem có giá trị date_from và date_to từ server không
             const dateFromValue = document.getElementById('date_from').value;
             const dateToValue = document.getElementById('date_to').value;
@@ -253,28 +451,4 @@
             });
         });
     </script>
-
-    <style>
-        @media (max-width: 768px) {
-            .mb-3 {
-                margin-bottom: 1rem !important;
-            }
-
-            select[multiple] {
-                height: auto !important;
-            }
-
-            .btn {
-                margin-bottom: 0.5rem;
-            }
-
-            .table {
-                font-size: 0.9rem;
-            }
-
-            th, td {
-                padding: 0.5rem !important;
-            }
-        }
-    </style>
 {% endblock %}

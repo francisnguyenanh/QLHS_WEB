@@ -16,244 +16,362 @@
         border-color: #007bff;
         box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
     }
+
+    /* Search form toggle styles */
+    .search-form-card {
+        transition: all 0.3s ease-in-out;
+    }
+
+    .btn-compact {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    /* Table improvements */
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+
+    .prev-period-data {
+        color: #6c757d;
+        font-size: 0.875em;
+        font-style: italic;
+    }
+
+    /* Search form layout improvements */
+    .search-form-card .card {
+        border: 1px solid #dee2e6;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .search-form-card .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 0.75rem 1rem;
+    }
+
+    .search-form-card .card-header h6 {
+        color: #495057;
+        font-weight: 600;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .search-form-card .row {
+            flex-direction: column;
+        }
+        
+        .search-form-card .col-md-4 {
+            margin-bottom: 1rem;
+        }
+    }
+
+    /* Toggle button and search form styling */
+    .btn-compact {
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-compact:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-compact.btn-success {
+        background: linear-gradient(135deg, #198754, #20c997);
+        border: none;
+        color: white;
+    }
+
+    .btn-compact.btn-primary {
+        background: linear-gradient(135deg, #0d6efd, #6610f2);
+        border: none;
+        color: white;
+    }
+
+    .btn-compact.active {
+        background: linear-gradient(135deg, #6610f2, #0d6efd);
+        transform: scale(1.05);
+    }
+
+    /* Search form card styling */
+    .search-form-card {
+        margin-bottom: 20px;
+        border: none;
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .d-flex.gap-2 {
+            flex-wrap: wrap;
+            gap: 8px !important;
+        }
+        
+        .btn-compact {
+            min-width: 40px;
+        }
+        
+        .search-form-card .row {
+            flex-direction: column;
+        }
+        
+        .search-form-card .col-md-4 {
+            margin-bottom: 1rem;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-    <div class="container">
-        <h2 class="mt-4 mb-4">Thống kê học sinh</h2>
-
-        <div class="row">
-            <div class="col-md-3">
-                <form method="POST" id="searchForm">
-                    <!-- Chọn loại thời gian -->
-                    <div class="form-group mb-3">
-                        <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" {% if period_type == 'week' %}checked{% endif %}>
-                            <label class="btn btn-outline-primary" for="week_type">Tuần</label>
-                            <input type="radio" class="btn-check" name="period_type" id="month_type" value="month" {% if period_type == 'month' %}checked{% endif %}>
-                            <label class="btn btn-outline-primary" for="month_type">Tháng</label>
-                        </div>
-                    </div>
-
-                    <!-- Điều hướng thời gian -->
-                    <div class="form-group mb-3">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <button type="button" class="btn btn-outline-secondary" id="prevPeriod">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <div class="text-center flex-grow-1 mx-2">
-                                <strong id="periodDisplay">Đang tải...</strong>
-                            </div>
-                            <button type="button" class="btn btn-outline-secondary" id="nextPeriod">
-                                <i class="fas fa-chevron-right"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <div class="d-flex align-items-center gap-2">
-                            <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ date_from or '' }}" readonly style="flex: 1;">
-                            <span class="text-muted">~</span>
-                            <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}" readonly style="flex: 1;">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label for="users">Học sinh:</label>
-                        <select name="users" id="users" multiple class="form-control" style="height: 120px;">
-                            {% for user in all_users %}
-                                <option value="{{ user[0] }}" {% if user[0]|string in selected_users %}selected{% endif %}>{{ user[1] }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="groups">Nhóm:</label>
-                        <select name="groups" id="groups" multiple class="form-control" style="height: 120px;">
-                            {% for group in groups %}
-                                <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group text-center">
-                        <button type="submit" class="btn btn-primary">Tìm kiếm</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="col-md-9">
-                <div class="d-flex justify-content-end">
-                    <form method="POST" action="{{ url_for('print_users') }}" id="printForm">
+<div class="container-fluid mt-3">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Tổng Kết Học Sinh</h2>
+                
+                <!-- Buttons -->
+                <div class="d-flex gap-2">
+                    <form method="POST" action="{{ url_for('print_users') }}" id="printForm" style="display: inline;">
                         <input type="hidden" name="selected_users" id="selected_users_input">
                         <input type="hidden" name="date_from" id="date_from_input" value="{{ date_from or '' }}">
                         <input type="hidden" name="date_to" id="date_to_input" value="{{ date_to or '' }}">
-                        <button type="submit" class="btn btn-success mt-3">Xuất phiếu</button>
+                        <button type="submit" class="btn btn-success btn-compact" data-bs-toggle="tooltip" title="Xuất phiếu báo cáo">
+                            <i class="fas fa-print"></i>
+                            <span class="d-none d-md-inline ms-1">Xuất phiếu</span>
+                        </button>
+                    </form>
+                    
+                    <button type="button" class="btn btn-primary btn-compact" id="toggleSearchForm" data-bs-toggle="tooltip" title="Hiện/Ẩn điều kiện tìm kiếm">
+                        <i class="fas fa-filter"></i>
+                        <span class="d-none d-md-inline ms-1">Bộ lọc</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Search Form Card -->
+            <div class="card search-form-card mb-3" id="searchFormCard" style="overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; max-height: 500px; opacity: 1;">
+                <div class="card-body">
+                    <form method="POST" id="searchForm">
+                        <div class="row g-3">
+                            <!-- Cột bên trái: Điều kiện ngày tháng -->
+                            <div class="col-md-4">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <!-- Chọn loại thời gian -->
+                                        <div class="mb-3">
+                                            <div class="btn-group w-100" role="group">
+                                                <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" {% if period_type == 'week' %}checked{% endif %}>
+                                                <label class="btn btn-outline-primary" for="week_type">Tuần</label>
+                                                <input type="radio" class="btn-check" name="period_type" id="month_type" value="month" {% if period_type == 'month' %}checked{% endif %}>
+                                                <label class="btn btn-outline-primary" for="month_type">Tháng</label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Điều hướng thời gian -->
+                                        <div class="mb-3">
+                                            <div class="d-flex align-items-center justify-content-between">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="prevPeriod">
+                                                    <i class="fas fa-chevron-left"></i>
+                                                </button>
+                                                <div class="text-center flex-grow-1 mx-2">
+                                                    <strong id="periodDisplay">Đang tải...</strong>
+                                                </div>
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="nextPeriod">
+                                                    <i class="fas fa-chevron-right"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Khoảng thời gian -->
+                                        <div class="mb-3">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ date_from or '' }}" readonly style="flex: 1;">
+                                                <span class="text-muted">~</span>
+                                                <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}" readonly style="flex: 1;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cột ở giữa: Học sinh -->
+                            <div class="col-md-4">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <label for="users" class="form-label">Học sinh:</label>
+                                        <select name="users" id="users" multiple class="form-control" style="height: 200px;">
+                                            {% for user in all_users %}
+                                                <option value="{{ user[0] }}" {% if user[0]|string in selected_users %}selected{% endif %}>{{ user[1] }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cột ngoài cùng: Nhóm -->
+                            <div class="col-md-4">
+                                <div class="card h-100">
+                                    <div class="card-body">
+                                        <label for="groups" class="form-label">Nhóm:</label>
+                                        <select name="groups" id="groups" multiple class="form-control" style="height: 200px;">
+                                            {% for group in groups %}
+                                                <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-12 text-center">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Tìm kiếm
+                                </button>
+                            </div>
+                        </div>
                     </form>
                 </div>
-                <table class="table table-bordered table-striped">
-                    <thead>
-                        <tr>
-                            <th style="width: 70px;">
-                                <input type="checkbox" id="select_all_in">
-                                <a href="{{ url_for('user_summary', sort_by='in', sort_order='desc' if sort_by == 'in' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, period_type=period_type, users=selected_users, groups=selected_groups) }}">
-                                    Xuất
-                                    {% if sort_by == 'in' %}
-                                        {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                    {% endif %}
-                                </a>
-                            </th>
-                            <th style="width: 220px;">
-                                <a href="{{ url_for('user_summary', sort_by='user_name', sort_order='desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, period_type=period_type, users=selected_users, groups=selected_groups) }}">
-                                    Họ Tên
-                                    {% if sort_by == 'user_name' %}
-                                        {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                    {% endif %}
-                                </a>
-                            </th>
-                            <th style="width: 80px;">
-                                <a href="{{ url_for('user_summary', sort_by='academic_points', sort_order='desc' if sort_by == 'academic_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, period_type=period_type, users=selected_users, groups=selected_groups) }}">
-                                    Học tập
-                                    {% if sort_by == 'academic_points' %}
-                                        {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                    {% endif %}
-                                </a>
-                            </th>
-                            <th style="width: 100px;">
-                                <a href="{{ url_for('user_summary', sort_by='conduct_points', sort_order='desc' if sort_by == 'conduct_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, period_type=period_type, users=selected_users, groups=selected_groups) }}">
-                                    Hạnh kiểm
-                                    {% if sort_by == 'conduct_points' %}
-                                        {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                    {% endif %}
-                                </a>
-                            </th>
-                            <th >Nhận xét</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for record in records %}
-                            <tr>
-                                <td>
-                                    <input type="checkbox" name="in_{{ record[4] }}" value="1" {% if record[3] %}checked{% endif %}>
-                                </td>
-                                <td>
-                                    <span class="user-name-clickable" 
-                                          data-user-id="{{ record[4] }}" 
-                                          data-date-from="{{ date_from or '' }}" 
-                                          data-date-to="{{ date_to or '' }}"
-                                          style="cursor: pointer; color: #007bff; text-decoration: underline;"
-                                          title="Click để copy link báo cáo">
-                                        {{ record[0] }}
-                                        <i class="fas fa-external-link-alt ms-1"></i>
-                                    </span>
-                                </td>
-                                <td>{{ record[1] }}</td>
-                                <td>{{ record[2] }}</td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" rows="2" placeholder="Nhận xét...">{{ (record[5] if record[5] else record[6]) if record|length > 5 else '' }}</textarea>
-                                        <span class="save-status text-muted small" id="status_{{ record[4] }}"></span>
-                                    </div>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            </div>
+
+            <!-- Results Table -->
+            <div class="card">
+                <div class="card-body">
+                    <div id="gridContainer">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th rowspan="2" style="width: 70px;">
+                                            <input type="checkbox" id="select_all_in">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="in" data-order="{{ 'desc' if sort_by == 'in' and sort_order == 'asc' else 'asc' }}">
+                                                Xuất
+                                                {% if sort_by == 'in' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th rowspan="2" style="width: 220px;">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="user_name" data-order="{{ 'desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc' }}">
+                                                Họ Tên
+                                                {% if sort_by == 'user_name' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th colspan="2" class="text-center">Học Tập</th>
+                                        <th colspan="2" class="text-center">Hạnh Kiểm</th>
+                                        <th rowspan="2">Nhận xét</th>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-center" style="width: 90px;">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_academic_points" data-order="{{ 'desc' if sort_by == 'prev_academic_points' and sort_order == 'asc' else 'asc' }}">
+                                                Trước
+                                                {% if sort_by == 'prev_academic_points' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th class="text-center" style="width: 90px;">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="academic_points" data-order="{{ 'desc' if sort_by == 'academic_points' and sort_order == 'asc' else 'asc' }}">
+                                                Sau
+                                                {% if sort_by == 'academic_points' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th class="text-center" style="width: 90px;">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_conduct_points" data-order="{{ 'desc' if sort_by == 'prev_conduct_points' and sort_order == 'asc' else 'asc' }}">
+                                                Trước
+                                                {% if sort_by == 'prev_conduct_points' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th class="text-center" style="width: 90px;">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="conduct_points" data-order="{{ 'desc' if sort_by == 'conduct_points' and sort_order == 'asc' else 'asc' }}">
+                                                Sau
+                                                {% if sort_by == 'conduct_points' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for record in records %}
+                                        <tr>
+                                            <td>
+                                                <input type="checkbox" name="in_{{ record[4] }}" value="1" {% if record[3] %}checked{% endif %}>
+                                            </td>
+                                            <td>
+                                                <span class="user-name-clickable" 
+                                                      data-user-id="{{ record[4] }}" 
+                                                      data-date-from="{{ date_from or '' }}" 
+                                                      data-date-to="{{ date_to or '' }}"
+                                                      style="cursor: pointer; color: #007bff; text-decoration: underline;"
+                                                      title="Click để copy link báo cáo">
+                                                    {{ record[0] }}
+                                                    <i class="fas fa-external-link-alt ms-1"></i>
+                                                </span>
+                                            </td>
+                                            <td class="text-center">{{ record[7] if record|length > 7 else 0 }}</td>
+                                            <td class="text-center">{{ record[1] }}</td>
+                                            <td class="text-center">{{ record[8] if record|length > 8 else 0 }}</td>
+                                            <td class="text-center">{{ record[2] }}</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" rows="2" placeholder="Nhận xét...">{{ (record[5] if record[5] else record[6]) if record|length > 5 else '' }}</textarea>
+                                                    <span class="save-status text-muted small" id="status_{{ record[4] }}"></span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% if not records %}
+                            <div class="alert alert-info text-center">
+                                <i class="fas fa-info-circle"></i> Không có dữ liệu phù hợp với điều kiện tìm kiếm.
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
     <script>
-        document.getElementById('printForm').addEventListener('submit', function(event) {
-            const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
-            const selectedUserIds = Array.from(checkboxes)
-                .filter(cb => cb.name.startsWith('in_'))
-                .map(cb => cb.name.split('_')[1]);
-
-            if (selectedUserIds.length === 0) {
-                showWarning("Please select at least one user to print.");
-                event.preventDefault();
-                return;
-            }
-
-            document.getElementById('selected_users_input').value = selectedUserIds.join(',');
-            // Đảm bảo date_from và date_to được gửi
-            document.getElementById('date_from_input').value = document.getElementById('date_from').value;
-            document.getElementById('date_to_input').value = document.getElementById('date_to').value;
-        });
-
-        document.getElementById('select_all_in').addEventListener('change', function() {
-            const checkboxes = document.querySelectorAll('input[name^="in_"]');
-            for (let i = 0; i < checkboxes.length; i++) {
-                checkboxes[i].checked = this.checked;
-            }
-        });
-
-        // Hàm lưu nhận xét
-        function saveComment(userId, showAlert = false) {
-            const commentText = document.getElementById(`comment_${userId}`).value;
-            const dateFrom = document.getElementById('date_from').value;
-            const dateTo = document.getElementById('date_to').value;
-            const statusElement = document.getElementById(`status_${userId}`);
-            
-            // Show saving status
-            if (statusElement) {
-                statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
-                statusElement.className = 'save-status text-info small';
-            }
-            
-            fetch('/save_user_comment', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: userId,
-                    comment_text: commentText,
-                    period_start: dateFrom,
-                    period_end: dateTo
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    if (showAlert) {
-                        showSuccess('Đã lưu nhận xét thành công!');
-                    }
-                    if (statusElement) {
-                        statusElement.innerHTML = '<i class="fas fa-check"></i> Đã lưu';
-                        statusElement.className = 'save-status text-success small';
-                        setTimeout(() => {
-                            statusElement.innerHTML = '';
-                        }, 2000);
-                    }
-                } else {
-                    if (statusElement) {
-                        statusElement.innerHTML = '<i class="fas fa-times"></i> Lỗi';
-                        statusElement.className = 'save-status text-danger small';
-                    }
-                    if (showAlert) {
-                        showError('Lỗi: ' + data.error);
-                    }
-                }
-            })
-            .catch(error => {
-                if (statusElement) {
-                    statusElement.innerHTML = '<i class="fas fa-times"></i> Lỗi kết nối';
-                    statusElement.className = 'save-status text-danger small';
-                }
-                if (showAlert) {
-                    showError('Lỗi kết nối: ' + error);
-                }
-            });
-        }
-
-        // Hàm sử dụng gợi ý tự động
-        function useAutoComment(userId, autoComment) {
-            document.getElementById(`comment_${userId}`).value = autoComment;
-        }
-
         // Biến toàn cục cho việc quản lý thời gian
         let currentDate = new Date();
         let currentPeriodType = 'week';
+        let isInitializing = true;
+        let isCollapsed = false; // Global variable for collapse state
 
         // Hàm lấy thứ Hai của tuần
         function getMonday(date) {
@@ -273,7 +391,7 @@
             return new Date(date.getFullYear(), date.getMonth() + 1, 0);
         }
 
-        // Hàm format ngày vềEyyyy-mm-dd
+        // Hàm format ngày về yyyy-mm-dd
         function formatDate(date) {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -281,7 +399,14 @@
             return `${year}-${month}-${day}`;
         }
 
-        // Hàm cập nhật hiển thềEthời gian
+        // Hàm lấy số tuần trong năm
+        function getWeekNumber(date) {
+            const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+            const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+            return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+        }
+
+        // Hàm cập nhật hiển thị thời gian
         function updatePeriodDisplay() {
             const periodDisplay = document.getElementById('periodDisplay');
             const dateFromInput = document.getElementById('date_from');
@@ -308,20 +433,102 @@
                                    'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
                 periodDisplay.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
             }
+            
+            // Load new data after period change
+            if (!isInitializing) {
+                loadData();
+            }
         }
 
-        // Hàm lấy sềEtuần trong năm
-        function getWeekNumber(date) {
-            const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-            const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
-            return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-        }
-
-        // Biến để theo dõi việc khởi tạo
-        let isInitializing = true;
-
-        // Event listeners
+        // Toggle search form functionality
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded for user_summary');
+            
+            var toggleButton = document.getElementById('toggleSearchForm');
+            var searchFormCard = document.getElementById('searchFormCard');
+            var isCollapsed = localStorage.getItem('userSummarySearchCollapsed') === 'true';
+            
+            console.log('Toggle button:', toggleButton);
+            console.log('Search form card:', searchFormCard);
+            console.log('Initial collapsed state:', isCollapsed);
+            
+            // Apply initial state
+            if (isCollapsed) {
+                searchFormCard.style.maxHeight = '0px';
+                searchFormCard.style.opacity = '0';
+                console.log('Applied collapsed state');
+            } else {
+                searchFormCard.style.maxHeight = '500px';
+                searchFormCard.style.opacity = '1';
+                console.log('Applied expanded state');
+            }
+
+            // Initialize tooltips
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Toggle search form
+            if (toggleButton && searchFormCard) {
+                console.log('Setting up toggle functionality');
+                
+                toggleButton.addEventListener('click', function(e) {
+                    console.log('Toggle button clicked');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    isCollapsed = !isCollapsed;
+                    console.log('New collapsed state:', isCollapsed);
+                    
+                    if (isCollapsed) {
+                        searchFormCard.style.maxHeight = '0px';
+                        searchFormCard.style.opacity = '0';
+                        console.log('Collapsing form');
+                    } else {
+                        searchFormCard.style.maxHeight = '500px';
+                        searchFormCard.style.opacity = '1';
+                        console.log('Expanding form');
+                    }
+                    
+                    localStorage.setItem('userSummarySearchCollapsed', isCollapsed);
+                });
+            } else {
+                console.error('Toggle elements not found:', {toggleButton, searchFormCard});
+            }
+
+            // Print form functionality
+            const printForm = document.getElementById('printForm');
+            if (printForm) {
+                printForm.addEventListener('submit', function(event) {
+                    const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
+                    const selectedUserIds = Array.from(checkboxes)
+                        .filter(cb => cb.name.startsWith('in_'))
+                        .map(cb => cb.name.split('_')[1]);
+
+                    if (selectedUserIds.length === 0) {
+                        alert("Vui lòng chọn ít nhất một học sinh để xuất phiếu.");
+                        event.preventDefault();
+                        return;
+                    }
+
+                    const selectedUsersInput = document.getElementById('selected_users_input');
+                    const dateFromInput = document.getElementById('date_from_input');
+                    const dateToInput = document.getElementById('date_to_input');
+                    const dateFrom = document.getElementById('date_from');
+                    const dateTo = document.getElementById('date_to');
+
+                    if (selectedUsersInput) selectedUsersInput.value = selectedUserIds.join(',');
+                    if (dateFromInput && dateFrom) dateFromInput.value = dateFrom.value;
+                    if (dateToInput && dateTo) dateToInput.value = dateTo.value;
+                });
+            }
+
+            // Khởi tạo period display
+            initializePeriodDisplay();
+        });
+
+        function initializePeriodDisplay() {
             // Kiểm tra xem có giá trị date_from và date_to từ server không
             const dateFromValue = document.getElementById('date_from').value;
             const dateToValue = document.getElementById('date_to').value;
@@ -358,7 +565,146 @@
             // Hoàn thành khởi tạo
             isInitializing = false;
 
-            // Xử lý click vào tên user đềEcopy link báo cáo
+            // Xử lý thay đổi loại thời gian
+            document.querySelectorAll('input[name="period_type"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    currentPeriodType = this.value;
+                    updatePeriodDisplay();
+                });
+            });
+
+            // Xử lý nút lùi
+            document.getElementById('prevPeriod').addEventListener('click', function() {
+                if (currentPeriodType === 'week') {
+                    currentDate.setDate(currentDate.getDate() - 7);
+                } else {
+                    currentDate.setMonth(currentDate.getMonth() - 1);
+                }
+                updatePeriodDisplay();
+            });
+
+            // Xử lý nút tiến
+            document.getElementById('nextPeriod').addEventListener('click', function() {
+                if (currentPeriodType === 'week') {
+                    currentDate.setDate(currentDate.getDate() + 7);
+                } else {
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                }
+                updatePeriodDisplay();
+            });
+
+            // AJAX form submission
+            document.getElementById('searchForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                loadData();
+            });
+
+            // Initialize table events and auto-save
+            initializeTableEvents();
+            initAutoSave();
+        }
+
+        // Save and restore search form collapse state
+        function saveSearchFormState() {
+            const searchFormCard = document.getElementById('searchFormCard');
+            const isCollapsed = searchFormCard.classList.contains('collapsed');
+            localStorage.setItem('searchFormCollapsed', isCollapsed);
+        }
+
+        function restoreSearchFormState() {
+            const wasCollapsed = localStorage.getItem('searchFormCollapsed') === 'true';
+            const searchFormCard = document.getElementById('searchFormCard');
+            const toggleButton = document.getElementById('toggleSearchForm');
+            
+            if (wasCollapsed) {
+                searchFormCard.classList.add('collapsed');
+                toggleButton.classList.remove('active');
+                toggleButton.innerHTML = '<i class="fas fa-filter"></i><span class="d-none d-md-inline ms-1">Bộ lọc</span>';
+                return true; // Return collapsed state
+            } else {
+                searchFormCard.classList.remove('collapsed');
+                toggleButton.classList.add('active');
+                toggleButton.innerHTML = '<i class="fas fa-eye-slash"></i><span class="d-none d-md-inline ms-1">Ẩn lọc</span>';
+                return false; // Return collapsed state
+            }
+        }
+
+        // AJAX functionality for form submission
+        function loadData() {
+            const form = document.getElementById('searchForm');
+            const formData = new FormData(form);
+            
+            fetch('{{ url_for("user_summary") }}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.html) {
+                    document.getElementById('gridContainer').innerHTML = data.html;
+                    // Re-initialize event listeners for new content
+                    initializeTableEvents();
+                    initAutoSave();
+                }
+            })
+            .catch(error => {
+                console.error('Error loading data:', error);
+            });
+        }
+
+        // Initialize table events for dynamically loaded content
+        function initializeTableEvents() {
+            // Re-initialize select all checkbox
+            const selectAllCheckbox = document.getElementById('select_all_in');
+            if (selectAllCheckbox) {
+                selectAllCheckbox.addEventListener('change', function() {
+                    const checkboxes = document.querySelectorAll('input[name^="in_"]');
+                    for (let i = 0; i < checkboxes.length; i++) {
+                        checkboxes[i].checked = this.checked;
+                    }
+                });
+            }
+
+            // Initialize sort links
+            document.querySelectorAll('.sort-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const sortBy = this.getAttribute('data-sort');
+                    const sortOrder = this.getAttribute('data-order');
+                    
+                    console.log('Sorting by:', sortBy, 'Order:', sortOrder);
+                    
+                    // Update form with sort parameters
+                    const form = document.getElementById('searchForm');
+                    
+                    // Remove existing sort inputs
+                    const existingSortBy = form.querySelector('input[name="sort_by"]');
+                    const existingSortOrder = form.querySelector('input[name="sort_order"]');
+                    if (existingSortBy) existingSortBy.remove();
+                    if (existingSortOrder) existingSortOrder.remove();
+                    
+                    // Add new sort inputs
+                    const sortByInput = document.createElement('input');
+                    sortByInput.type = 'hidden';
+                    sortByInput.name = 'sort_by';
+                    sortByInput.value = sortBy;
+                    form.appendChild(sortByInput);
+                    
+                    const sortOrderInput = document.createElement('input');
+                    sortOrderInput.type = 'hidden';
+                    sortOrderInput.name = 'sort_order';
+                    sortOrderInput.value = sortOrder;
+                    form.appendChild(sortOrderInput);
+                    
+                    // Load data with new sort
+                    loadData();
+                });
+            });
+
+            // Re-initialize user name clickable elements
             document.querySelectorAll('.user-name-clickable').forEach(element => {
                 element.addEventListener('click', function() {
                     const userId = this.getAttribute('data-user-id');
@@ -367,7 +713,7 @@
                     
                     let reportUrl = `${window.location.origin}/user_report/${userId}`;
                     
-                    // Thêm tham sềEngày nếu có
+                    // Thêm tham số ngày nếu có
                     const params = new URLSearchParams();
                     if (dateFrom) params.append('date_from', dateFrom);
                     if (dateTo) params.append('date_to', dateTo);
@@ -413,124 +759,97 @@
                     });
                 });
             });
+        }
 
-            // Xử lý thay đổi loại thời gian
-            document.querySelectorAll('input[name="period_type"]').forEach(radio => {
-                radio.addEventListener('change', function() {
-                    currentPeriodType = this.value;
-                    updatePeriodDisplay();
-                });
-            });
-
-            // Xử lý nút lùi
-            document.getElementById('prevPeriod').addEventListener('click', function() {
-                if (currentPeriodType === 'week') {
-                    currentDate.setDate(currentDate.getDate() - 7);
-                } else {
-                    currentDate.setMonth(currentDate.getMonth() - 1);
-                }
-                updatePeriodDisplay();
-            });
-
-            // Xử lý nút tiến
-            document.getElementById('nextPeriod').addEventListener('click', function() {
-                if (currentPeriodType === 'week') {
-                    currentDate.setDate(currentDate.getDate() + 7);
-                } else {
-                    currentDate.setMonth(currentDate.getMonth() + 1);
-                }
-                updatePeriodDisplay();
-            });
-
-            // Tự động submit form khi thay đổi ngày (chỉ sau khi khởi tạo xong)
-            document.getElementById('date_from').addEventListener('change', function() {
-                if (!isInitializing) {
-                    document.getElementById('searchForm').submit();
-                }
-            });
-            document.getElementById('date_to').addEventListener('change', function() {
-                if (!isInitializing) {
-                    document.getElementById('searchForm').submit();
-                }
-            });
-
-            // Xử lý click vào tên học sinh
-            document.querySelectorAll('.user-name-clickable').forEach(element => {
-                element.addEventListener('click', function() {
-                    const userId = this.dataset.userId;
-                    const dateFrom = this.dataset.dateFrom;
-                    const dateTo = this.dataset.dateTo;
-                    
-                    // Tạo URL báo cáo
-                    let reportUrl = `{{ request.url_root }}user_report/${userId}`;
-                    if (dateFrom && dateTo) {
-                        reportUrl += `?date_from=${dateFrom}&date_to=${dateTo}`;
-                    }
-                    
-                    // Copy link vào clipboard
-                    navigator.clipboard.writeText(reportUrl).then(() => {
-                        // Hiển thềEthông báo đã copy
-                        const originalText = this.innerHTML;
-                        this.innerHTML = '<i class="fas fa-check text-success"></i> Đã copy link!';
-                        setTimeout(() => {
-                            this.innerHTML = originalText;
-                        }, 2000);
-                    }).catch(err => {
-                        console.error('Không thềEcopy link: ', err);
-                        // Fallback cho browsers không hềEtrợ clipboard API
-                        const textArea = document.createElement('textarea');
-                        textArea.value = reportUrl;
-                        document.body.appendChild(textArea);
-                        textArea.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(textArea);
-                        
-                        const originalText = this.innerHTML;
-                        this.innerHTML = '<i class="fas fa-check text-success"></i> Đã copy link!';
-                        setTimeout(() => {
-                            this.innerHTML = originalText;
-                        }, 2000);
-                    });
-                    
-                    // MềElink trong tab mới
-                    window.open(reportUrl, '_blank');
-                });
-            });
-
-            // Auto-save functionality for comments
-            function initAutoSave() {
-                // Auto-save suggested comments on page load for non-empty suggestions
-                document.querySelectorAll('.auto-save-comment').forEach(textarea => {
-                    const userId = textarea.dataset.userId;
-                    const currentValue = textarea.value.trim();
-                    
-                    // If there's a suggested comment (auto-generated), save it automatically
-                    if (currentValue && !currentValue.includes('Nhận xét')) {
-                        // Small delay to ensure page is fully loaded
-                        setTimeout(() => {
-                            saveComment(userId, false);
-                        }, 500);
-                    }
-                    
-                    // Add focus out auto-save
-                    textarea.addEventListener('blur', function() {
-                        const newValue = this.value.trim();
-                        saveComment(userId, false);
-                    });
-                    
-                    // Optional: Add auto-save on input with debounce
-                    let saveTimeout;
-                    textarea.addEventListener('input', function() {
-                        clearTimeout(saveTimeout);
-                        saveTimeout = setTimeout(() => {
-                            saveComment(userId, false);
-                        }, 2000); // Auto-save 2 seconds after user stops typing
-                    });
-                });
+        // Hàm lưu nhận xét
+        function saveComment(userId, showAlert = false) {
+            const commentText = document.getElementById(`comment_${userId}`).value;
+            const dateFrom = document.getElementById('date_from').value;
+            const dateTo = document.getElementById('date_to').value;
+            const statusElement = document.getElementById(`status_${userId}`);
+            
+            // Show saving status
+            if (statusElement) {
+                statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
+                statusElement.className = 'save-status text-info small';
             }
+            
+            fetch('/save_user_comment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    comment_text: commentText,
+                    period_start: dateFrom,
+                    period_end: dateTo
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (showAlert) {
+                        alert('Đã lưu nhận xét thành công!');
+                    }
+                    if (statusElement) {
+                        statusElement.innerHTML = '<i class="fas fa-check"></i> Đã lưu';
+                        statusElement.className = 'save-status text-success small';
+                        setTimeout(() => {
+                            statusElement.innerHTML = '';
+                        }, 2000);
+                    }
+                } else {
+                    if (statusElement) {
+                        statusElement.innerHTML = '<i class="fas fa-times"></i> Lỗi';
+                        statusElement.className = 'save-status text-danger small';
+                    }
+                    if (showAlert) {
+                        alert('Lỗi: ' + data.error);
+                    }
+                }
+            })
+            .catch(error => {
+                if (statusElement) {
+                    statusElement.innerHTML = '<i class="fas fa-times"></i> Lỗi kết nối';
+                    statusElement.className = 'save-status text-danger small';
+                }
+                if (showAlert) {
+                    alert('Lỗi kết nối: ' + error);
+                }
+            });
+        }
 
-            // Initialize auto-save when page loads
-            initAutoSave();
-        });
+        // Auto-save functionality for comments
+        function initAutoSave() {
+            // Auto-save suggested comments on page load for non-empty suggestions
+            document.querySelectorAll('.auto-save-comment').forEach(textarea => {
+                const userId = textarea.dataset.userId;
+                const currentValue = textarea.value.trim();
+                
+                // If there's a suggested comment (auto-generated), save it automatically
+                if (currentValue && !currentValue.includes('Nhận xét')) {
+                    // Small delay to ensure page is fully loaded
+                    setTimeout(() => {
+                        saveComment(userId, false);
+                    }, 500);
+                }
+                
+                // Add focus out auto-save
+                textarea.addEventListener('blur', function() {
+                    const newValue = this.value.trim();
+                    saveComment(userId, false);
+                });
+                
+                // Optional: Add auto-save on input with debounce
+                let saveTimeout;
+                textarea.addEventListener('input', function() {
+                    clearTimeout(saveTimeout);
+                    saveTimeout = setTimeout(() => {
+                        saveComment(userId, false);
+                    }, 2000); // Auto-save 2 seconds after user stops typing
+                });
+            });
+        }
     </script>
 {% endblock %}

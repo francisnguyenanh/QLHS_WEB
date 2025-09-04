@@ -3,7 +3,7 @@ from db_utils import (create_record, read_all_records, read_record_by_id,
                       update_record, delete_record, connect_db)
 from flask import flash
 from flask import  redirect, session
-from flask import Flask, render_template, send_from_directory, abort
+from flask import Flask, render_template, render_template_string, send_from_directory, abort
 import config
 import calendar
 import os
@@ -3594,8 +3594,14 @@ def user_summary():
         if not can_access_student_statistics():
             flash('Bạn không có quyền truy cập chức năng này', 'error')
             return redirect(url_for('index'))
-        sort_by = request.args.get('sort_by', 'user_name')
-        sort_order = request.args.get('sort_order', 'asc')
+        
+        # Get sort parameters from both GET and POST
+        if request.method == 'POST':
+            sort_by = request.form.get('sort_by', request.args.get('sort_by', 'user_name'))
+            sort_order = request.form.get('sort_order', request.args.get('sort_order', 'asc'))
+        else:
+            sort_by = request.args.get('sort_by', 'user_name')
+            sort_order = request.args.get('sort_order', 'asc')
 
         conn = connect_db()
         cursor = conn.cursor()
@@ -3786,6 +3792,9 @@ def user_summary():
                 current_comment = comment_result[0] or ""
             
             # Tính điểm kỳ trước (cùng khoảng thời gian tuần trước)
+            prev_conduct_points = 0
+            prev_academic_points = 0
+            
             if date_from and date_to:
                 try:
                     period_start = datetime.strptime(date_from, '%Y-%m-%d')
@@ -3798,10 +3807,6 @@ def user_summary():
                     
                     prev_date_from = prev_period_start.strftime('%Y-%m-%d')
                     prev_date_to = prev_period_end.strftime('%Y-%m-%d')
-                    
-                    # Tính điểm kỳ trước
-                    prev_conduct_points = 0
-                    prev_academic_points = 0
                     
                     # Điểm hạnh kiểm kỳ trước
                     cursor.execute('''
@@ -3840,7 +3845,7 @@ def user_summary():
                 except:
                     pass
 
-            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, has_data, user_id, current_comment, auto_comment))
+            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, has_data, user_id, current_comment, auto_comment, prev_academic_points, prev_conduct_points))
 
         if sort_by == 'user_name':
             records.sort(key=lambda x: normalize_vietnamese_for_sort(x[0].split()[-1]) if x[0] else '', reverse=(sort_order == 'desc'))
@@ -3848,6 +3853,10 @@ def user_summary():
             records.sort(key=lambda x: x[1], reverse=(sort_order == 'desc'))
         elif sort_by == 'conduct_points':
             records.sort(key=lambda x: x[2], reverse=(sort_order == 'desc'))
+        elif sort_by == 'prev_academic_points':
+            records.sort(key=lambda x: x[7], reverse=(sort_order == 'desc'))  # index 7 is prev_academic_points
+        elif sort_by == 'prev_conduct_points':
+            records.sort(key=lambda x: x[8], reverse=(sort_order == 'desc'))   # index 8 is prev_conduct_points
         elif sort_by == 'total_points':
             records.sort(key=lambda x: x[1] + x[2], reverse=(sort_order == 'desc'))
         elif sort_by == 'in':
@@ -3857,10 +3866,131 @@ def user_summary():
 
         # Kiểm tra xem có phải AJAX request không
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            # Trả về JSON cho AJAX request
+            # Render chỉ phần table HTML
+            table_html = render_template_string("""
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th rowspan="2" style="width: 70px;">
+                    <input type="checkbox" id="select_all_in">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="in" data-order="{{ 'desc' if sort_by == 'in' and sort_order == 'asc' else 'asc' }}">
+                        Xuất
+                        {% if sort_by == 'in' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th rowspan="2" style="width: 220px;">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="user_name" data-order="{{ 'desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc' }}">
+                        Họ Tên
+                        {% if sort_by == 'user_name' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th colspan="2" class="text-center">Học Tập</th>
+                <th colspan="2" class="text-center">Hạnh Kiểm</th>
+                <th rowspan="2">Nhận xét</th>
+            </tr>
+            <tr>
+                <th class="text-center" style="width: 90px;">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_academic_points" data-order="{{ 'desc' if sort_by == 'prev_academic_points' and sort_order == 'asc' else 'asc' }}">
+                        Trước
+                        {% if sort_by == 'prev_academic_points' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-center" style="width: 90px;">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="academic_points" data-order="{{ 'desc' if sort_by == 'academic_points' and sort_order == 'asc' else 'asc' }}">
+                        Sau
+                        {% if sort_by == 'academic_points' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-center" style="width: 90px;">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_conduct_points" data-order="{{ 'desc' if sort_by == 'prev_conduct_points' and sort_order == 'asc' else 'asc' }}">
+                        Trước
+                        {% if sort_by == 'prev_conduct_points' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-center" style="width: 90px;">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="conduct_points" data-order="{{ 'desc' if sort_by == 'conduct_points' and sort_order == 'asc' else 'asc' }}">
+                        Sau
+                        {% if sort_by == 'conduct_points' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+                <tr>
+                    <td>
+                        <input type="checkbox" name="in_{{ record[4] }}" value="1" {% if record[3] %}checked{% endif %}>
+                    </td>
+                    <td>
+                        <span class="user-name-clickable" 
+                              data-user-id="{{ record[4] }}" 
+                              data-date-from="{{ date_from or '' }}" 
+                              data-date-to="{{ date_to or '' }}"
+                              style="cursor: pointer; color: #007bff; text-decoration: underline;"
+                              title="Click để copy link báo cáo">
+                            {{ record[0] }}
+                            <i class="fas fa-external-link-alt ms-1"></i>
+                        </span>
+                    </td>
+                    <td class="text-center">{{ record[7] if record|length > 7 else 0 }}</td>
+                    <td class="text-center">{{ record[1] }}</td>
+                    <td class="text-center">{{ record[8] if record|length > 8 else 0 }}</td>
+                    <td class="text-center">{{ record[2] }}</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" rows="2" placeholder="Nhận xét...">{{ (record[5] if record[5] else record[6]) if record|length > 5 else '' }}</textarea>
+                            <span class="save-status text-muted small" id="status_{{ record[4] }}"></span>
+                        </div>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% if not records %}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle"></i> Không có dữ liệu phù hợp với điều kiện tìm kiếm.
+    </div>
+{% endif %}
+            """, 
+                                       records=records,
+                                       date_from=date_from,
+                                       date_to=date_to,
+                                       sort_by=sort_by,
+                                       sort_order=sort_order,
+                                       selected_users=selected_users,
+                                       selected_groups=selected_groups,
+                                       period_type=period_type)
+            
             return jsonify({
                 'success': True,
-                'records': records
+                'html': table_html
             })
 
         permissions = get_user_permissions()
