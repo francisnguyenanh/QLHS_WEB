@@ -275,10 +275,10 @@
                     <form id="userSubjectsForm">
                         <input type="hidden" id="modal_id" name="id">
                         <div class="row g-3">
-                            <div class="col-12 col-md-4">
+                            <div class="col-12 col-md-6">
                                 <div class="form-group">
                                     <label for="modal_user_id">Họ tên:</label>
-                                    <select name="user_id" id="modal_user_id" class="form-control" required onchange="calculateModalTotalPoints()">
+                                    <select name="user_id" id="modal_user_id" class="form-control" required>
                                         <option value="">Chọn học sinh</option>
                                         {% for user in all_users %}
                                             <option value="{{ user[0] }}">{{ user[1] }}</option>
@@ -286,42 +286,42 @@
                                     </select>
                                 </div>
                                 <div class="form-group mt-3">
-                                    <label for="modal_subject_id">Môn học:</label>
-                                    <select name="subject_id" id="modal_subject_id" class="form-control" required>
-                                        <option value="">Chọn môn học</option>
-                                        {% for subject in all_subjects %}
-                                            <option value="{{ subject[0] }}">{{ subject[1] }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="form-group mt-3">
-                                    <label for="modal_criteria_id">Kết quả:</label>
-                                    <select name="criteria_id" id="modal_criteria_id" class="form-control" onchange="loadModalCriteriaPoints()">
-                                        <option value="">Chọn kết quả</option>
-                                        {% for criterion in all_criteria %}
-                                            <option value="{{ criterion[0] }}">{{ criterion[1] }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
                                     <label for="modal_registered_date">Dữ liệu ngày:</label>
-                                    <input type="date" name="registered_date" id="modal_registered_date" class="form-control" required onchange="calculateModalTotalPoints()">
+                                    <input type="date" name="registered_date" id="modal_registered_date" class="form-control" required>
                                 </div>
                                 <div class="form-group mt-3">
                                     <label for="modal_entered_by">Người đăng ký:</label>
                                     <input type="text" name="entered_by" id="modal_entered_by" class="form-control" value="{{ current_user_info.name if current_user_info else '' }}" readonly>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-12 col-md-6">
                                 <div class="form-group">
-                                    <label for="modal_criteria_points">Điểm kết quả:</label>
-                                    <input type="number" name="criteria_points" id="modal_criteria_points" class="form-control" readonly>
-                                </div>
-                                <div class="form-group mt-3">
-                                    <label for="modal_total_points">Tổng điểm ngày:</label>
-                                    <input type="number" name="total_points" id="modal_total_points" class="form-control" readonly>
+                                    <label>Môn học & Kết quả:</label>
+                                    <div id="subjects_container" style="max-height: 300px; overflow-y: auto; border: 1px solid #ced4da; border-radius: 0.375rem; padding: 0.5rem;">
+                                        {% for subject in all_subjects %}
+                                        <div class="row align-items-center mb-2 subject-row" data-subject-id="{{ subject[0] }}">
+                                            <div class="col-4">
+                                                <div class="form-check">
+                                                    <input class="form-check-input subject-checkbox" type="checkbox" 
+                                                           id="subject_{{ subject[0] }}" value="{{ subject[0] }}"
+                                                           onchange="handleSubjectCheck({{ subject[0] }})">
+                                                    <label class="form-check-label small" for="subject_{{ subject[0] }}">
+                                                        {{ subject[1] }}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-8">
+                                                <select class="form-control form-control-sm criteria-select" 
+                                                        id="criteria_{{ subject[0] }}" disabled>
+                                                    <option value="">Chọn kết quả</option>
+                                                    {% for criterion in all_criteria %}
+                                                        <option value="{{ criterion[0] }}">{{ criterion[1] }}</option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -350,12 +350,34 @@
             document.getElementById('userSubjectsModalLabel').textContent = 'Tạo mới kết quả học tập';
             document.getElementById('userSubjectsForm').reset();
             document.getElementById('modal_id').value = '';
-            document.getElementById('modal_criteria_points').value = '';
-            document.getElementById('modal_total_points').value = '';
-            // Tự động set người tạo
+            
+            // Reset all checkboxes and disable criteria selects
+            document.querySelectorAll('.subject-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            document.querySelectorAll('.criteria-select').forEach(select => {
+                select.disabled = true;
+                select.value = '';
+            });
+            
+            // Set người tạo
             document.getElementById('modal_entered_by').value = '{{ current_user_info.name if current_user_info else "" }}';
             const modal = new bootstrap.Modal(document.getElementById('userSubjectsModal'));
             modal.show();
+        }
+
+        function handleSubjectCheck(subjectId) {
+            const checkbox = document.getElementById('subject_' + subjectId);
+            const criteriaSelect = document.getElementById('criteria_' + subjectId);
+            
+            if (checkbox.checked) {
+                criteriaSelect.disabled = false;
+                criteriaSelect.required = true;
+            } else {
+                criteriaSelect.disabled = true;
+                criteriaSelect.required = false;
+                criteriaSelect.value = '';
+            }
         }
 
         function openEditModal(id) {
@@ -363,19 +385,36 @@
             currentEditId = id;
             document.getElementById('userSubjectsModalLabel').textContent = 'Chỉnh sửa kết quả học tập';
             
+            // Reset form first
+            document.getElementById('userSubjectsForm').reset();
+            document.querySelectorAll('.subject-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            document.querySelectorAll('.criteria-select').forEach(select => {
+                select.disabled = true;
+                select.value = '';
+            });
+            
             // Fetch record data
             fetch(`/api/user_subjects/${id}`)
                 .then(response => response.json())
                 .then(data => {
+                    // Set basic fields
                     document.getElementById('modal_id').value = data.id;
                     document.getElementById('modal_user_id').value = data.user_id;
-                    document.getElementById('modal_subject_id').value = data.subject_id;
-                    document.getElementById('modal_criteria_id').value = data.criteria_id || '';
                     document.getElementById('modal_registered_date').value = data.registered_date;
                     document.getElementById('modal_entered_by').value = data.entered_by;
                     
-                    // Load criteria points and calculate total
-                    loadModalCriteriaPoints();
+                    // Mark the specific subject as checked and set its criteria
+                    const subjectCheckbox = document.getElementById('subject_' + data.subject_id);
+                    const criteriaSelect = document.getElementById('criteria_' + data.subject_id);
+                    
+                    if (subjectCheckbox && criteriaSelect) {
+                        subjectCheckbox.checked = true;
+                        criteriaSelect.disabled = false;
+                        criteriaSelect.required = true;
+                        criteriaSelect.value = data.criteria_id || '';
+                    }
                     
                     const modal = new bootstrap.Modal(document.getElementById('userSubjectsModal'));
                     modal.show();
@@ -386,106 +425,140 @@
                 });
         }
 
-        function loadModalCriteriaPoints() {
-            const criteriaId = document.getElementById('modal_criteria_id').value;
-            if (criteriaId) {
-                fetch(`/get_criteria_points/${criteriaId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const criteriaPoints = data.criterion_points || 0;
-                        document.getElementById('modal_criteria_points').value = criteriaPoints;
-                        calculateModalTotalPoints();
-                    })
-                    .catch(error => {
-                        console.error('Error fetching criteria points:', error);
-                        document.getElementById('modal_criteria_points').value = 0;
-                        calculateModalTotalPoints();
-                    });
-            } else {
-                document.getElementById('modal_criteria_points').value = '';
-                calculateModalTotalPoints();
-            }
-        }
-
-        function calculateModalTotalPoints() {
+        function saveUserSubjects() {
             const userId = document.getElementById('modal_user_id').value;
             const registeredDate = document.getElementById('modal_registered_date').value;
-            const criteriaPoints = parseFloat(document.getElementById('modal_criteria_points').value) || 0;
-            const excludeId = isEditMode ? currentEditId : 0;
-
-            if (userId && registeredDate) {
-                fetch(`/user_subjects_total_points?user_id=${userId}&registered_date=${registeredDate}&exclude_id=${excludeId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const totalPoints = (data.total_points || 0) + criteriaPoints;
-                        document.getElementById('modal_total_points').value = totalPoints;
-                    })
-                    .catch(error => {
-                        console.error('Error fetching total points:', error);
-                        document.getElementById('modal_total_points').value = criteriaPoints;
-                    });
-            } else {
-                document.getElementById('modal_total_points').value = criteriaPoints;
-            }
-        }
-
-        function saveUserSubjects() {
-            const form = document.getElementById('userSubjectsForm');
-            const formData = new FormData(form);
+            const enteredBy = document.getElementById('modal_entered_by').value;
             
-            const data = {
-                user_id: formData.get('user_id'),
-                subject_id: formData.get('subject_id'),
-                criteria_id: formData.get('criteria_id') || null,
-                registered_date: formData.get('registered_date'),
-                entered_by: formData.get('entered_by')
-            };
-
             // Validate required fields
-            if (!data.user_id || !data.subject_id || !data.registered_date || !data.entered_by) {
+            if (!userId || !registeredDate || !enteredBy) {
                 showWarning('Vui lòng điền đầy đủ thông tin bắt buộc');
                 return;
             }
-
-            const url = isEditMode ? `/api/user_subjects/${currentEditId}` : '/api/user_subjects';
-            const method = isEditMode ? 'PUT' : 'POST';
-
-            fetch(url, {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    // Đóng modal trước khi hiển thị toast
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('userSubjectsModal'));
-                    if (modal) {
-                        modal.hide();
-                    }
-                    showSuccess(result.message);
-                    
-                    // Set highlight row ID for newly created/edited record
-                    if (result.id) {
-                        console.log('Setting highlight for new record ID:', result.id);
-                        setHighlightRow(result.id);
-                    } else if (isEditMode && currentEditId) {
-                        console.log('Setting highlight for edited record ID:', currentEditId);
-                        setHighlightRow(currentEditId);
-                    }
-                    
-                    // Refresh table immediately
-                    refreshTableData(); // Refresh chỉ bảng thay vì reload page
-                } else {
-                    showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+            
+            if (isEditMode) {
+                // Edit mode: handle single record update
+                const checkedSubjects = document.querySelectorAll('.subject-checkbox:checked');
+                if (checkedSubjects.length !== 1) {
+                    showWarning('Trong chế độ chỉnh sửa, chỉ được chọn một môn học');
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('Error saving user subjects:', error);
-                showError('Có lỗi xảy ra khi lưu dữ liệu');
-            });
+                
+                const subjectId = checkedSubjects[0].value;
+                const criteriaSelect = document.getElementById('criteria_' + subjectId);
+                const criteriaId = criteriaSelect.value;
+                
+                if (!criteriaId) {
+                    showWarning('Vui lòng chọn kết quả cho môn học đã chọn');
+                    return;
+                }
+                
+                const data = {
+                    user_id: userId,
+                    subject_id: subjectId,
+                    criteria_id: criteriaId,
+                    registered_date: registeredDate,
+                    entered_by: enteredBy
+                };
+                
+                fetch(`/api/user_subjects/${currentEditId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('userSubjectsModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        showSuccess(result.message);
+                        refreshTableData();
+                    } else {
+                        showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating user subjects:', error);
+                    showError('Có lỗi xảy ra khi cập nhật dữ liệu');
+                });
+                
+            } else {
+                // Create mode: handle batch creation
+                const selectedSubjects = [];
+                document.querySelectorAll('.subject-checkbox:checked').forEach(checkbox => {
+                    const subjectId = checkbox.value;
+                    const criteriaSelect = document.getElementById('criteria_' + subjectId);
+                    const criteriaId = criteriaSelect.value;
+                    
+                    if (!criteriaId) {
+                        showWarning('Vui lòng chọn kết quả cho tất cả môn học đã chọn');
+                        return;
+                    }
+                    
+                    selectedSubjects.push({
+                        subject_id: subjectId,
+                        criteria_id: criteriaId
+                    });
+                });
+                
+                if (selectedSubjects.length === 0) {
+                    showWarning('Vui lòng chọn ít nhất một môn học');
+                    return;
+                }
+                
+                // Check if validation failed for any subject
+                let validationFailed = false;
+                selectedSubjects.forEach(subject => {
+                    if (!subject.criteria_id) {
+                        validationFailed = true;
+                    }
+                });
+                
+                if (validationFailed) {
+                    return; // Stop execution if validation failed
+                }
+                
+                // Prepare data for batch creation
+                const batchData = {
+                    user_id: userId,
+                    registered_date: registeredDate,
+                    entered_by: enteredBy,
+                    subjects: selectedSubjects
+                };
+                
+                // Send batch request
+                fetch('/api/user_subjects/batch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(batchData)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        // Close modal
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('userSubjectsModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        showSuccess(result.message);
+                        
+                        // Refresh table
+                        refreshTableData();
+                    } else {
+                        showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving user subjects:', error);
+                    showError('Có lỗi xảy ra khi lưu dữ liệu');
+                });
+            }
         }
 
         // Biến toàn cục cho việc quản lý thời gian

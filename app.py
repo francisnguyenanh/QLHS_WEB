@@ -2717,6 +2717,67 @@ def get_user_subjects_api(id):
         })
     return jsonify({'error': 'Unauthorized'}), 401
 
+@app.route('/api/user_subjects/batch', methods=['POST'])
+def create_user_subjects_batch_api():
+    if 'user_id' in session:
+        try:
+            data = request.json
+            user_id = data['user_id']
+            registered_date = data['registered_date']
+            entered_by = data['entered_by']
+            subjects = data['subjects']
+            
+            if not subjects or len(subjects) == 0:
+                return jsonify({'error': 'Không có môn học nào được chọn'}), 400
+            
+            conn = connect_db()
+            cursor = conn.cursor()
+            
+            created_records = []
+            total_points = 0
+            
+            # Calculate total points for all selected subjects
+            for subject_data in subjects:
+                criteria_id = subject_data.get('criteria_id')
+                if criteria_id:
+                    cursor.execute("SELECT criterion_points FROM Criteria WHERE id = ? AND is_deleted = 0", (criteria_id,))
+                    criteria_result = cursor.fetchone()
+                    if criteria_result:
+                        total_points += criteria_result[0] or 0
+            
+            # Create records for each selected subject
+            for subject_data in subjects:
+                subject_id = subject_data['subject_id']
+                criteria_id = subject_data.get('criteria_id') or None
+                
+                record_data = {
+                    'user_id': user_id,
+                    'subject_id': subject_id,
+                    'criteria_id': criteria_id,
+                    'registered_date': registered_date,
+                    'total_points': total_points,
+                    'entered_by': entered_by,
+                    'is_deleted': 0
+                }
+                
+                new_id = create_record('User_Subjects', record_data)
+                created_records.append(new_id)
+            
+            conn.close()
+            
+            return jsonify({
+                'success': True, 
+                'message': f'Tạo mới thành công {len(created_records)} bản ghi', 
+                'created_count': len(created_records),
+                'ids': created_records
+            })
+            
+        except Exception as e:
+            print(f"Error in batch creation: {str(e)}")
+            return jsonify({'error': f'Có lỗi xảy ra: {str(e)}'}), 500
+    
+    return jsonify({'error': 'Unauthorized'}), 401
+
 @app.route('/api/user_subjects', methods=['POST'])
 def create_user_subjects_api():
     if 'user_id' in session:
