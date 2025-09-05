@@ -3288,7 +3288,13 @@ def group_summary():
         # Danh sách cột hợp lệ để sắp xếp
         valid_columns = {
             'group_name': 'group_name',
-            'total_points': 'total_points'
+            'prev_total': 'prev_total',
+            'prev_study': 'prev_study', 
+            'prev_conduct': 'prev_conduct',
+            'now_total': 'now_total',
+            'now_study': 'now_study',
+            'now_conduct': 'now_conduct',
+            'progress': 'progress'
         }
         sort_column = valid_columns.get(sort_by, 'group_name')
         sort_direction = 'DESC' if sort_order == 'desc' else 'ASC'
@@ -3486,16 +3492,114 @@ def group_summary():
                 else:
                     records[group_name] = total_points if total_points else 0
 
-        # Chuyển dict thành list để hiển thị và sắp xếp
-        records_list = [(group_name, total_points) for group_name, total_points in records.items()]
+        conn.close()
+
+        # --- TÍNH ĐIỂM KỲ TRƯỚC VÀ KỲ NÀY ---
+        # Xác định khoảng thời gian kỳ trước
+        date_from_dt = datetime.strptime(date_from, '%Y-%m-%d')
+        date_to_dt = datetime.strptime(date_to, '%Y-%m-%d')
+        period_days = (date_to_dt - date_from_dt).days + 1
+        prev_date_to_dt = date_from_dt - timedelta(days=1)
+        prev_date_from_dt = prev_date_to_dt - timedelta(days=period_days-1)
+        prev_date_from = prev_date_from_dt.strftime('%Y-%m-%d')
+        prev_date_to = prev_date_to_dt.strftime('%Y-%m-%d')
+
+        # Truy vấn tổng điểm kỳ trước cho từng nhóm
+        conn = connect_db()
+        cursor = conn.cursor()
         
+        # Tổng điểm kỳ trước (User_Conduct - điểm hạnh kiểm)
+        query_prev_uc = '''
+            SELECT g.name AS group_name, SUM(uc.total_points) AS conduct_points
+            FROM User_Conduct uc
+            JOIN Users u ON uc.user_id = u.id
+            JOIN Groups g ON u.group_id = g.id
+            WHERE uc.is_deleted = 0 AND uc.registered_date >= ? AND uc.registered_date <= ?
+            GROUP BY g.id, g.name
+        '''
+        cursor.execute(query_prev_uc, (prev_date_from, prev_date_to))
+        prev_uc = {row[0]: row[1] or 0 for row in cursor.fetchall()}
+
+        # Tổng điểm kỳ trước (User_Subjects - điểm học tập)
+        query_prev_us = '''
+            SELECT g.name AS group_name, SUM(us.total_points) AS study_points
+            FROM User_Subjects us
+            JOIN Users u ON us.user_id = u.id
+            JOIN Groups g ON u.group_id = g.id
+            WHERE us.is_deleted = 0 AND us.registered_date >= ? AND us.registered_date <= ?
+            GROUP BY g.id, g.name
+        '''
+        cursor.execute(query_prev_us, (prev_date_from, prev_date_to))
+        prev_us = {row[0]: row[1] or 0 for row in cursor.fetchall()}
+
+        # Tổng điểm kỳ này (User_Conduct - điểm hạnh kiểm)
+        query_now_uc = '''
+            SELECT g.name AS group_name, SUM(uc.total_points) AS conduct_points
+            FROM User_Conduct uc
+            JOIN Users u ON uc.user_id = u.id
+            JOIN Groups g ON u.group_id = g.id
+            WHERE uc.is_deleted = 0 AND uc.registered_date >= ? AND uc.registered_date <= ?
+            GROUP BY g.id, g.name
+        '''
+        cursor.execute(query_now_uc, (date_from, date_to))
+        now_uc = {row[0]: row[1] or 0 for row in cursor.fetchall()}
+
+        # Tổng điểm kỳ này (User_Subjects - điểm học tập)
+        query_now_us = '''
+            SELECT g.name AS group_name, SUM(us.total_points) AS study_points
+            FROM User_Subjects us
+            JOIN Users u ON us.user_id = u.id
+            JOIN Groups g ON u.group_id = g.id
+            WHERE us.is_deleted = 0 AND us.registered_date >= ? AND us.registered_date <= ?
+            GROUP BY g.id, g.name
+        '''
+        cursor.execute(query_now_us, (date_from, date_to))
+        now_us = {row[0]: row[1] or 0 for row in cursor.fetchall()}
+
+        conn.close()
+
+        # Tạo records_list với đầy đủ thông tin cho từng nhóm
+        records_list = []
+        for group in groups:
+            name = group[1]
+            # Kỳ trước
+            prev_conduct = prev_uc.get(name, 0)    # Điểm hạnh kiểm kỳ trước
+            prev_study = prev_us.get(name, 0)      # Điểm học tập kỳ trước
+            prev_total = prev_conduct + prev_study  # Tổng điểm kỳ trước
+            # Kỳ này
+            now_conduct = now_uc.get(name, 0)      # Điểm hạnh kiểm kỳ này
+            now_study = now_us.get(name, 0)        # Điểm học tập kỳ này
+            now_total = now_conduct + now_study     # Tổng điểm kỳ này
+            progress = now_total - prev_total       # Tiến bộ (kỳ này - kỳ trước)
+            
+            records_list.append([
+                name,           # 0: Tên nhóm
+                prev_total,     # 1: Tổng điểm kỳ trước
+                prev_study,     # 2: Điểm học tập kỳ trước  
+                prev_conduct,   # 3: Điểm hạnh kiểm kỳ trước
+                now_total,      # 4: Tổng điểm kỳ này
+                now_study,      # 5: Điểm học tập kỳ này
+                now_conduct,    # 6: Điểm hạnh kiểm kỳ này
+                progress        # 7: Tiến bộ
+            ])
+
         # Apply sorting
         if sort_by == 'group_name':
             records_list.sort(key=lambda x: vietnamese_sort_key(x[0], sort_by_first_name=False), reverse=(sort_order == 'desc'))
-        elif sort_by == 'total_points':
+        elif sort_by == 'prev_total':
             records_list.sort(key=lambda x: x[1], reverse=(sort_order == 'desc'))
-
-        conn.close()
+        elif sort_by == 'prev_study':
+            records_list.sort(key=lambda x: x[2], reverse=(sort_order == 'desc'))
+        elif sort_by == 'prev_conduct':
+            records_list.sort(key=lambda x: x[3], reverse=(sort_order == 'desc'))
+        elif sort_by == 'now_total':
+            records_list.sort(key=lambda x: x[4], reverse=(sort_order == 'desc'))
+        elif sort_by == 'now_study':
+            records_list.sort(key=lambda x: x[5], reverse=(sort_order == 'desc'))
+        elif sort_by == 'now_conduct':
+            records_list.sort(key=lambda x: x[6], reverse=(sort_order == 'desc'))
+        elif sort_by == 'progress':
+            records_list.sort(key=lambda x: x[7], reverse=(sort_order == 'desc'))
 
         # Kiểm tra xem có phải AJAX request không
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -3505,7 +3609,7 @@ def group_summary():
     <table class="table table-bordered table-striped">
         <thead>
             <tr>
-                <th class="text-nowrap" style="width: 30%;">
+                <th rowspan="2" class="text-nowrap">
                     <a href="#" class="sort-link text-decoration-none text-dark" data-sort="group_name" data-order="{{ 'desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc' }}">
                         Nhóm
                         {% if sort_by == 'group_name' %}
@@ -3515,10 +3619,74 @@ def group_summary():
                         {% endif %}
                     </a>
                 </th>
-                <th class="text-nowrap" style="width: 70%;">
-                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="total_points" data-order="{{ 'desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc' }}">
-                        Tổng điểm
-                        {% if sort_by == 'total_points' %}
+                <th colspan="3" class="text-center">Kỳ Trước</th>
+                <th colspan="3" class="text-center">Kỳ Sau</th>
+                <th rowspan="2" class="text-nowrap">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="progress" data-order="{{ 'desc' if sort_by == 'progress' and sort_order == 'asc' else 'asc' }}">
+                        Tiến bộ
+                        {% if sort_by == 'progress' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+            </tr>
+            <tr>
+                <th class="text-center">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_study" data-order="{{ 'desc' if sort_by == 'prev_study' and sort_order == 'asc' else 'asc' }}">
+                        Học tập
+                        {% if sort_by == 'prev_study' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-center">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_conduct" data-order="{{ 'desc' if sort_by == 'prev_conduct' and sort_order == 'asc' else 'asc' }}">
+                        Hạnh kiểm
+                        {% if sort_by == 'prev_conduct' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-center">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_total" data-order="{{ 'desc' if sort_by == 'prev_total' and sort_order == 'asc' else 'asc' }}">
+                        Tổng
+                        {% if sort_by == 'prev_total' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-center">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="now_study" data-order="{{ 'desc' if sort_by == 'now_study' and sort_order == 'asc' else 'asc' }}">
+                        Học tập
+                        {% if sort_by == 'now_study' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-center">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="now_conduct" data-order="{{ 'desc' if sort_by == 'now_conduct' and sort_order == 'asc' else 'asc' }}">
+                        Hạnh kiểm
+                        {% if sort_by == 'now_conduct' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-center">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="now_total" data-order="{{ 'desc' if sort_by == 'now_total' and sort_order == 'asc' else 'asc' }}">
+                        Tổng
+                        {% if sort_by == 'now_total' %}
                             {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
                         {% else %}
                             <i class="fas fa-sort"></i>
@@ -3531,7 +3699,21 @@ def group_summary():
             {% for record in records %}
             <tr>
                 <td>{{ record[0] }}</td>
-                <td>{{ record[1] }}</td>
+                <td class="text-center">{{ record[2] }}</td>
+                <td class="text-center">{{ record[3] }}</td>
+                <td class="text-center">{{ record[1] }}</td>
+                <td class="text-center">{{ record[5] }}</td>
+                <td class="text-center">{{ record[6] }}</td>
+                <td class="text-center">{{ record[4] }}</td>
+                <td class="text-center">
+                    {% if record[7] > 0 %}
+                        <span class="text-success">+{{ record[7] }}</span>
+                    {% elif record[7] < 0 %}
+                        <span class="text-danger">{{ record[7] }}</span>
+                    {% else %}
+                        <span class="text-muted">{{ record[7] }}</span>
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>

@@ -227,7 +227,7 @@
                             <table class="table table-bordered table-striped">
                                 <thead>
                                     <tr>
-                                        <th class="text-nowrap" style="width: 30%;">
+                                        <th rowspan="2" class="text-nowrap">
                                             <a href="#" class="sort-link text-decoration-none text-dark" data-sort="group_name" data-order="{{ 'desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc' }}">
                                                 Nhóm
                                                 {% if sort_by == 'group_name' %}
@@ -237,10 +237,74 @@
                                                 {% endif %}
                                             </a>
                                         </th>
-                                        <th class="text-nowrap" style="width: 70%;">
-                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="total_points" data-order="{{ 'desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc' }}">
-                                                Tổng điểm
-                                                {% if sort_by == 'total_points' %}
+                                        <th colspan="3" class="text-center">Kỳ Trước</th>
+                                        <th colspan="3" class="text-center">Kỳ Sau</th>
+                                        <th rowspan="2" class="text-nowrap">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="progress" data-order="{{ 'desc' if sort_by == 'progress' and sort_order == 'asc' else 'asc' }}">
+                                                Tiến bộ
+                                                {% if sort_by == 'progress' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-center">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_study" data-order="{{ 'desc' if sort_by == 'prev_study' and sort_order == 'asc' else 'asc' }}">
+                                                Học tập
+                                                {% if sort_by == 'prev_study' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th class="text-center">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_conduct" data-order="{{ 'desc' if sort_by == 'prev_conduct' and sort_order == 'asc' else 'asc' }}">
+                                                Hạnh kiểm
+                                                {% if sort_by == 'prev_conduct' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th class="text-center">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_total" data-order="{{ 'desc' if sort_by == 'prev_total' and sort_order == 'asc' else 'asc' }}">
+                                                Tổng
+                                                {% if sort_by == 'prev_total' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th class="text-center">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="now_study" data-order="{{ 'desc' if sort_by == 'now_study' and sort_order == 'asc' else 'asc' }}">
+                                                Học tập
+                                                {% if sort_by == 'now_study' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th class="text-center">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="now_conduct" data-order="{{ 'desc' if sort_by == 'now_conduct' and sort_order == 'asc' else 'asc' }}">
+                                                Hạnh kiểm
+                                                {% if sort_by == 'now_conduct' %}
+                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
+                                                {% endif %}
+                                            </a>
+                                        </th>
+                                        <th class="text-center">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="now_total" data-order="{{ 'desc' if sort_by == 'now_total' and sort_order == 'asc' else 'asc' }}">
+                                                Tổng
+                                                {% if sort_by == 'now_total' %}
                                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
                                                 {% else %}
                                                     <i class="fas fa-sort"></i>
@@ -253,7 +317,21 @@
                                     {% for record in records %}
                                         <tr>
                                             <td>{{ record[0] }}</td>
-                                            <td>{{ record[1] }}</td>
+                                            <td class="text-center">{{ record[2] }}</td>
+                                            <td class="text-center">{{ record[3] }}</td>
+                                            <td class="text-center">{{ record[1] }}</td>
+                                            <td class="text-center">{{ record[5] }}</td>
+                                            <td class="text-center">{{ record[6] }}</td>
+                                            <td class="text-center">{{ record[4] }}</td>
+                                            <td class="text-center">
+                                                {% if record[7] > 0 %}
+                                                    <span class="text-success">+{{ record[7] }}</span>
+                                                {% elif record[7] < 0 %}
+                                                    <span class="text-danger">{{ record[7] }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">{{ record[7] }}</span>
+                                                {% endif %}
+                                            </td>
                                         </tr>
                                     {% endfor %}
                                 </tbody>
