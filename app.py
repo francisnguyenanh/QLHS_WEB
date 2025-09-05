@@ -2203,8 +2203,14 @@ def user_conduct_list():
         if not can_access_conduct_management():
             flash('Bạn không có quyền truy cập chức năng này', 'error')
             return redirect(url_for('index'))
-        sort_by = request.args.get('sort_by', 'registered_date')
-        sort_order = request.args.get('sort_order', 'asc')
+        
+        # Get sort parameters from both GET and POST requests
+        sort_by = request.form.get('sort_by') or request.args.get('sort_by', 'registered_date')
+        sort_order = request.form.get('sort_order') or request.args.get('sort_order', 'asc')
+        
+        # Debug logging for AJAX requests
+        if request.form.get('ajax') == '1' or request.args.get('ajax') == '1':
+            print(f"AJAX Request - sort_by: {sort_by}, sort_order: {sort_order}")
 
         valid_columns = {
             'user_name': 'u.name',
@@ -2394,6 +2400,29 @@ def user_conduct_list():
         cursor.execute(query, params)
         records = cursor.fetchall()
         conn.close()
+
+        # Check if this is an AJAX request
+        if request.form.get('ajax') == '1' or request.args.get('ajax') == '1':
+            # Generate table HTML for AJAX response
+            table_html = "<tbody>"
+            for record in records:
+                permissions = get_user_permissions()
+                edit_button = ""
+                delete_button = ""
+                
+                if permissions.get('master', False) or permissions.get('conduct_management_update', False):
+                    edit_button = f'<button class="btn btn-sm btn-info me-1" onclick="openEditModal({record[0]})">Edit</button>'
+                
+                if permissions.get('master', False) or permissions.get('conduct_management_delete', False):
+                    delete_url = url_for('user_conduct_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, 
+                                        date_from=date_from, date_to=date_to, users=selected_users, 
+                                        conducts=selected_conducts, groups=selected_groups)
+                    delete_button = f'<button class="btn btn-sm btn-danger" data-delete-url="{delete_url}" onclick="confirmDeleteRecord(this)">Delete</button>'
+                
+                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td>{record[6]}</td><td>{record[3]}</td><td>{record[4]}</td><td>{record[5]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
+            
+            table_html += "</tbody>"
+            return jsonify({'html': table_html})
 
         permissions = get_user_permissions()
         return render_template_with_permissions('user_conduct.html',
@@ -2717,8 +2746,14 @@ def user_subjects_list():
         if not can_access_academic_management():
             flash('Bạn không có quyền truy cập chức năng này', 'error')
             return redirect(url_for('index'))
-        sort_by = request.args.get('sort_by', 'registered_date')
-        sort_order = request.args.get('sort_order', 'asc')
+        
+        # Get sort parameters from both GET and POST requests  
+        sort_by = request.form.get('sort_by') or request.args.get('sort_by', 'registered_date')
+        sort_order = request.form.get('sort_order') or request.args.get('sort_order', 'asc')
+        
+        # Debug logging for AJAX requests
+        if request.form.get('ajax') == '1' or request.args.get('ajax') == '1':
+            print(f"AJAX Request - sort_by: {sort_by}, sort_order: {sort_order}")
 
         valid_columns = {
             'user_name': 'u.name',
@@ -2913,6 +2948,30 @@ def user_subjects_list():
         cursor.execute(query, params)
         records = cursor.fetchall()
         conn.close()
+
+        # Check if this is an AJAX request
+        if request.form.get('ajax') == '1' or request.args.get('ajax') == '1':
+            # Generate table HTML for AJAX response
+            table_html = "<tbody>"
+            for record in records:
+                permissions = get_user_permissions()
+                edit_button = ""
+                delete_button = ""
+                
+                if permissions.get('master', False) or permissions.get('academic_management_update', False):
+                    edit_button = f'<button class="btn btn-sm btn-info me-1" onclick="openEditModal({record[0]})">Sửa</button>'
+                
+                if permissions.get('master', False) or permissions.get('academic_management_delete', False):
+                    delete_url = url_for('user_subjects_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, 
+                                        date_from=date_from, date_to=date_to, users=selected_users, 
+                                        subjects=selected_subjects, groups=selected_groups)
+                    delete_button = f'<button class="btn btn-sm btn-danger" data-delete-url="{delete_url}" onclick="confirmDeleteRecord(this)">Xóa</button>'
+                
+                criteria_text = record[3] if record[3] else 'None'
+                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td>{criteria_text}</td><td>{record[7]}</td><td>{record[4]}</td><td>{record[5]}</td><td>{record[6]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
+            
+            table_html += "</tbody>"
+            return jsonify({'html': table_html})
 
         return render_template_with_permissions('user_subjects.html',
                                records=records,

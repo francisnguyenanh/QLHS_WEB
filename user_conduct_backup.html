@@ -102,12 +102,12 @@
         {% endwith %}
         
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="mb-0">Quản lý kết quả học tập</h2>
+            <h2 class="mb-0">Quản lý hạnh kiểm</h2>
             
             <!-- Toggle button for search form -->
             <div class="d-flex gap-2">
-                {% if permissions.get('master', False) or permissions.get('academic_management_create', False) %}
-                    <button type="button" class="btn btn-success btn-compact" onclick="openCreateModal()" data-bs-toggle="tooltip" title="Tạo mới kết quả học tập">
+                {% if permissions.get('master', False) or permissions.get('conduct_management_create', False) %}
+                    <button type="button" class="btn btn-success btn-compact" onclick="openCreateModal()" data-bs-toggle="tooltip" title="Tạo mới hạnh kiểm">
                         <i class="fas fa-plus"></i>
                         <span class="d-none d-md-inline ms-1">Tạo mới</span>
                     </button>
@@ -131,7 +131,7 @@
                         <div class="btn-group w-100" role="group">
                             <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" checked>
                             <label class="btn btn-outline-primary" for="week_type">Tuần</label>
-                            <input type="radio" class="btn-check" name="period_type" id="month_type" value="month" >
+                            <input type="radio" class="btn-check" name="period_type" id="month_type" value="month">
                             <label class="btn btn-outline-primary" for="month_type">Tháng</label>
                         </div>
                     </div>
@@ -181,10 +181,10 @@
                 </div>
                 <div class="col-12 col-md-3">
                     <div class="form-group">
-                        <label for="subjects">Môn học:</label>
-                        <select name="subjects" id="subjects" multiple class="form-control" size="6">
-                            {% for subject in subjects %}
-                                <option value="{{ subject[0] }}" {% if subject[0]|string in selected_subjects %}selected{% endif %}>{{ subject[1] }}</option>
+                        <label for="conducts">Hạnh kiểm:</label>
+                        <select name="conducts" id="conducts" multiple class="form-control" size="6">
+                            {% for conduct in conducts %}
+                                <option value="{{ conduct[0] }}" {% if conduct[0]|string in selected_conducts %}selected{% endif %}>{{ conduct[1] }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -205,35 +205,55 @@
             <table class="table table-bordered table-striped">
                 <thead>
                     <tr>
-                        <th class="text-nowrap sortable-header" data-sort="user_name" style="cursor: pointer;">
-                            Họ tên
-                            <i class="fas fa-sort{% if sort_by == 'user_name' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('user_conduct_list', sort_by='user_name', sort_order='desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
+                                Họ tên
+                                {% if sort_by == 'user_name' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
                         </th>
-                        <th class="text-nowrap sortable-header" data-sort="subject_name" style="cursor: pointer;">
-                            Môn học
-                            <i class="fas fa-sort{% if sort_by == 'subject_name' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('user_conduct_list', sort_by='conduct_name', sort_order='desc' if sort_by == 'conduct_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
+                                Hạnh kiểm
+                                {% if sort_by == 'conduct_name' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
                         </th>
-                        <th class="text-nowrap sortable-header" data-sort="criteria_name" style="cursor: pointer;">
-                            Kết quả
-                            <i class="fas fa-sort{% if sort_by == 'criteria_name' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('user_conduct_list', sort_by='group_name', sort_order='desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
+                                Nhóm
+                                {% if sort_by == 'group_name' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
                         </th>
-                        <th class="text-nowrap sortable-header" data-sort="group_name" style="cursor: pointer;">
-                            Nhóm
-                            <i class="fas fa-sort{% if sort_by == 'group_name' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('user_conduct_list', sort_by='registered_date', sort_order='desc' if sort_by == 'registered_date' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
+                                Dữ liệu ngày
+                                {% if sort_by == 'registered_date' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
                         </th>
-                        <th class="text-nowrap sortable-header" data-sort="registered_date" style="cursor: pointer;">
-                            Dữ liệu ngày
-                            <i class="fas fa-sort{% if sort_by == 'registered_date' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('user_conduct_list', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
+                                Điểm ngày
+                                {% if sort_by == 'total_points' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
                         </th>
-                        <th class="text-nowrap sortable-header" data-sort="total_points" style="cursor: pointer;">
-                            Điểm ngày
-                            <i class="fas fa-sort{% if sort_by == 'total_points' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
+                        <th class="text-nowrap">
+                            <a href="{{ url_for('user_conduct_list', sort_by='entered_by', sort_order='desc' if sort_by == 'entered_by' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
+                                Đăng ký bởi
+                                {% if sort_by == 'entered_by' %}
+                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                {% endif %}
+                            </a>
                         </th>
-                        <th class="text-nowrap sortable-header" data-sort="entered_by" style="cursor: pointer;">
-                            Người đăng ký
-                            <i class="fas fa-sort{% if sort_by == 'entered_by' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
-                        </th>
-                        <th class="text-nowrap">Thao tác</th>
+                        <th class="text-nowrap">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -241,19 +261,18 @@
                         <tr data-id="{{ record[0] }}">
                             <td>{{ record[1] }}</td>
                             <td>{{ record[2] }}</td>
-                            <td>{{ record[3] or 'None' }}</td>
-                            <td>{{ record[7] }}</td>
+                            <td>{{ record[6] }}</td>
+                            <td>{{ record[3] }}</td>
                             <td>{{ record[4] }}</td>
                             <td>{{ record[5] }}</td>
-                            <td>{{ record[6] }}</td>
                             <td class="text-nowrap">
-                                {% if permissions.get('master', False) or permissions.get('academic_management_update', False) %}
-                                    <button class="btn btn-sm btn-info me-1" onclick="openEditModal({{ record[0] }})">Sửa</button>
+                                {% if permissions.get('master', False) or permissions.get('conduct_management_update', False) %}
+                                    <button class="btn btn-sm btn-info me-1" onclick="openEditModal({{ record[0] }})">Edit</button>
                                 {% endif %}
-                                {% if permissions.get('master', False) or permissions.get('academic_management_delete', False) %}
+                                {% if permissions.get('master', False) or permissions.get('conduct_management_delete', False) %}
                                     <button class="btn btn-sm btn-danger" 
-                                            data-delete-url="{{ url_for('user_subjects_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, subjects=selected_subjects, groups=selected_groups) }}"
-                                            onclick="confirmDeleteRecord(this)">Xoá</button>
+                                            data-delete-url="{{ url_for('user_conduct_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}"
+                                            onclick="confirmDeleteRecord(this)">Delete</button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -264,20 +283,20 @@
     </div>
 
     <!-- Modal for Create/Edit -->
-    <div class="modal fade" id="userSubjectsModal" tabindex="-1" aria-labelledby="userSubjectsModalLabel" aria-hidden="true">
+    <div class="modal fade" id="conductModal" tabindex="-1" aria-labelledby="conductModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="userSubjectsModalLabel">Tạo mới kết quả học tập</h5>
+                    <h5 class="modal-title" id="conductModalLabel">Tạo mới hạnh kiểm học sinh</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form id="userSubjectsForm">
+                    <form id="conductForm">
                         <input type="hidden" id="modal_id" name="id">
                         <div class="row g-3">
                             <div class="col-12 col-md-4">
                                 <div class="form-group">
-                                    <label for="modal_user_id">Họ tên:</label>
+                                    <label for="modal_user_id">Học sinh:</label>
                                     <select name="user_id" id="modal_user_id" class="form-control" required onchange="calculateModalTotalPoints()">
                                         <option value="">Chọn học sinh</option>
                                         {% for user in all_users %}
@@ -286,20 +305,11 @@
                                     </select>
                                 </div>
                                 <div class="form-group mt-3">
-                                    <label for="modal_subject_id">Môn học:</label>
-                                    <select name="subject_id" id="modal_subject_id" class="form-control" required>
-                                        <option value="">Chọn môn học</option>
-                                        {% for subject in all_subjects %}
-                                            <option value="{{ subject[0] }}">{{ subject[1] }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                                <div class="form-group mt-3">
-                                    <label for="modal_criteria_id">Kết quả:</label>
-                                    <select name="criteria_id" id="modal_criteria_id" class="form-control" onchange="loadModalCriteriaPoints()">
-                                        <option value="">Chọn kết quả</option>
-                                        {% for criterion in all_criteria %}
-                                            <option value="{{ criterion[0] }}">{{ criterion[1] }}</option>
+                                    <label for="modal_conduct_id">Hạnh kiểm:</label>
+                                    <select name="conduct_id" id="modal_conduct_id" class="form-control" required onchange="loadModalConductPoints()">
+                                        <option value="">Chọn hạnh kiểm</option>
+                                        {% for conduct in all_conducts %}
+                                            <option value="{{ conduct[0] }}">{{ conduct[1] }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
@@ -316,8 +326,8 @@
                             </div>
                             <div class="col-12 col-md-4">
                                 <div class="form-group">
-                                    <label for="modal_criteria_points">Điểm kết quả:</label>
-                                    <input type="number" name="criteria_points" id="modal_criteria_points" class="form-control" readonly>
+                                    <label for="modal_conduct_points">Điểm hạnh kiểm:</label>
+                                    <input type="number" name="conduct_points" id="modal_conduct_points" class="form-control" readonly>
                                 </div>
                                 <div class="form-group mt-3">
                                     <label for="modal_total_points">Tổng điểm ngày:</label>
@@ -329,7 +339,7 @@
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                    <button type="button" class="btn btn-primary" onclick="saveUserSubjects()">Lưu</button>
+                    <button type="button" class="btn btn-primary" onclick="saveConduct()">Lưu</button>
                 </div>
             </div>
         </div>
@@ -338,46 +348,40 @@
     <script>
         let isEditMode = false;
         let currentEditId = null;
-        let highlightRowId = null; // Global variable to track highlighted row
-        
-        // Global variables for sort state (move to global scope)
-        var currentSortBy = '{{ sort_by }}';
-        var currentSortOrder = '{{ sort_order }}';
 
         function openCreateModal() {
             isEditMode = false;
             currentEditId = null;
-            document.getElementById('userSubjectsModalLabel').textContent = 'Tạo mới kết quả học tập';
-            document.getElementById('userSubjectsForm').reset();
+            document.getElementById('conductModalLabel').textContent = 'Tạo mới hạnh kiểm học sinh';
+            document.getElementById('conductForm').reset();
             document.getElementById('modal_id').value = '';
-            document.getElementById('modal_criteria_points').value = '';
+            document.getElementById('modal_conduct_points').value = '';
             document.getElementById('modal_total_points').value = '';
             // Tự động set người tạo
             document.getElementById('modal_entered_by').value = '{{ current_user_info.name if current_user_info else "" }}';
-            const modal = new bootstrap.Modal(document.getElementById('userSubjectsModal'));
+            const modal = new bootstrap.Modal(document.getElementById('conductModal'));
             modal.show();
         }
 
         function openEditModal(id) {
             isEditMode = true;
             currentEditId = id;
-            document.getElementById('userSubjectsModalLabel').textContent = 'Chỉnh sửa kết quả học tập';
+            document.getElementById('conductModalLabel').textContent = 'Chỉnh sửa hạnh kiểm học sinh';
             
             // Fetch record data
-            fetch(`/api/user_subjects/${id}`)
+            fetch(`/api/user_conduct/${id}`)
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('modal_id').value = data.id;
                     document.getElementById('modal_user_id').value = data.user_id;
-                    document.getElementById('modal_subject_id').value = data.subject_id;
-                    document.getElementById('modal_criteria_id').value = data.criteria_id || '';
+                    document.getElementById('modal_conduct_id').value = data.conduct_id;
                     document.getElementById('modal_registered_date').value = data.registered_date;
                     document.getElementById('modal_entered_by').value = data.entered_by;
                     
-                    // Load criteria points and calculate total
-                    loadModalCriteriaPoints();
+                    // Load conduct points and calculate total
+                    loadModalConductPoints();
                     
-                    const modal = new bootstrap.Modal(document.getElementById('userSubjectsModal'));
+                    const modal = new bootstrap.Modal(document.getElementById('conductModal'));
                     modal.show();
                 })
                 .catch(error => {
@@ -386,23 +390,23 @@
                 });
         }
 
-        function loadModalCriteriaPoints() {
-            const criteriaId = document.getElementById('modal_criteria_id').value;
-            if (criteriaId) {
-                fetch(`/get_criteria_points/${criteriaId}`)
+        function loadModalConductPoints() {
+            const conductId = document.getElementById('modal_conduct_id').value;
+            if (conductId) {
+                fetch(`/get_conduct_points/${conductId}`)
                     .then(response => response.json())
                     .then(data => {
-                        const criteriaPoints = data.criterion_points || 0;
-                        document.getElementById('modal_criteria_points').value = criteriaPoints;
+                        const conductPoints = data.conduct_points || 0;
+                        document.getElementById('modal_conduct_points').value = conductPoints;
                         calculateModalTotalPoints();
                     })
                     .catch(error => {
-                        console.error('Error fetching criteria points:', error);
-                        document.getElementById('modal_criteria_points').value = 0;
+                        console.error('Error fetching conduct points:', error);
+                        document.getElementById('modal_conduct_points').value = 0;
                         calculateModalTotalPoints();
                     });
             } else {
-                document.getElementById('modal_criteria_points').value = '';
+                document.getElementById('modal_conduct_points').value = 0;
                 calculateModalTotalPoints();
             }
         }
@@ -410,44 +414,43 @@
         function calculateModalTotalPoints() {
             const userId = document.getElementById('modal_user_id').value;
             const registeredDate = document.getElementById('modal_registered_date').value;
-            const criteriaPoints = parseFloat(document.getElementById('modal_criteria_points').value) || 0;
+            const conductPoints = parseFloat(document.getElementById('modal_conduct_points').value) || 0;
             const excludeId = isEditMode ? currentEditId : 0;
 
             if (userId && registeredDate) {
-                fetch(`/user_subjects_total_points?user_id=${userId}&registered_date=${registeredDate}&exclude_id=${excludeId}`)
+                fetch(`/user_conduct_total_points?user_id=${userId}&registered_date=${registeredDate}&exclude_id=${excludeId}`)
                     .then(response => response.json())
                     .then(data => {
-                        const totalPoints = (data.total_points || 0) + criteriaPoints;
+                        const totalPoints = (data.total_points || 0) + conductPoints;
                         document.getElementById('modal_total_points').value = totalPoints;
                     })
                     .catch(error => {
                         console.error('Error fetching total points:', error);
-                        document.getElementById('modal_total_points').value = criteriaPoints;
+                        document.getElementById('modal_total_points').value = conductPoints;
                     });
             } else {
-                document.getElementById('modal_total_points').value = criteriaPoints;
+                document.getElementById('modal_total_points').value = conductPoints;
             }
         }
 
-        function saveUserSubjects() {
-            const form = document.getElementById('userSubjectsForm');
+        function saveConduct() {
+            const form = document.getElementById('conductForm');
             const formData = new FormData(form);
             
             const data = {
                 user_id: formData.get('user_id'),
-                subject_id: formData.get('subject_id'),
-                criteria_id: formData.get('criteria_id') || null,
+                conduct_id: formData.get('conduct_id'),
                 registered_date: formData.get('registered_date'),
                 entered_by: formData.get('entered_by')
             };
 
             // Validate required fields
-            if (!data.user_id || !data.subject_id || !data.registered_date || !data.entered_by) {
-                showWarning('Vui lòng điền đầy đủ thông tin bắt buộc');
+            if (!data.user_id || !data.conduct_id || !data.registered_date || !data.entered_by) {
+                showWarning('Vui lòng điền đầy đủ thông tin');
                 return;
             }
 
-            const url = isEditMode ? `/api/user_subjects/${currentEditId}` : '/api/user_subjects';
+            const url = isEditMode ? `/api/user_conduct/${currentEditId}` : '/api/user_conduct';
             const method = isEditMode ? 'PUT' : 'POST';
 
             fetch(url, {
@@ -460,8 +463,8 @@
             .then(response => response.json())
             .then(result => {
                 if (result.success) {
-                    // Đóng modal trước khi hiển thị toast
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('userSubjectsModal'));
+                    // Đóng modal trước khi hiển thềEtoast
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('conductModal'));
                     if (modal) {
                         modal.hide();
                     }
@@ -477,13 +480,13 @@
                     }
                     
                     // Refresh table immediately
-                    refreshTableData(); // Refresh chỉ bảng thay vì reload page
+                    refreshTableData(); // Refresh chềEbảng thay vì reload page
                 } else {
                     showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
                 }
             })
             .catch(error => {
-                console.error('Error saving user subjects:', error);
+                console.error('Error saving conduct:', error);
                 showError('Có lỗi xảy ra khi lưu dữ liệu');
             });
         }
@@ -510,7 +513,7 @@
             return new Date(date.getFullYear(), date.getMonth() + 1, 0);
         }
 
-        // Hàm format ngày về yyyy-mm-dd
+        // Hàm format ngày vềEyyyy-mm-dd
         function formatDate(date) {
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -518,7 +521,7 @@
             return `${year}-${month}-${day}`;
         }
 
-        // Hàm cập nhật hiển thị thời gian
+        // Hàm cập nhật hiển thềEthời gian
         function updatePeriodDisplay() {
             const periodDisplay = document.getElementById('periodDisplay');
             const dateFromInput = document.getElementById('date_from');
@@ -547,7 +550,7 @@
             }
         }
 
-        // Hàm lấy số tuần trong năm
+        // Hàm lấy sềEtuần trong năm
         function getWeekNumber(date) {
             const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
             const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
@@ -556,16 +559,16 @@
 
         // Gộp tất cả DOMContentLoaded logic vào một function duy nhất
         document.addEventListener('DOMContentLoaded', function() {
-            // Hiển thị page content sau khi DOM ready
+            // Hiển thềEpage content sau khi DOM ready
             const pageContent = document.querySelector('.page-content');
             if (pageContent) {
                 setTimeout(() => {
                     pageContent.classList.add('loaded');
-                }, 50); // Delay nhỏ để đảm bảo mọi thứ đã render
+                }, 50); // Delay nhềEđềEđảm bảo mọi thứ đã render
             }
             
             // ===== PERIOD NAVIGATION LOGIC =====
-            // Luôn khởi tạo với tuần hiện tại dựa trên ngày hiện tại để đảm bảo tất cả trang đều hiển thị cùng tuần
+            // Luôn khởi tạo với tuần hiện tại dựa trên ngày hiện tại đềEđảm bảo tất cả trang đều hiển thềEcùng tuần
             currentDate = getMonday(new Date());
             currentPeriodType = 'week';
             document.getElementById('week_type').checked = true;
@@ -603,6 +606,9 @@
             const toggleSearchForm = document.getElementById('toggleSearchForm');
             const searchFormCard = document.getElementById('searchFormCard');
             let isCollapsed = false;
+            
+            // Global variable to track highlighted row
+            let highlightRowId = null;
             
             // Initialize tooltips
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -643,8 +649,8 @@
             }
             
             // ===== SELECT ALL FUNCTIONALITY =====
-            // Select all functionality đã được implement ở phần đầu file
-            // Không cần duplicate code ở đây
+            // Select all functionality đã được implement ềEphần đầu file
+            // Không cần duplicate code ềEđây
             
             // ===== SEARCH FORM AJAX SUBMISSION =====
             const searchForm = document.getElementById('searchForm');
@@ -655,185 +661,7 @@
                     refreshTableData(); // Dùng AJAX thay vì submit form
                 });
             }
-            
-            // ===== SORTABLE HEADERS LOGIC =====
-            // Add click handlers for sortable headers (only if not already added)
-            document.querySelectorAll('.sortable-header:not([data-sort-handler-added])').forEach(header => {
-                header.setAttribute('data-sort-handler-added', 'true'); // Mark as processed
-                header.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    const sortBy = this.getAttribute('data-sort');
-                    
-                    // Determine new sort order
-                    let newSortOrder = 'asc';
-                    if (sortBy === currentSortBy) {
-                        // Same column clicked, toggle sort order
-                        newSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
-                    } else {
-                        // Different column clicked, always start with asc
-                        newSortOrder = 'asc';
-                    }
-                    
-                    console.log(`Before sorting - currentSortBy: ${currentSortBy}, currentSortOrder: ${currentSortOrder}`);
-                    console.log(`Sorting: ${sortBy} ${newSortOrder} (previous: ${currentSortBy} ${currentSortOrder})`);
-                    
-                    // Update global variables immediately before AJAX call
-                    currentSortBy = sortBy;
-                    currentSortOrder = newSortOrder;
-                    
-                    sortData(sortBy, newSortOrder);
-                });
-            });
         });
-
-        // ===== AJAX SORTING FUNCTIONS =====
-        function sortData(sortBy, sortOrder) {
-            console.log('sortData called with:', sortBy, sortOrder);
-            
-            // Get current form data for filtering
-            const form = document.getElementById('searchForm');
-            const formData = new FormData(form);
-            
-            // Add sort parameters
-            formData.append('sort_by', sortBy);
-            formData.append('sort_order', sortOrder);
-            formData.append('ajax', '1');
-            
-            // Convert FormData to URLSearchParams for fetch
-            const params = new URLSearchParams();
-            for (let [key, value] of formData.entries()) {
-                params.append(key, value);
-            }
-            
-            console.log('Sending AJAX request with params:', params.toString());
-            
-            fetch('{{ url_for("user_subjects_list") }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: params
-            })
-            .then(response => {
-                console.log('Response status:', response.status);
-                return response.json();
-            })
-            .then(data => {
-                console.log('Response data:', data);
-                if (data.html) {
-                    // Try to find tbody using querySelector first
-                    let tbody = document.querySelector('tbody');
-                    console.log('tbody found by querySelector:', tbody);
-                    
-                    if (!tbody) {
-                        // Fallback: find tbody using regex
-                        const tableContainer = document.querySelector('.table-responsive');
-                        if (tableContainer) {
-                            const tableHTML = tableContainer.innerHTML;
-                            const tbodyMatch = tableHTML.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/);
-                            if (tbodyMatch) {
-                                const tempDiv = document.createElement('div');
-                                tempDiv.innerHTML = '<table>' + tbodyMatch[0] + '</table>';
-                                tbody = tempDiv.querySelector('tbody');
-                                console.log('tbody found by regex fallback:', tbody);
-                            }
-                        }
-                    }
-                    
-                    if (tbody) {
-                        // Since backend now returns complete <tbody>...</tbody>, 
-                        // we need to parse it and extract the inner content
-                        const tempDiv = document.createElement('div');
-                        // Wrap in table to ensure proper parsing of tbody
-                        tempDiv.innerHTML = '<table>' + data.html + '</table>';
-                        
-                        // Get the tbody element from the response
-                        const newTbody = tempDiv.querySelector('tbody');
-                        console.log('Parsed tbody:', newTbody);
-                        
-                        if (newTbody) {
-                            // Update with the inner HTML of the new tbody
-                            tbody.innerHTML = newTbody.innerHTML;
-                            console.log('tbody updated successfully with new content');
-                        } else {
-                            // Fallback: if no tbody wrapper, assume data.html contains tr elements directly
-                            tbody.innerHTML = data.html;
-                            console.log('tbody updated with raw content (no tbody wrapper found)');
-                        }
-                        
-                        // Update sort indicators in headers
-                        updateSortIndicators(sortBy, sortOrder);
-                        
-                        // Update global sort state variables after successful update
-                        currentSortBy = sortBy;
-                        currentSortOrder = sortOrder;
-                        console.log('Updated global sort state:', currentSortBy, currentSortOrder);
-                        
-                        // Re-apply any row highlighting if needed
-                        if (highlightRowId) {
-                            const rowToHighlight = document.querySelector(`tbody tr[data-id="${highlightRowId}"]`);
-                            if (rowToHighlight) {
-                                rowToHighlight.classList.add('highlight-row');
-                                rowToHighlight.style.color = '#dc3545';
-                                rowToHighlight.style.fontWeight = 'bold';
-                                
-                                const cells = rowToHighlight.querySelectorAll('td');
-                                cells.forEach(cell => {
-                                    cell.style.color = '#dc3545';
-                                    cell.style.fontWeight = 'bold';
-                                });
-                                
-                                setTimeout(() => {
-                                    rowToHighlight.classList.remove('highlight-row');
-                                    rowToHighlight.style.color = '';
-                                    rowToHighlight.style.fontWeight = '';
-                                    cells.forEach(cell => {
-                                        cell.style.color = '';
-                                        cell.style.fontWeight = '';
-                                    });
-                                    highlightRowId = null;
-                                }, 10000);
-                            }
-                        }
-                    } else {
-                        tbody.innerHTML = '<tr><td colspan="100%" class="text-center">Không có dữ liệu</td></tr>';
-                    }
-                } else {
-                    console.error('No HTML in response');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-            });
-        }
-
-        function updateSortIndicators(sortBy, sortOrder) {
-            // Remove all existing sort indicators
-            document.querySelectorAll('.sortable-header').forEach(header => {
-                header.classList.remove('sort-asc', 'sort-desc');
-                const icon = header.querySelector('i');
-                if (icon) {
-                    icon.className = 'fas fa-sort';
-                }
-            });
-            
-            // Add sort indicator to current column
-            const currentHeader = document.querySelector(`[data-sort="${sortBy}"]`);
-            if (currentHeader) {
-                const icon = currentHeader.querySelector('i');
-                if (icon) {
-                    if (sortOrder === 'asc') {
-                        currentHeader.classList.add('sort-asc');
-                        icon.className = 'fas fa-sort-up';
-                    } else {
-                        currentHeader.classList.add('sort-desc');
-                        icon.className = 'fas fa-sort-down';
-                    }
-                }
-            }
-        }
     </script>
 
     <style>
@@ -855,7 +683,7 @@
             }
 
             th, td {
-                padding: 0.2rem !important;
+                padding: 0.5rem !important;
             }
         }
 
@@ -966,11 +794,11 @@
     </style>
 
     <script>
-        // Function để xóa item - đặt ngoài DOMContentLoaded để có thể truy cập global
+        // Function đềExóa item - đặt ngoài DOMContentLoaded đềEcó thềEtruy cập global
         function deleteItem(url) {
-            // Hiển thị toast thành công trước
+            // Hiển thềEtoast thành công trước
             showSuccess('Đang xóa...');
-            // Delay để gọi API delete và refresh table
+            // Delay đềEgọi API delete và refresh table
             setTimeout(function() {
                 fetch(url, {
                     method: 'GET' // Vì route delete đang dùng GET
@@ -979,7 +807,7 @@
                     if (response.ok) {
                         showSuccess('Xóa thành công!');
                         setTimeout(function() {
-                            refreshTableData(); // Refresh chỉ bảng thay vì redirect
+                            refreshTableData(); // Refresh chềEbảng thay vì redirect
                         }, 1000);
                     } else {
                         showError('Có lỗi xảy ra khi xóa');
@@ -992,13 +820,13 @@
             }, 1000);
         }
         
-        // Function để xử lý delete với data attribute
+        // Function đềExử lý delete với data attribute
         function confirmDeleteRecord(button) {
             const deleteUrl = button.getAttribute('data-delete-url');
             confirmDelete('Bạn có chắc chắn muốn xóa dữ liệu này?', () => deleteItem(deleteUrl));
         }
         
-        // Function để refresh bảng data mà không reload page
+        // Function đềErefresh bảng data mà không reload page
         function refreshTableData() {
             // Show loading indicator
             const tbody = document.querySelector('tbody');
@@ -1006,14 +834,14 @@
                 tbody.innerHTML = '<tr><td colspan="100%" class="text-center"><i class="fas fa-spinner fa-spin"></i> Đang tải...</td></tr>';
             }
             
-            // Lấy current form data để maintain filter state
+            // Lấy current form data đềEmaintain filter state
             const form = document.getElementById('searchForm');
             const formData = new FormData(form);
             
             // Convert FormData to URLSearchParams
             const params = new URLSearchParams();
             for (let [key, value] of formData.entries()) {
-                if (value) { // Chỉ add param nếu có value
+                if (value) { // ChềEadd param nếu có value
                     params.append(key, value);
                 }
             }
@@ -1024,7 +852,7 @@
             if (urlParams.get('sort_order')) params.set('sort_order', urlParams.get('sort_order'));
             
             // Update URL without page reload
-            const newUrl = `/user_subjects${params.toString() ? '?' + params.toString() : ''}`;
+            const newUrl = `/user_conduct${params.toString() ? '?' + params.toString() : ''}`;
             history.pushState(null, '', newUrl);
             
             // Fetch updated table data
@@ -1041,7 +869,7 @@
                 return response.text();
             })
             .then(html => {
-                // Parse response để lấy chỉ phần table
+                // Parse response đềElấy chềEphần table
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
                 const newTableBody = doc.querySelector('tbody');
@@ -1159,5 +987,41 @@
             });
             console.log('All highlights cleared');
         }
+        
+        // Test function to manually highlight first row (for debugging)
+        function testHighlight() {
+            const firstRow = document.querySelector('tbody tr');
+            if (firstRow) {
+                console.log('Test: Adding text highlight to first row');
+                firstRow.classList.add('highlight-row');
+                firstRow.style.color = '#dc3545';
+                firstRow.style.fontWeight = 'bold';
+                
+                const cells = firstRow.querySelectorAll('td');
+                cells.forEach(cell => {
+                    cell.style.color = '#dc3545';
+                    cell.style.fontWeight = 'bold';
+                });
+                
+                console.log('Test highlight applied - you should see red bold text');
+                
+                // Remove highlight after 3 seconds
+                setTimeout(() => {
+                    firstRow.classList.remove('highlight-row');
+                    firstRow.style.color = '';
+                    firstRow.style.fontWeight = '';
+                    cells.forEach(cell => {
+                        cell.style.color = '';
+                        cell.style.fontWeight = '';
+                    });
+                    console.log('Test highlight removed');
+                }, 10000);
+            } else {
+                console.log('Test: No rows found in table');
+            }
+        }
+        
+        // Make testHighlight available globally for console testing
+        window.testHighlight = testHighlight;
     </script>
 {% endblock %}

@@ -205,53 +205,29 @@
             <table class="table table-bordered table-striped">
                 <thead>
                     <tr>
-                        <th class="text-nowrap">
-                            <a href="{{ url_for('user_conduct_list', sort_by='user_name', sort_order='desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
-                                Họ tên
-                                {% if sort_by == 'user_name' %}
-                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                {% endif %}
-                            </a>
+                        <th class="text-nowrap sortable-header" data-sort="user_name" style="cursor: pointer;">
+                            Họ tên
+                            <i class="fas fa-sort{% if sort_by == 'user_name' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
                         </th>
-                        <th class="text-nowrap">
-                            <a href="{{ url_for('user_conduct_list', sort_by='conduct_name', sort_order='desc' if sort_by == 'conduct_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
-                                Hạnh kiểm
-                                {% if sort_by == 'conduct_name' %}
-                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                {% endif %}
-                            </a>
+                        <th class="text-nowrap sortable-header" data-sort="conduct_name" style="cursor: pointer;">
+                            Hạnh kiểm
+                            <i class="fas fa-sort{% if sort_by == 'conduct_name' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
                         </th>
-                        <th class="text-nowrap">
-                            <a href="{{ url_for('user_conduct_list', sort_by='group_name', sort_order='desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
-                                Nhóm
-                                {% if sort_by == 'group_name' %}
-                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                {% endif %}
-                            </a>
+                        <th class="text-nowrap sortable-header" data-sort="group_name" style="cursor: pointer;">
+                            Nhóm
+                            <i class="fas fa-sort{% if sort_by == 'group_name' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
                         </th>
-                        <th class="text-nowrap">
-                            <a href="{{ url_for('user_conduct_list', sort_by='registered_date', sort_order='desc' if sort_by == 'registered_date' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
-                                Dữ liệu ngày
-                                {% if sort_by == 'registered_date' %}
-                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                {% endif %}
-                            </a>
+                        <th class="text-nowrap sortable-header" data-sort="registered_date" style="cursor: pointer;">
+                            Dữ liệu ngày
+                            <i class="fas fa-sort{% if sort_by == 'registered_date' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
                         </th>
-                        <th class="text-nowrap">
-                            <a href="{{ url_for('user_conduct_list', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
-                                Điểm ngày
-                                {% if sort_by == 'total_points' %}
-                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                {% endif %}
-                            </a>
+                        <th class="text-nowrap sortable-header" data-sort="total_points" style="cursor: pointer;">
+                            Điểm ngày
+                            <i class="fas fa-sort{% if sort_by == 'total_points' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
                         </th>
-                        <th class="text-nowrap">
-                            <a href="{{ url_for('user_conduct_list', sort_by='entered_by', sort_order='desc' if sort_by == 'entered_by' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, users=selected_users, conducts=selected_conducts, groups=selected_groups) }}">
-                                Đăng ký bởi
-                                {% if sort_by == 'entered_by' %}
-                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                {% endif %}
-                            </a>
+                        <th class="text-nowrap sortable-header" data-sort="entered_by" style="cursor: pointer;">
+                            Đăng ký bởi
+                            <i class="fas fa-sort{% if sort_by == 'entered_by' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
                         </th>
                         <th class="text-nowrap">Actions</th>
                     </tr>
@@ -348,6 +324,10 @@
     <script>
         let isEditMode = false;
         let currentEditId = null;
+        
+        // Global variables for sort state (move to global scope)
+        var currentSortBy = '{{ sort_by }}';
+        var currentSortOrder = '{{ sort_order }}';
 
         function openCreateModal() {
             isEditMode = false;
@@ -648,6 +628,37 @@
                 });
             }
             
+            // ===== SORTABLE HEADERS LOGIC =====
+            // Add click handlers for sortable headers (only if not already added)
+            document.querySelectorAll('.sortable-header:not([data-sort-handler-added])').forEach(header => {
+                header.setAttribute('data-sort-handler-added', 'true'); // Mark as processed
+                header.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const sortBy = this.getAttribute('data-sort');
+                    
+                    // Determine new sort order
+                    let newSortOrder = 'asc';
+                    if (sortBy === currentSortBy) {
+                        // Same column clicked, toggle sort order
+                        newSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        // Different column clicked, always start with asc
+                        newSortOrder = 'asc';
+                    }
+                    
+                    console.log(`Before sorting - currentSortBy: ${currentSortBy}, currentSortOrder: ${currentSortOrder}`);
+                    console.log(`Sorting: ${sortBy} ${newSortOrder} (previous: ${currentSortBy} ${currentSortOrder})`);
+                    
+                    // Update global variables immediately before AJAX call
+                    currentSortBy = sortBy;
+                    currentSortOrder = newSortOrder;
+                    
+                    sortData(sortBy, newSortOrder);
+                });
+            });
+            
             // ===== SELECT ALL FUNCTIONALITY =====
             // Select all functionality đã được implement ềEphần đầu file
             // Không cần duplicate code ềEđây
@@ -662,6 +673,155 @@
                 });
             }
         });
+
+        // ===== AJAX SORTING FUNCTIONS =====
+        function sortData(sortBy, sortOrder) {
+            console.log('sortData called with:', sortBy, sortOrder);
+            
+            // Get current form data for filtering
+            const form = document.getElementById('searchForm');
+            const formData = new FormData(form);
+            
+            // Add sort parameters
+            formData.append('sort_by', sortBy);
+            formData.append('sort_order', sortOrder);
+            formData.append('ajax', '1');
+            
+            // Convert FormData to URLSearchParams for fetch
+            const params = new URLSearchParams();
+            for (let [key, value] of formData.entries()) {
+                params.append(key, value);
+            }
+            
+            console.log('Sending AJAX request with params:', params.toString());
+            
+            fetch('{{ url_for("user_conduct_list") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: params
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                if (data.html) {
+                    // Try to find tbody using querySelector first
+                    let tbody = document.querySelector('tbody');
+                    console.log('tbody found by querySelector:', tbody);
+                    
+                    if (!tbody) {
+                        // Fallback: find tbody using regex
+                        const tableContainer = document.querySelector('.table-responsive');
+                        if (tableContainer) {
+                            const tableHTML = tableContainer.innerHTML;
+                            const tbodyMatch = tableHTML.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/);
+                            if (tbodyMatch) {
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = '<table>' + tbodyMatch[0] + '</table>';
+                                tbody = tempDiv.querySelector('tbody');
+                                console.log('tbody found by regex fallback:', tbody);
+                            }
+                        }
+                    }
+                    
+                    if (tbody) {
+                        // Since backend now returns complete <tbody>...</tbody>, 
+                        // we need to parse it and extract the inner content
+                        const tempDiv = document.createElement('div');
+                        // Wrap in table to ensure proper parsing of tbody
+                        tempDiv.innerHTML = '<table>' + data.html + '</table>';
+                        
+                        // Get the tbody element from the response
+                        const newTbody = tempDiv.querySelector('tbody');
+                        console.log('Parsed tbody:', newTbody);
+                        
+                        if (newTbody) {
+                            // Update with the inner HTML of the new tbody
+                            tbody.innerHTML = newTbody.innerHTML;
+                            console.log('tbody updated successfully with new content');
+                        } else {
+                            // Fallback: if no tbody wrapper, assume data.html contains tr elements directly
+                            tbody.innerHTML = data.html;
+                            console.log('tbody updated with raw content (no tbody wrapper found)');
+                        }
+                        
+                        // Update sort indicators in headers
+                        updateSortIndicators(sortBy, sortOrder);
+                        
+                        console.log('Table updated successfully');
+                        
+                        // Update global sort state variables after successful update
+                        currentSortBy = sortBy;
+                        currentSortOrder = sortOrder;
+                        console.log('Updated global sort state:', currentSortBy, currentSortOrder);
+                        
+                        // Re-apply any row highlighting if needed
+                        if (highlightRowId) {
+                            const rowToHighlight = document.querySelector(`tbody tr[data-id="${highlightRowId}"]`);
+                            if (rowToHighlight) {
+                                rowToHighlight.classList.add('highlight-row');
+                                rowToHighlight.style.color = '#dc3545';
+                                rowToHighlight.style.fontWeight = 'bold';
+                                
+                                const cells = rowToHighlight.querySelectorAll('td');
+                                cells.forEach(cell => {
+                                    cell.style.color = '#dc3545';
+                                    cell.style.fontWeight = 'bold';
+                                });
+                                
+                                setTimeout(() => {
+                                    rowToHighlight.classList.remove('highlight-row');
+                                    rowToHighlight.style.color = '';
+                                    rowToHighlight.style.fontWeight = '';
+                                    cells.forEach(cell => {
+                                        cell.style.color = '';
+                                        cell.style.fontWeight = '';
+                                    });
+                                    highlightRowId = null;
+                                }, 10000);
+                            }
+                        }
+                    } else {
+                        tbody.innerHTML = '<tr><td colspan="100%" class="text-center">Không có dữ liệu</td></tr>';
+                    }
+                } else {
+                    console.error('No HTML in response');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+        function updateSortIndicators(sortBy, sortOrder) {
+            // Remove all existing sort indicators
+            document.querySelectorAll('.sortable-header').forEach(header => {
+                header.classList.remove('sort-asc', 'sort-desc');
+                const icon = header.querySelector('i');
+                if (icon) {
+                    icon.className = 'fas fa-sort';
+                }
+            });
+            
+            // Add sort indicator to current column
+            const currentHeader = document.querySelector(`[data-sort="${sortBy}"]`);
+            if (currentHeader) {
+                const icon = currentHeader.querySelector('i');
+                if (icon) {
+                    if (sortOrder === 'asc') {
+                        currentHeader.classList.add('sort-asc');
+                        icon.className = 'fas fa-sort-up';
+                    } else {
+                        currentHeader.classList.add('sort-desc');
+                        icon.className = 'fas fa-sort-down';
+                    }
+                }
+            }
+        }
     </script>
 
     <style>
