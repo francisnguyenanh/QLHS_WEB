@@ -3488,16 +3488,60 @@ def group_summary():
 
         # Chuyển dict thành list để hiển thị và sắp xếp
         records_list = [(group_name, total_points) for group_name, total_points in records.items()]
-        records_list.sort(key=lambda x: x[0 if sort_column == 'group_name' else 1], reverse=(sort_direction == 'DESC'))
+        
+        # Apply sorting
+        if sort_by == 'group_name':
+            records_list.sort(key=lambda x: vietnamese_sort_key(x[0], sort_by_first_name=False), reverse=(sort_order == 'desc'))
+        elif sort_by == 'total_points':
+            records_list.sort(key=lambda x: x[1], reverse=(sort_order == 'desc'))
 
         conn.close()
 
         # Kiểm tra xem có phải AJAX request không
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            # Trả về JSON cho AJAX request
+            # Render chỉ phần table HTML
+            table_html = render_template_string("""
+<div class="table-responsive">
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th class="text-nowrap" style="width: 30%;">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="group_name" data-order="{{ 'desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc' }}">
+                        Nhóm
+                        {% if sort_by == 'group_name' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-nowrap" style="width: 70%;">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="total_points" data-order="{{ 'desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc' }}">
+                        Tổng điểm
+                        {% if sort_by == 'total_points' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in records %}
+            <tr>
+                <td>{{ record[0] }}</td>
+                <td>{{ record[1] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+            """, records=records_list, sort_by=sort_by, sort_order=sort_order)
+            
             return jsonify({
                 'success': True,
-                'records': records_list
+                'html': table_html
             })
 
         return render_template_with_permissions('group_summary.html',

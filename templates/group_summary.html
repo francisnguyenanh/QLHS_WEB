@@ -59,6 +59,9 @@
         padding: 0 !important;
     }
 
+    tbody, td, tfoot, th, thead, tr {
+        border-style: None;
+    }
     /* Responsive adjustments */
     @media (max-width: 768px) {
         .d-flex.gap-2 {
@@ -220,23 +223,27 @@
                 <!-- Results Table -->
                 <div class="card">
                     <div class="card-body">
-                        <div class="table-responsive">
+                        <div id="table-container" class="table-responsive">
                             <table class="table table-bordered table-striped">
                                 <thead>
                                     <tr>
-                                        <th class="text-nowrap">
-                                            <a href="{{ url_for('group_summary', sort_by='group_name', sort_order='desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, groups=selected_groups, select_all_groups=select_all_groups, data_source=data_source) }}">
+                                        <th class="text-nowrap" style="width: 30%;">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="group_name" data-order="{{ 'desc' if sort_by == 'group_name' and sort_order == 'asc' else 'asc' }}">
                                                 Nhóm
                                                 {% if sort_by == 'group_name' %}
                                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
                                                 {% endif %}
                                             </a>
                                         </th>
-                                        <th class="text-nowrap">
-                                            <a href="{{ url_for('group_summary', sort_by='total_points', sort_order='desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc', date_from=date_from, date_to=date_to, groups=selected_groups, select_all_groups=select_all_groups, data_source=data_source) }}">
+                                        <th class="text-nowrap" style="width: 70%;">
+                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="total_points" data-order="{{ 'desc' if sort_by == 'total_points' and sort_order == 'asc' else 'asc' }}">
                                                 Tổng điểm
                                                 {% if sort_by == 'total_points' %}
                                                     {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                                                {% else %}
+                                                    <i class="fas fa-sort"></i>
                                                 {% endif %}
                                             </a>
                                         </th>
@@ -461,6 +468,106 @@
                     document.getElementById('searchForm').submit();
                 }
             });
+            
+            // ===== AJAX SORTING LOGIC =====
+            // Add event listeners for sort links
+            document.querySelectorAll('.sort-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const sortBy = this.getAttribute('data-sort');
+                    const sortOrder = this.getAttribute('data-order');
+                    
+                    console.log('Sort clicked:', sortBy, sortOrder);
+                    
+                    // Get form data
+                    const form = document.getElementById('searchForm');
+                    const formData = new FormData(form);
+                    
+                    // Add sort parameters
+                    formData.append('sort_by', sortBy);
+                    formData.append('sort_order', sortOrder);
+                    
+                    // Make AJAX request
+                    fetch('{{ url_for("group_summary") }}', {
+                        method: 'POST',
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.html) {
+                            // Update table content
+                            document.getElementById('table-container').innerHTML = data.html;
+                            
+                            // Re-attach event listeners to new sort links
+                            attachSortListeners();
+                            
+                            console.log('Table updated successfully');
+                        } else {
+                            console.error('Failed to update table:', data);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('AJAX Error:', error);
+                    });
+                });
+            });
+            
+            // Function to re-attach sort listeners after AJAX update
+            function attachSortListeners() {
+                document.querySelectorAll('.sort-link').forEach(link => {
+                    // Remove existing listeners by cloning the element
+                    const newLink = link.cloneNode(true);
+                    link.parentNode.replaceChild(newLink, link);
+                    
+                    // Add fresh event listener
+                    newLink.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        
+                        const sortBy = this.getAttribute('data-sort');
+                        const sortOrder = this.getAttribute('data-order');
+                        
+                        console.log('Sort clicked (re-attached):', sortBy, sortOrder);
+                        
+                        // Get form data
+                        const form = document.getElementById('searchForm');
+                        const formData = new FormData(form);
+                        
+                        // Add sort parameters
+                        formData.append('sort_by', sortBy);
+                        formData.append('sort_order', sortOrder);
+                        
+                        // Make AJAX request
+                        fetch('{{ url_for("group_summary") }}', {
+                            method: 'POST',
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success && data.html) {
+                                // Update table content
+                                document.getElementById('table-container').innerHTML = data.html;
+                                
+                                // Re-attach event listeners again
+                                attachSortListeners();
+                                
+                                console.log('Table updated successfully (re-attached)');
+                            } else {
+                                console.error('Failed to update table (re-attached):', data);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('AJAX Error (re-attached):', error);
+                        });
+                    });
+                });
+            }
         });
     </script>
 {% endblock %}
