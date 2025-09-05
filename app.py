@@ -60,6 +60,20 @@ def normalize_vietnamese_for_sort(text):
     
     return normalized
 
+def extract_first_name(full_name):
+    """Extract the first name (last word) from full name"""
+    if not full_name:
+        return ""
+    return full_name.strip().split()[-1]
+
+def vietnamese_sort_key(text, sort_by_first_name=False):
+    """Generate sort key for Vietnamese text, optionally sorting by first name"""
+    if sort_by_first_name:
+        first_name = extract_first_name(text)
+        return normalize_vietnamese_for_sort(first_name)
+    else:
+        return normalize_vietnamese_for_sort(text)
+
 
 # URL Encryption Functions for User Report Security
 def generate_report_token(user_id, date_from=None, date_to=None, expiry_hours=24):
@@ -2222,6 +2236,9 @@ def user_conduct_list():
         }
         sort_column = valid_columns.get(sort_by, 'uc.registered_date')
         sort_direction = 'DESC' if sort_order == 'desc' else 'ASC'
+        
+        # Special handling for user_name sorting (sort by first name)
+        sort_by_first_name = (sort_by == 'user_name')
 
         conn = connect_db()
         cursor = conn.cursor()
@@ -2251,8 +2268,8 @@ def user_conduct_list():
         else:
             cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
         all_users = cursor.fetchall()
-        # Sort users by last word in name using Vietnamese normalization
-        all_users.sort(key=lambda u: (normalize_vietnamese_for_sort(u[1].split()[-1]), normalize_vietnamese_for_sort(u[1])))
+        # Sort users by first name using Vietnamese normalization
+        all_users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
         cursor.execute("SELECT id, name FROM Conduct WHERE is_deleted = 0")
         conducts = cursor.fetchall()
         if teacher_group_id is not None:
@@ -2283,8 +2300,8 @@ def user_conduct_list():
         else:
             modal_users = users
         
-        # Sort modal_users by last word in name using Vietnamese normalization  
-        modal_users.sort(key=lambda u: (normalize_vietnamese_for_sort(u[1].split()[-1]), normalize_vietnamese_for_sort(u[1])))
+        # Sort modal_users by first name using Vietnamese normalization  
+        modal_users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
 
         # Tính toán ngày mặc định: Thứ 2~6 gần ngày hệ thống nhất
         today = datetime.today()
@@ -2399,6 +2416,13 @@ def user_conduct_list():
         query += f" ORDER BY {sort_column} {sort_direction}"
         cursor.execute(query, params)
         records = cursor.fetchall()
+        
+        # If sorting by user_name, apply Vietnamese first name sorting
+        if sort_by_first_name:
+            records = sorted(records, 
+                           key=lambda r: vietnamese_sort_key(r[1], sort_by_first_name=True),
+                           reverse=(sort_order == 'desc'))
+        
         conn.close()
 
         # Check if this is an AJAX request
@@ -2766,6 +2790,9 @@ def user_subjects_list():
         }
         sort_column = valid_columns.get(sort_by, 'us.registered_date')
         sort_direction = 'DESC' if sort_order == 'desc' else 'ASC'
+        
+        # Special handling for user_name sorting (sort by first name)
+        sort_by_first_name = (sort_by == 'user_name')
 
         conn = connect_db()
         cursor = conn.cursor()
@@ -2795,8 +2822,8 @@ def user_subjects_list():
         else:
             cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
         all_users = cursor.fetchall()
-        # Sort users by last word in name using Vietnamese normalization
-        all_users.sort(key=lambda u: (normalize_vietnamese_for_sort(u[1].split()[-1]), normalize_vietnamese_for_sort(u[1])))
+        # Sort users by first name using Vietnamese normalization
+        all_users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
         cursor.execute("SELECT id, name FROM Subjects WHERE is_deleted = 0")
         subjects = cursor.fetchall()
         cursor.execute("SELECT id, name FROM Criteria WHERE is_deleted = 0")
@@ -2830,7 +2857,7 @@ def user_subjects_list():
             modal_users = users
         
         # Sort modal_users by last word in name using Vietnamese normalization  
-        modal_users.sort(key=lambda u: (normalize_vietnamese_for_sort(u[1].split()[-1]), normalize_vietnamese_for_sort(u[1])))
+        modal_users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
 
         # Tính toán ngày mặc định: Thứ 2~6 gần ngày hệ thống nhất
         today = datetime.today()
@@ -2947,6 +2974,13 @@ def user_subjects_list():
         query += f" ORDER BY {sort_column} {sort_direction}"
         cursor.execute(query, params)
         records = cursor.fetchall()
+        
+        # If sorting by user_name, apply Vietnamese first name sorting
+        if sort_by_first_name:
+            records = sorted(records, 
+                           key=lambda r: vietnamese_sort_key(r[1], sort_by_first_name=True),
+                           reverse=(sort_order == 'desc'))
+        
         conn.close()
 
         # Check if this is an AJAX request
@@ -3903,7 +3937,7 @@ def user_summary():
             records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, has_data, user_id, current_comment, auto_comment, prev_academic_points, prev_conduct_points))
 
         if sort_by == 'user_name':
-            records.sort(key=lambda x: normalize_vietnamese_for_sort(x[0].split()[-1]) if x[0] else '', reverse=(sort_order == 'desc'))
+            records.sort(key=lambda x: vietnamese_sort_key(x[0], sort_by_first_name=True) if x[0] else '', reverse=(sort_order == 'desc'))
         elif sort_by == 'academic_points':
             records.sort(key=lambda x: x[1], reverse=(sort_order == 'desc'))
         elif sort_by == 'conduct_points':
