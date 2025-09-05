@@ -295,7 +295,8 @@
                                 </div>
                             </div>
                             <div class="col-12 col-md-6">
-                                <div class="form-group">
+                                <!-- Create mode: Multiple subjects with checkboxes -->
+                                <div class="form-group" id="create_subjects_section">
                                     <label>Môn học & Kết quả:</label>
                                     <div id="subjects_container" style="max-height: 300px; overflow-y: auto; border: 1px solid #ced4da; border-radius: 0.375rem; padding: 0.5rem;">
                                         {% for subject in all_subjects %}
@@ -322,6 +323,27 @@
                                         </div>
                                         {% endfor %}
                                     </div>
+                                </div>
+                                
+                                <!-- Edit mode: Single subject dropdown -->
+                                <div class="form-group" id="edit_subjects_section" style="display: none;">
+                                    <label for="modal_subject_id_edit">Môn học:</label>
+                                    <select name="subject_id" id="modal_subject_id_edit" class="form-control" required>
+                                        <option value="">Chọn môn học</option>
+                                        {% for subject in all_subjects %}
+                                            <option value="{{ subject[0] }}">{{ subject[1] }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group mt-3" id="edit_criteria_section" style="display: none;">
+                                    <label for="modal_criteria_id_edit">Kết quả:</label>
+                                    <select name="criteria_id" id="modal_criteria_id_edit" class="form-control" required>
+                                        <option value="">Chọn kết quả</option>
+                                        {% for criterion in all_criteria %}
+                                            <option value="{{ criterion[0] }}">{{ criterion[1] }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                             </div>
                         </div>
@@ -350,6 +372,11 @@
             document.getElementById('userSubjectsModalLabel').textContent = 'Tạo mới kết quả học tập';
             document.getElementById('userSubjectsForm').reset();
             document.getElementById('modal_id').value = '';
+            
+            // Show create mode sections, hide edit mode sections
+            document.getElementById('create_subjects_section').style.display = 'block';
+            document.getElementById('edit_subjects_section').style.display = 'none';
+            document.getElementById('edit_criteria_section').style.display = 'none';
             
             // Reset all checkboxes and disable criteria selects
             document.querySelectorAll('.subject-checkbox').forEach(checkbox => {
@@ -387,6 +414,13 @@
             
             // Reset form first
             document.getElementById('userSubjectsForm').reset();
+            
+            // Show edit mode sections, hide create mode sections
+            document.getElementById('create_subjects_section').style.display = 'none';
+            document.getElementById('edit_subjects_section').style.display = 'block';
+            document.getElementById('edit_criteria_section').style.display = 'block';
+            
+            // Reset create mode elements
             document.querySelectorAll('.subject-checkbox').forEach(checkbox => {
                 checkbox.checked = false;
             });
@@ -405,16 +439,9 @@
                     document.getElementById('modal_registered_date').value = data.registered_date;
                     document.getElementById('modal_entered_by').value = data.entered_by;
                     
-                    // Mark the specific subject as checked and set its criteria
-                    const subjectCheckbox = document.getElementById('subject_' + data.subject_id);
-                    const criteriaSelect = document.getElementById('criteria_' + data.subject_id);
-                    
-                    if (subjectCheckbox && criteriaSelect) {
-                        subjectCheckbox.checked = true;
-                        criteriaSelect.disabled = false;
-                        criteriaSelect.required = true;
-                        criteriaSelect.value = data.criteria_id || '';
-                    }
+                    // Set edit mode fields
+                    document.getElementById('modal_subject_id_edit').value = data.subject_id;
+                    document.getElementById('modal_criteria_id_edit').value = data.criteria_id || '';
                     
                     const modal = new bootstrap.Modal(document.getElementById('userSubjectsModal'));
                     modal.show();
@@ -437,19 +464,17 @@
             }
             
             if (isEditMode) {
-                // Edit mode: handle single record update
-                const checkedSubjects = document.querySelectorAll('.subject-checkbox:checked');
-                if (checkedSubjects.length !== 1) {
-                    showWarning('Trong chế độ chỉnh sửa, chỉ được chọn một môn học');
+                // Edit mode: get data from edit mode fields
+                const subjectId = document.getElementById('modal_subject_id_edit').value;
+                const criteriaId = document.getElementById('modal_criteria_id_edit').value;
+                
+                if (!subjectId) {
+                    showWarning('Vui lòng chọn môn học');
                     return;
                 }
                 
-                const subjectId = checkedSubjects[0].value;
-                const criteriaSelect = document.getElementById('criteria_' + subjectId);
-                const criteriaId = criteriaSelect.value;
-                
                 if (!criteriaId) {
-                    showWarning('Vui lòng chọn kết quả cho môn học đã chọn');
+                    showWarning('Vui lòng chọn kết quả');
                     return;
                 }
                 
