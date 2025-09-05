@@ -34,31 +34,62 @@ def normalize_vietnamese_for_sort(text):
     if not text:
         return ""
     
-    # Define Vietnamese character mapping for proper sorting
-    vietnamese_map = {
-        'á': 'a', 'à': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
-        'ă': 'a', 'ắ': 'a', 'ằ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'ặ': 'a',
-        'â': 'a', 'ấ': 'a', 'ầ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
-        'é': 'e', 'è': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
-        'ê': 'e', 'ế': 'e', 'ề': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
-        'í': 'i', 'ì': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
-        'ó': 'o', 'ò': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
-        'ô': 'o', 'ố': 'o', 'ồ': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
-        'ơ': 'o', 'ớ': 'o', 'ờ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
-        'ú': 'u', 'ù': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
-        'ư': 'u', 'ứ': 'u', 'ừ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
-        'ý': 'y', 'ỳ': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y',
-        'đ': 'd'
-    }
-    
-    # Convert to lowercase and normalize
+    # Convert to lowercase first
     normalized = text.lower()
     
-    # Replace Vietnamese characters with base characters for sorting
-    for viet_char, base_char in vietnamese_map.items():
-        normalized = normalized.replace(viet_char, base_char)
+    # Define complete Vietnamese character mapping for proper sorting
+    # Ensure correct ordering: a, ă, â, b, c, d, đ, e, ê, ...
+    vietnamese_map = {
+        # Basic characters - assign explicit order
+        'a': 'a0',
+        'ă': 'a1', 'ắ': 'a1', 'ằ': 'a1', 'ẳ': 'a1', 'ẵ': 'a1', 'ặ': 'a1',
+        'â': 'a2', 'ấ': 'a2', 'ầ': 'a2', 'ẩ': 'a2', 'ẫ': 'a2', 'ậ': 'a2',
+        'á': 'a0', 'à': 'a0', 'ả': 'a0', 'ã': 'a0', 'ạ': 'a0',
+        
+        'b': 'b0',
+        'c': 'c0',
+        'd': 'd0',
+        'đ': 'd1',  # đ comes after d
+        
+        'e': 'e0',
+        'é': 'e0', 'è': 'e0', 'ẻ': 'e0', 'ẽ': 'e0', 'ẹ': 'e0',
+        'ê': 'e1', 'ế': 'e1', 'ề': 'e1', 'ể': 'e1', 'ễ': 'e1', 'ệ': 'e1',
+        
+        'f': 'f0', 'g': 'g0', 'h': 'h0',
+        
+        'i': 'i0',
+        'í': 'i0', 'ì': 'i0', 'ỉ': 'i0', 'ĩ': 'i0', 'ị': 'i0',
+        
+        'j': 'j0', 'k': 'k0', 'l': 'l0', 'm': 'm0', 'n': 'n0',
+        
+        'o': 'o0',
+        'ó': 'o0', 'ò': 'o0', 'ỏ': 'o0', 'õ': 'o0', 'ọ': 'o0',
+        'ô': 'o1', 'ố': 'o1', 'ồ': 'o1', 'ổ': 'o1', 'ỗ': 'o1', 'ộ': 'o1',
+        'ơ': 'o2', 'ớ': 'o2', 'ờ': 'o2', 'ở': 'o2', 'ỡ': 'o2', 'ợ': 'o2',
+        
+        'p': 'p0', 'q': 'q0', 'r': 'r0', 's': 's0', 't': 't0',
+        
+        'u': 'u0',
+        'ú': 'u0', 'ù': 'u0', 'ủ': 'u0', 'ũ': 'u0', 'ụ': 'u0',
+        'ư': 'u1', 'ứ': 'u1', 'ừ': 'u1', 'ử': 'u1', 'ữ': 'u1', 'ự': 'u1',
+        
+        'v': 'v0', 'w': 'w0', 'x': 'x0',
+        
+        'y': 'y0',
+        'ý': 'y0', 'ỳ': 'y0', 'ỷ': 'y0', 'ỹ': 'y0', 'ỵ': 'y0',
+        
+        'z': 'z0'
+    }
     
-    return normalized
+    # Apply Vietnamese character mapping
+    result = ""
+    for char in normalized:
+        if char in vietnamese_map:
+            result += vietnamese_map[char]
+        else:
+            result += char
+    
+    return result
 
 def extract_first_name(full_name):
     """Extract the first name (last word) from full name"""
