@@ -265,7 +265,7 @@
                             Dữ liệu ngày
                             <i class="fas fa-sort{% if sort_by == 'registered_date' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
                         </th>
-                        <th class="text-nowrap sortable-header" data-sort="total_points" style="cursor: pointer;">
+                        <th class="text-nowrap sortable-header" data-sort="total_points" style="cursor: pointer; display: none;">
                             Điểm ngày
                             <i class="fas fa-sort{% if sort_by == 'total_points' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
                         </th>
@@ -283,7 +283,7 @@
                             <td>{{ record[2] }}</td>
                             <td>{{ record[6] }}</td>
                             <td>{{ record[3] }}</td>
-                            <td>{{ record[4] }}</td>
+                            <td style="display: none;">{{ record[4] }}</td>
                             <td>{{ record[5] }}</td>
                             <td class="text-nowrap">
                                 {% if permissions.get('master', False) or permissions.get('conduct_management_update', False) %}

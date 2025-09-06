@@ -225,7 +225,7 @@
                             Dữ liệu ngày
                             <i class="fas fa-sort{% if sort_by == 'registered_date' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
                         </th>
-                        <th class="text-nowrap sortable-header" data-sort="total_points" style="cursor: pointer;">
+                        <th class="text-nowrap sortable-header" data-sort="total_points" style="cursor: pointer; display: none;">
                             Điểm ngày
                             <i class="fas fa-sort{% if sort_by == 'total_points' %}{% if sort_order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i>
                         </th>
@@ -243,7 +243,7 @@
                             <td>{{ record[2] }}</td>
                             <td>{{ record[3] or 'None' }}</td>
                             <td>{{ record[7] }}</td>
-                            <td>{{ record[4] }}</td>
+                            <td style="display: none;">{{ record[4] }}</td>
                             <td>{{ record[5] }}</td>
                             <td>{{ record[6] }}</td>
                             <td class="text-nowrap">

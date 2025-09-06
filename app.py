@@ -2464,7 +2464,7 @@ def user_conduct_list():
                                         conducts=selected_conducts, groups=selected_groups)
                     delete_button = f'<button class="btn btn-sm btn-danger" data-delete-url="{delete_url}" onclick="confirmDeleteRecord(this)">Delete</button>'
                 
-                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td>{record[6]}</td><td>{record[3]}</td><td>{record[4]}</td><td>{record[5]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
+                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td>{record[6]}</td><td>{record[3]}</td><td style="display: none;">{record[4]}</td><td>{record[5]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
             
             table_html += "</tbody>"
             return jsonify({'html': table_html})
@@ -3074,7 +3074,7 @@ def user_subjects_list():
                     delete_button = f'<button class="btn btn-sm btn-danger" data-delete-url="{delete_url}" onclick="confirmDeleteRecord(this)">Xóa</button>'
                 
                 criteria_text = record[3] if record[3] else 'None'
-                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td>{criteria_text}</td><td>{record[7]}</td><td>{record[4]}</td><td>{record[5]}</td><td>{record[6]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
+                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td>{criteria_text}</td><td>{record[7]}</td><td style="display: none;">{record[4]}</td><td>{record[5]}</td><td>{record[6]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
             
             table_html += "</tbody>"
             return jsonify({'html': table_html})
