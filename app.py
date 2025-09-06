@@ -2301,7 +2301,7 @@ def user_conduct_list():
         all_users = cursor.fetchall()
         # Sort users by first name using Vietnamese normalization
         all_users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
-        cursor.execute("SELECT id, name FROM Conduct WHERE is_deleted = 0")
+        cursor.execute("SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type, conduct_points DESC")
         conducts = cursor.fetchall()
         if teacher_group_id is not None:
             cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 AND id != ?", (teacher_group_id,))

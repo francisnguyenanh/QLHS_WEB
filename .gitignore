@@ -2,3 +2,5 @@ __pycache__/config.cpython-312.pyc
 __pycache__/db_utils.cpython-312.pyc
 static/uploads/backgrounds
 __pycache__/app.cpython-312.pyc
+*.pyc
+__pycache__/db_utils.cpython-313.pyc

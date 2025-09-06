@@ -289,7 +289,7 @@
                                     <label for="modal_registered_date">Dữ liệu ngày:</label>
                                     <input type="date" name="registered_date" id="modal_registered_date" class="form-control" required>
                                 </div>
-                                <div class="form-group mt-3">
+                                <div class="form-group mt-3" style="display: none;">
                                     <label for="modal_entered_by">Người đăng ký:</label>
                                     <input type="text" name="entered_by" id="modal_entered_by" class="form-control" value="{{ current_user_info.name if current_user_info else '' }}" readonly>
                                 </div>

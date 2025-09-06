@@ -84,6 +84,50 @@
             font-weight: normal !important;
         }
     }
+
+    /* Styling cho conduct list container */
+    .conduct-list-container {
+        background-color: #f8f9fa;
+    }
+    
+    .conduct-list-container h6 {
+        border-bottom: 2px solid;
+        padding-bottom: 5px;
+        margin-bottom: 15px;
+    }
+    
+    .conduct-list-container h6.text-success {
+        border-bottom-color: #198754;
+    }
+    
+    .conduct-list-container h6.text-danger {
+        border-bottom-color: #dc3545;
+    }
+    
+    .conduct-checkbox {
+        transform: scale(1.1);
+        margin-right: 8px;
+    }
+    
+    .form-check-label {
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: font-weight 0.2s ease;
+    }
+    
+    .form-check-input:checked + .form-check-label {
+        font-weight: bold;
+    }
+    
+    .form-check {
+        padding: 5px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s ease;
+    }
+    
+    .form-check:hover {
+        background-color: rgba(0,0,0,0.05);
+    }
 </style>
 {% endblock %}
 
@@ -281,33 +325,107 @@
                                     </select>
                                 </div>
                                 <div class="form-group mt-3">
-                                    <label for="modal_conduct_id">Hạnh kiểm:</label>
-                                    <select name="conduct_id" id="modal_conduct_id" class="form-control" required onchange="loadModalConductPoints()">
-                                        <option value="">Chọn hạnh kiểm</option>
-                                        {% for conduct in all_conducts %}
-                                            <option value="{{ conduct[0] }}">{{ conduct[1] }}</option>
-                                        {% endfor %}
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
                                     <label for="modal_registered_date">Dữ liệu ngày:</label>
                                     <input type="date" name="registered_date" id="modal_registered_date" class="form-control" required onchange="calculateModalTotalPoints()">
                                 </div>
-                                <div class="form-group mt-3">
+                                <div class="form-group mt-3" style="display: none;">
                                     <label for="modal_entered_by">Người đăng ký:</label>
                                     <input type="text" name="entered_by" id="modal_entered_by" class="form-control" value="{{ current_user_info.name if current_user_info else '' }}" readonly>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-4">
-                                <div class="form-group">
-                                    <label for="modal_conduct_points">Điểm hạnh kiểm:</label>
-                                    <input type="number" name="conduct_points" id="modal_conduct_points" class="form-control" readonly>
+                            <div class="col-12 col-md-8">
+                                <!-- Dropdown cho edit mode -->
+                                <div id="conduct-dropdown-container" style="display: none;">
+                                    <div class="form-group">
+                                        <label for="modal_conduct_id">Hạnh kiểm:</label>
+                                        <select name="conduct_id" id="modal_conduct_id" class="form-control" onchange="loadModalConductPoints()">
+                                            <option value="">Chọn hạnh kiểm</option>
+                                            {% for conduct in all_conducts %}
+                                                <option value="{{ conduct[0] }}" data-points="{{ conduct[3] }}">
+                                                    {{ conduct[1] }} 
+                                                    {% if conduct[2] == 'điểm cộng' %}
+                                                        (+{{ conduct[3] }} điểm)
+                                                    {% else %}
+                                                        ({{ conduct[3] }} điểm)
+                                                    {% endif %}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
                                 </div>
-                                <div class="form-group mt-3">
-                                    <label for="modal_total_points">Tổng điểm ngày:</label>
-                                    <input type="number" name="total_points" id="modal_total_points" class="form-control" readonly>
+                                
+                                <!-- Checkbox list cho create mode -->
+                                <div id="conduct-list-container" style="display: block;">
+                                    <div class="form-group">
+                                        <label>Danh sách hạnh kiểm:</label>
+                                        <div class="conduct-list-container" style="max-height: 300px; overflow-y: auto; border: 1px solid #ced4da; border-radius: 0.25rem; padding: 10px;">
+                                            <!-- Hạnh kiểm tích cực -->
+                                            <div class="mb-3">
+                                                <h6 class="text-success fw-bold mb-2">
+                                                    <i class="fas fa-plus-circle"></i> Hạnh kiểm tích cực
+                                                </h6>
+                                                <div class="row">
+                                                    {% for conduct in all_conducts %}
+                                                        {% if conduct[2] == 'điểm cộng' %}
+                                                            <div class="col-12 col-md-6 mb-2">
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input conduct-checkbox" type="checkbox" 
+                                                                           value="{{ conduct[0] }}" 
+                                                                           data-points="{{ conduct[3] }}"
+                                                                           id="conduct_{{ conduct[0] }}"
+                                                                           onchange="updateSelectedConducts()">
+                                                                    <label class="form-check-label text-success" for="conduct_{{ conduct[0] }}">
+                                                                        {{ conduct[1] }} (+{{ conduct[3] }} điểm)
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Hạnh kiểm tiêu cực -->
+                                            <div>
+                                                <h6 class="text-danger fw-bold mb-2">
+                                                    <i class="fas fa-minus-circle"></i> Hạnh kiểm tiêu cực
+                                                </h6>
+                                                <div class="row">
+                                                    {% for conduct in all_conducts %}
+                                                        {% if conduct[2] == 'điểm trừ' %}
+                                                            <div class="col-12 col-md-6 mb-2">
+                                                                <div class="form-check">
+                                                                    <input class="form-check-input conduct-checkbox" type="checkbox" 
+                                                                           value="{{ conduct[0] }}" 
+                                                                           data-points="{{ conduct[3] }}"
+                                                                           id="conduct_{{ conduct[0] }}"
+                                                                           onchange="updateSelectedConducts()">
+                                                                    <label class="form-check-label text-danger" for="conduct_{{ conduct[0] }}">
+                                                                        {{ conduct[1] }} ({{ conduct[3] }} điểm)
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Ẩn hiển thị điểm -->
+                                <div class="row mt-3" style="display: none;">
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label for="modal_conduct_points">Điểm hạnh kiểm:</label>
+                                            <input type="number" name="conduct_points" id="modal_conduct_points" class="form-control" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label for="modal_total_points">Tổng điểm ngày:</label>
+                                            <input type="number" name="total_points" id="modal_total_points" class="form-control" readonly>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -337,6 +455,16 @@
             document.getElementById('modal_id').value = '';
             document.getElementById('modal_conduct_points').value = '';
             document.getElementById('modal_total_points').value = '';
+            
+            // Hiển thị danh sách checkbox cho create, ẩn dropdown
+            document.getElementById('conduct-list-container').style.display = 'block';
+            document.getElementById('conduct-dropdown-container').style.display = 'none';
+            
+            // Bỏ chọn tất cả checkbox
+            document.querySelectorAll('.conduct-checkbox').forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            
             // Tự động set người tạo
             document.getElementById('modal_entered_by').value = '{{ current_user_info.name if current_user_info else "" }}';
             const modal = new bootstrap.Modal(document.getElementById('conductModal'));
@@ -347,6 +475,11 @@
             isEditMode = true;
             currentEditId = id;
             document.getElementById('conductModalLabel').textContent = 'Chỉnh sửa hạnh kiểm học sinh';
+            
+            // Reset form và ẩn danh sách checkbox, hiển thị dropdown
+            document.getElementById('conductForm').reset();
+            document.getElementById('conduct-list-container').style.display = 'none';
+            document.getElementById('conduct-dropdown-container').style.display = 'block';
             
             // Fetch record data
             fetch(`/api/user_conduct/${id}`)
@@ -368,6 +501,19 @@
                     console.error('Error fetching record:', error);
                     showError('Có lỗi xảy ra khi tải dữ liệu');
                 });
+        }
+
+        // Hàm mới để cập nhật hạnh kiểm đã chọn
+        function updateSelectedConducts() {
+            const checkboxes = document.querySelectorAll('.conduct-checkbox:checked');
+            let totalConductPoints = 0;
+            
+            checkboxes.forEach(checkbox => {
+                totalConductPoints += parseInt(checkbox.dataset.points);
+            });
+            
+            document.getElementById('modal_conduct_points').value = totalConductPoints;
+            calculateModalTotalPoints();
         }
 
         function loadModalConductPoints() {
@@ -417,58 +563,117 @@
             const form = document.getElementById('conductForm');
             const formData = new FormData(form);
             
-            const data = {
+            const baseData = {
                 user_id: formData.get('user_id'),
-                conduct_id: formData.get('conduct_id'),
                 registered_date: formData.get('registered_date'),
                 entered_by: formData.get('entered_by')
             };
 
             // Validate required fields
-            if (!data.user_id || !data.conduct_id || !data.registered_date || !data.entered_by) {
+            if (!baseData.user_id || !baseData.registered_date || !baseData.entered_by) {
                 showWarning('Vui lòng điền đầy đủ thông tin');
                 return;
             }
 
-            const url = isEditMode ? `/api/user_conduct/${currentEditId}` : '/api/user_conduct';
-            const method = isEditMode ? 'PUT' : 'POST';
-
-            fetch(url, {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
-            .then(response => response.json())
-            .then(result => {
-                if (result.success) {
-                    // Đóng modal trước khi hiển thềEtoast
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('conductModal'));
-                    if (modal) {
-                        modal.hide();
-                    }
-                    showSuccess(result.message);
-                    
-                    // Set highlight row ID for newly created/edited record
-                    if (result.id) {
-                        console.log('Setting highlight for new record ID:', result.id);
-                        setHighlightRow(result.id);
-                    } else if (isEditMode && currentEditId) {
-                        console.log('Setting highlight for edited record ID:', currentEditId);
-                        setHighlightRow(currentEditId);
-                    }
-                    
-                    // Refresh table immediately
-                    refreshTableData(); // Refresh chềEbảng thay vì reload page
-                } else {
-                    showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+            if (isEditMode) {
+                // Edit mode: chỉ cho phép chọn 1 hạnh kiểm từ dropdown
+                const conductId = document.getElementById('modal_conduct_id').value;
+                if (!conductId) {
+                    showWarning('Vui lòng chọn hạnh kiểm');
+                    return;
                 }
-            })
-            .catch(error => {
-                console.error('Error saving conduct:', error);
-                showError('Có lỗi xảy ra khi lưu dữ liệu');
-            });
+
+                const data = {
+                    ...baseData,
+                    conduct_id: conductId
+                };
+
+                fetch(`/api/user_conduct/${currentEditId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('conductModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        showSuccess(result.message);
+                        
+                        if (currentEditId) {
+                            setHighlightRow(currentEditId);
+                        }
+                        
+                        refreshTableData();
+                    } else {
+                        showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving conduct:', error);
+                    showError('Có lỗi xảy ra khi lưu dữ liệu');
+                });
+            } else {
+                // Create mode: cho phép chọn nhiều hạnh kiểm từ checkbox
+                const selectedConducts = document.querySelectorAll('.conduct-checkbox:checked');
+                if (selectedConducts.length === 0) {
+                    showWarning('Vui lòng chọn ít nhất một hạnh kiểm');
+                    return;
+                }
+
+                // Tạo array các API call cho từng hạnh kiểm được chọn
+                const apiCalls = [];
+                selectedConducts.forEach(checkbox => {
+                    const data = {
+                        ...baseData,
+                        conduct_id: checkbox.value
+                    };
+                    
+                    const apiCall = fetch('/api/user_conduct', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    apiCalls.push(apiCall);
+                });
+
+                // Thực hiện tất cả API calls
+                Promise.all(apiCalls)
+                    .then(responses => Promise.all(responses.map(r => r.json())))
+                    .then(results => {
+                        const failedResults = results.filter(result => !result.success);
+                        
+                        if (failedResults.length === 0) {
+                            // Tất cả thành công
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('conductModal'));
+                            if (modal) {
+                                modal.hide();
+                            }
+                            showSuccess(`Đã tạo thành công ${results.length} bản ghi hạnh kiểm`);
+                            
+                            // Highlight bản ghi đầu tiên được tạo
+                            if (results.length > 0 && results[0].id) {
+                                setHighlightRow(results[0].id);
+                            }
+                            
+                            refreshTableData();
+                        } else {
+                            // Có lỗi
+                            showError(`Có ${failedResults.length}/${results.length} bản ghi bị lỗi khi tạo`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error saving conducts:', error);
+                        showError('Có lỗi xảy ra khi lưu dữ liệu');
+                    });
+            }
         }
 
         // Biến toàn cục cho việc quản lý thời gian
