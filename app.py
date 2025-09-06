@@ -2177,24 +2177,19 @@ def create_user_conduct_api():
 
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT SUM(c.conduct_points) 
-            FROM User_Conduct uc
-            JOIN Conduct c ON uc.conduct_id = c.id
-            WHERE uc.user_id = ? AND uc.registered_date = ? AND uc.is_deleted = 0
-        """, (user_id, registered_date))
-        total_points = cursor.fetchone()[0] or 0
-
+        
+        # Get individual points for this specific conduct only
+        individual_points = 0
         cursor.execute("SELECT conduct_points FROM Conduct WHERE id = ? AND is_deleted = 0", (conduct_id,))
-        conduct_points = cursor.fetchone()[0] or 0
-
-        total_points += conduct_points
+        conduct_result = cursor.fetchone()
+        if conduct_result:
+            individual_points = conduct_result[0] or 0
 
         data = {
             'user_id': user_id,
             'conduct_id': conduct_id,
             'registered_date': registered_date,
-            'total_points': total_points,
+            'total_points': individual_points,  # Use individual points, not cumulative
             'entered_by': entered_by,
             'is_deleted': 0
         }
@@ -2215,24 +2210,19 @@ def update_user_conduct_api(id):
 
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT SUM(c.conduct_points) 
-            FROM User_Conduct uc
-            JOIN Conduct c ON uc.conduct_id = c.id
-            WHERE uc.user_id = ? AND uc.registered_date = ? AND uc.id != ? AND uc.is_deleted = 0
-        """, (user_id, registered_date, id))
-        total_points = cursor.fetchone()[0] or 0
-
+        
+        # Get individual points for this specific conduct only
+        individual_points = 0
         cursor.execute("SELECT conduct_points FROM Conduct WHERE id = ? AND is_deleted = 0", (conduct_id,))
-        conduct_points = cursor.fetchone()[0] or 0
-
-        total_points += conduct_points
+        conduct_result = cursor.fetchone()
+        if conduct_result:
+            individual_points = conduct_result[0] or 0
 
         data = {
             'user_id': user_id,
             'conduct_id': conduct_id,
             'registered_date': registered_date,
-            'total_points': total_points,
+            'total_points': individual_points,  # Use individual points, not cumulative
             'entered_by': entered_by
         }
         update_record('User_Conduct', id, data)
@@ -2734,28 +2724,26 @@ def create_user_subjects_batch_api():
             cursor = conn.cursor()
             
             created_records = []
-            total_points = 0
-            
-            # Calculate total points for all selected subjects
-            for subject_data in subjects:
-                criteria_id = subject_data.get('criteria_id')
-                if criteria_id:
-                    cursor.execute("SELECT criterion_points FROM Criteria WHERE id = ? AND is_deleted = 0", (criteria_id,))
-                    criteria_result = cursor.fetchone()
-                    if criteria_result:
-                        total_points += criteria_result[0] or 0
             
             # Create records for each selected subject
             for subject_data in subjects:
                 subject_id = subject_data['subject_id']
                 criteria_id = subject_data.get('criteria_id') or None
                 
+                # Get individual points for this specific criteria
+                individual_points = 0
+                if criteria_id:
+                    cursor.execute("SELECT criterion_points FROM Criteria WHERE id = ? AND is_deleted = 0", (criteria_id,))
+                    criteria_result = cursor.fetchone()
+                    if criteria_result:
+                        individual_points = criteria_result[0] or 0
+                
                 record_data = {
                     'user_id': user_id,
                     'subject_id': subject_id,
                     'criteria_id': criteria_id,
                     'registered_date': registered_date,
-                    'total_points': total_points,
+                    'total_points': individual_points,  # Use individual points for each subject
                     'entered_by': entered_by,
                     'is_deleted': 0
                 }
@@ -2789,25 +2777,21 @@ def create_user_subjects_api():
 
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT SUM(cr.criterion_points) 
-            FROM User_Subjects us
-            LEFT JOIN Criteria cr ON us.criteria_id = cr.id
-            WHERE us.user_id = ? AND us.registered_date = ? AND us.is_deleted = 0
-        """, (user_id, registered_date))
-        total_points = cursor.fetchone()[0] or 0
-
+        
+        # Get individual points for this specific criteria only
+        individual_points = 0
         if criteria_id:
             cursor.execute("SELECT criterion_points FROM Criteria WHERE id = ? AND is_deleted = 0", (criteria_id,))
-            criteria_points = cursor.fetchone()[0] or 0
-            total_points += criteria_points
+            criteria_result = cursor.fetchone()
+            if criteria_result:
+                individual_points = criteria_result[0] or 0
 
         data = {
             'user_id': user_id,
             'subject_id': subject_id,
             'criteria_id': criteria_id,
             'registered_date': registered_date,
-            'total_points': total_points,
+            'total_points': individual_points,  # Use individual points, not cumulative
             'entered_by': entered_by,
             'is_deleted': 0
         }
@@ -2828,25 +2812,21 @@ def update_user_subjects_api(id):
 
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT SUM(cr.criterion_points) 
-            FROM User_Subjects us
-            LEFT JOIN Criteria cr ON us.criteria_id = cr.id
-            WHERE us.user_id = ? AND us.registered_date = ? AND us.id != ? AND us.is_deleted = 0
-        """, (user_id, registered_date, id))
-        total_points = cursor.fetchone()[0] or 0
-
+        
+        # Get individual points for this specific criteria only
+        individual_points = 0
         if criteria_id:
             cursor.execute("SELECT criterion_points FROM Criteria WHERE id = ? AND is_deleted = 0", (criteria_id,))
-            criteria_points = cursor.fetchone()[0] or 0
-            total_points += criteria_points
+            criteria_result = cursor.fetchone()
+            if criteria_result:
+                individual_points = criteria_result[0] or 0
 
         data = {
             'user_id': user_id,
             'subject_id': subject_id,
             'criteria_id': criteria_id,
             'registered_date': registered_date,
-            'total_points': total_points,
+            'total_points': individual_points,  # Use individual points, not cumulative
             'entered_by': entered_by
         }
         update_record('User_Subjects', id, data)

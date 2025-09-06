@@ -514,14 +514,17 @@
             } else {
                 // Create mode: handle batch creation
                 const selectedSubjects = [];
+                let validationFailed = false;
+                
+                // Kiểm tra tất cả môn học được chọn
                 document.querySelectorAll('.subject-checkbox:checked').forEach(checkbox => {
                     const subjectId = checkbox.value;
                     const criteriaSelect = document.getElementById('criteria_' + subjectId);
                     const criteriaId = criteriaSelect.value;
                     
                     if (!criteriaId) {
-                        showWarning('Vui lòng chọn kết quả cho tất cả môn học đã chọn');
-                        return;
+                        validationFailed = true;
+                        return; // Continue to check other subjects
                     }
                     
                     selectedSubjects.push({
@@ -530,21 +533,15 @@
                     });
                 });
                 
-                if (selectedSubjects.length === 0) {
-                    showWarning('Vui lòng chọn ít nhất một môn học');
+                // Kiểm tra validation sau khi duyệt hết
+                if (validationFailed) {
+                    showWarning('Vui lòng chọn kết quả cho tất cả môn học đã chọn');
                     return;
                 }
                 
-                // Check if validation failed for any subject
-                let validationFailed = false;
-                selectedSubjects.forEach(subject => {
-                    if (!subject.criteria_id) {
-                        validationFailed = true;
-                    }
-                });
-                
-                if (validationFailed) {
-                    return; // Stop execution if validation failed
+                if (selectedSubjects.length === 0) {
+                    showWarning('Vui lòng chọn ít nhất một môn học');
+                    return;
                 }
                 
                 // Prepare data for batch creation
