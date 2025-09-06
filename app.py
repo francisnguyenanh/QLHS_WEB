@@ -3074,7 +3074,7 @@ def user_subjects_list():
                     delete_button = f'<button class="btn btn-sm btn-danger" data-delete-url="{delete_url}" onclick="confirmDeleteRecord(this)">Xóa</button>'
                 
                 criteria_text = record[3] if record[3] else 'None'
-                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td>{criteria_text}</td><td>{record[7]}</td><td style="display: none;">{record[4]}</td><td>{record[5]}</td><td>{record[6]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
+                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td>{criteria_text}</td><td>{record[7]}</td><td style="display: none;">{record[5]}</td><td>{record[4]}</td><td>{record[6]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
             
             table_html += "</tbody>"
             return jsonify({'html': table_html})
@@ -3392,135 +3392,133 @@ def group_summary():
         default_date_from = monday.strftime('%Y-%m-%d')
         default_date_to = sunday.strftime('%Y-%m-%d')
 
-        # Khởi tạo các biến lọc
-        selected_groups = []
+        # Khởi tạo các biến lọc - Luôn tìm tất cả nhóm và tất cả nguồn dữ liệu
+        selected_groups = []  # Empty list means all groups
         date_from = default_date_from
         date_to = default_date_to
-        data_source = 'all'
+        data_source = 'all'  # Always use all data sources
         period_type = 'week'  # Thêm period_type
-        select_all_groups = False
+        select_all_groups = True  # Always select all groups
 
-        # Xử lý yêu cầu POST hoặc GET
+        # Xử lý yêu cầu POST hoặc GET - chỉ lấy thông tin về ngày
         if request.method == 'POST':
-            select_all_groups = request.form.get('select_all_groups') == 'on'
-            selected_groups = request.form.getlist('groups')
+            # Luôn sử dụng tất cả nhóm và tất cả nguồn dữ liệu
+            select_all_groups = True
+            selected_groups = []  # Không sử dụng group filter
             date_from = request.form.get('date_from') or default_date_from
             date_to = request.form.get('date_to') or default_date_to
-            data_source = request.form.get('data_source', 'all')
+            data_source = 'all'  # Luôn sử dụng tất cả nguồn dữ liệu
             period_type = request.form.get('period_type', 'week')  # Lấy period_type từ form
         else:
-            select_all_groups = request.args.get('select_all_groups') == 'on'
-            selected_groups = request.args.getlist('groups')
+            # Luôn sử dụng tất cả nhóm và tất cả nguồn dữ liệu
+            select_all_groups = True
+            selected_groups = []  # Không sử dụng group filter
             date_from = request.args.get('date_from') or default_date_from
             date_to = request.args.get('date_to') or default_date_to
-            data_source = request.args.get('data_source', 'all')
+            data_source = 'all'  # Luôn sử dụng tất cả nguồn dữ liệu
             period_type = request.args.get('period_type', 'week')  # Lấy period_type từ args
 
         # Kết nối database
         conn = connect_db()
         cursor = conn.cursor()
 
-        # Xây dựng truy vấn SQL (loại bỏ user có role GVCN)
+        # Xây dựng truy vấn SQL (luôn tìm tất cả nhóm và tất cả nguồn dữ liệu)
         queries = []
         params = []
 
-        # Truy vấn cho User_Conduct
-        if data_source in ['user_conduct', 'all']:
-            query_uc = """
-                    SELECT g.name AS group_name, SUM(uc.total_points) AS total_points
-                    FROM User_Conduct uc
-                    JOIN Users u ON uc.user_id = u.id
-                    JOIN Groups g ON u.group_id = g.id
-                    WHERE uc.is_deleted = 0
-                """
-            params_uc = []
-            
-            # Add permission-based filtering
-            permissions = get_user_permissions()
-            if not permissions.get('master', False):
-                permission_level = permissions.get('student_statistics', 'none')
-                if permission_level == 'group_only':
-                    current_user = read_record_by_id('Users', session['user_id'])
-                    current_group_id = current_user[5]  # group_id is at index 5
-                    query_uc += " AND u.group_id = ?"
-                    params_uc.append(current_group_id)
-            
-            # Add GVCN and Master role filtering (existing logic)
-            excluded_roles = []
-            if gvcn_role_id is not None:
-                excluded_roles.append(gvcn_role_id)
-            if master_role_id is not None:
-                excluded_roles.append(master_role_id)
-            
-            if excluded_roles:
-                placeholders = ','.join('?' * len(excluded_roles))
-                query_uc += f" AND u.role_id NOT IN ({placeholders})"
-                params_uc.extend(excluded_roles)
-            if select_all_groups:
-                all_group_ids = [group[0] for group in groups]
-                if all_group_ids:
-                    query_uc += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
-                    params_uc.extend(all_group_ids)
-            elif selected_groups:
-                query_uc += " AND u.group_id IN ({})".format(','.join('?' * len(selected_groups)))
-                params_uc.extend(selected_groups)
-            if date_from:
-                query_uc += " AND uc.registered_date >= ?"
-                params_uc.append(date_from)
-            if date_to:
-                query_uc += " AND uc.registered_date <= ?"
-                params_uc.append(date_to)
-            query_uc += " GROUP BY g.id, g.name"
-            queries.append((query_uc, params_uc))
+        # Truy vấn cho User_Conduct (luôn được bao gồm)
+        query_uc = """
+                SELECT g.name AS group_name, SUM(uc.total_points) AS total_points
+                FROM User_Conduct uc
+                JOIN Users u ON uc.user_id = u.id
+                JOIN Groups g ON u.group_id = g.id
+                WHERE uc.is_deleted = 0
+            """
+        params_uc = []
+        
+        # Add permission-based filtering
+        permissions = get_user_permissions()
+        if not permissions.get('master', False):
+            permission_level = permissions.get('student_statistics', 'none')
+            if permission_level == 'group_only':
+                current_user = read_record_by_id('Users', session['user_id'])
+                current_group_id = current_user[5]  # group_id is at index 5
+                query_uc += " AND u.group_id = ?"
+                params_uc.append(current_group_id)
+        
+        # Add GVCN and Master role filtering (existing logic)
+        excluded_roles = []
+        if gvcn_role_id is not None:
+            excluded_roles.append(gvcn_role_id)
+        if master_role_id is not None:
+            excluded_roles.append(master_role_id)
+        
+        if excluded_roles:
+            placeholders = ','.join('?' * len(excluded_roles))
+            query_uc += f" AND u.role_id NOT IN ({placeholders})"
+            params_uc.extend(excluded_roles)
+        
+        # Luôn tìm tất cả nhóm có quyền truy cập
+        all_group_ids = [group[0] for group in groups]
+        if all_group_ids:
+            query_uc += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
+            params_uc.extend(all_group_ids)
+        
+        if date_from:
+            query_uc += " AND uc.registered_date >= ?"
+            params_uc.append(date_from)
+        if date_to:
+            query_uc += " AND uc.registered_date <= ?"
+            params_uc.append(date_to)
+        query_uc += " GROUP BY g.id, g.name"
+        queries.append((query_uc, params_uc))
 
-        # Truy vấn cho User_Subjects
-        if data_source in ['user_subjects', 'all']:
-            query_us = """
-                    SELECT g.name AS group_name, SUM(us.total_points) AS total_points
-                    FROM User_Subjects us
-                    JOIN Users u ON us.user_id = u.id
-                    JOIN Groups g ON u.group_id = g.id
-                    WHERE us.is_deleted = 0
-                """
-            params_us = []
-            
-            # Add permission-based filtering (same as User_Conduct)
-            permissions = get_user_permissions()
-            if not permissions.get('master', False):
-                permission_level = permissions.get('student_statistics', 'none')
-                if permission_level == 'group_only':
-                    current_user = read_record_by_id('Users', session['user_id'])
-                    current_group_id = current_user[5]  # group_id is at index 5
-                    query_us += " AND u.group_id = ?"
-                    params_us.append(current_group_id)
-            
-            # Add GVCN and Master role filtering (existing logic)
-            excluded_roles = []
-            if gvcn_role_id is not None:
-                excluded_roles.append(gvcn_role_id)
-            if master_role_id is not None:
-                excluded_roles.append(master_role_id)
-            
-            if excluded_roles:
-                placeholders = ','.join('?' * len(excluded_roles))
-                query_us += f" AND u.role_id NOT IN ({placeholders})"
-                params_us.extend(excluded_roles)
-            if select_all_groups:
-                all_group_ids = [group[0] for group in groups]
-                if all_group_ids:
-                    query_us += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
-                    params_us.extend(all_group_ids)
-            elif selected_groups:
-                query_us += " AND u.group_id IN ({})".format(','.join('?' * len(selected_groups)))
-                params_us.extend(selected_groups)
-            if date_from:
-                query_us += " AND us.registered_date >= ?"
-                params_us.append(date_from)
-            if date_to:
-                query_us += " AND us.registered_date <= ?"
-                params_us.append(date_to)
-            query_us += " GROUP BY g.id, g.name"
-            queries.append((query_us, params_us))
+        # Truy vấn cho User_Subjects (luôn được bao gồm)
+        query_us = """
+                SELECT g.name AS group_name, SUM(us.total_points) AS total_points
+                FROM User_Subjects us
+                JOIN Users u ON us.user_id = u.id
+                JOIN Groups g ON u.group_id = g.id
+                WHERE us.is_deleted = 0
+            """
+        params_us = []
+        
+        # Add permission-based filtering (same as User_Conduct)
+        permissions = get_user_permissions()
+        if not permissions.get('master', False):
+            permission_level = permissions.get('student_statistics', 'none')
+            if permission_level == 'group_only':
+                current_user = read_record_by_id('Users', session['user_id'])
+                current_group_id = current_user[5]  # group_id is at index 5
+                query_us += " AND u.group_id = ?"
+                params_us.append(current_group_id)
+        
+        # Add GVCN and Master role filtering (existing logic)
+        excluded_roles = []
+        if gvcn_role_id is not None:
+            excluded_roles.append(gvcn_role_id)
+        if master_role_id is not None:
+            excluded_roles.append(master_role_id)
+        
+        if excluded_roles:
+            placeholders = ','.join('?' * len(excluded_roles))
+            query_us += f" AND u.role_id NOT IN ({placeholders})"
+            params_us.extend(excluded_roles)
+        
+        # Luôn tìm tất cả nhóm có quyền truy cập
+        all_group_ids = [group[0] for group in groups]
+        if all_group_ids:
+            query_us += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
+            params_us.extend(all_group_ids)
+        
+        if date_from:
+            query_us += " AND us.registered_date >= ?"
+            params_us.append(date_from)
+        if date_to:
+            query_us += " AND us.registered_date <= ?"
+            params_us.append(date_to)
+        query_us += " GROUP BY g.id, g.name"
+        queries.append((query_us, params_us))
 
         # Thực thi truy vấn và tổng hợp kết quả
         records = {}
@@ -3664,7 +3662,7 @@ def group_summary():
                 <th colspan="3" class="text-center">Kỳ Sau</th>
                 <th rowspan="2" class="text-nowrap">
                     <a href="#" class="sort-link text-decoration-none text-dark" data-sort="progress" data-order="{{ 'desc' if sort_by == 'progress' and sort_order == 'asc' else 'asc' }}">
-                        Tiến bộ
+                        Tiến bộ↓↑
                         {% if sort_by == 'progress' %}
                             {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
                         {% else %}
@@ -3773,9 +3771,7 @@ def group_summary():
                                date_from=date_from,
                                date_to=date_to,
                                period_type=period_type,  # Thêm period_type
-                               selected_groups=selected_groups,
-                               select_all_groups=select_all_groups,
-                               data_source=data_source,
+                               data_source=data_source,  # Luôn là 'all'
                                sort_by=sort_by,
                                sort_order=sort_order,
                                is_gvcn=is_user_gvcn())
@@ -4244,6 +4240,10 @@ def user_summary():
             records.sort(key=lambda x: x[7], reverse=(sort_order == 'desc'))  # index 7 is prev_academic_points
         elif sort_by == 'prev_conduct_points':
             records.sort(key=lambda x: x[8], reverse=(sort_order == 'desc'))   # index 8 is prev_conduct_points
+        elif sort_by == 'academic_progress':
+            records.sort(key=lambda x: x[1] - x[7], reverse=(sort_order == 'desc'))  # current - previous
+        elif sort_by == 'conduct_progress':
+            records.sort(key=lambda x: x[2] - x[8], reverse=(sort_order == 'desc'))  # current - previous
         elif sort_by == 'total_points':
             records.sort(key=lambda x: x[1] + x[2], reverse=(sort_order == 'desc'))
         elif sort_by == 'in':
@@ -4280,8 +4280,8 @@ def user_summary():
                         {% endif %}
                     </a>
                 </th>
-                <th colspan="2" class="text-center">Học Tập</th>
-                <th colspan="2" class="text-center">Hạnh Kiểm</th>
+                <th colspan="3" class="text-center">Học Tập</th>
+                <th colspan="3" class="text-center">Hạnh Kiểm</th>
                 <th rowspan="2">Nhận xét</th>
             </tr>
             <tr>
@@ -4306,6 +4306,16 @@ def user_summary():
                     </a>
                 </th>
                 <th class="text-center" style="width: 90px;">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="academic_progress" data-order="{{ 'desc' if sort_by == 'academic_progress' and sort_order == 'asc' else 'asc' }}">
+                        ↓↑
+                        {% if sort_by == 'academic_progress' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-center" style="width: 90px;">
                     <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_conduct_points" data-order="{{ 'desc' if sort_by == 'prev_conduct_points' and sort_order == 'asc' else 'asc' }}">
                         Trước
                         {% if sort_by == 'prev_conduct_points' %}
@@ -4319,6 +4329,16 @@ def user_summary():
                     <a href="#" class="sort-link text-decoration-none text-dark" data-sort="conduct_points" data-order="{{ 'desc' if sort_by == 'conduct_points' and sort_order == 'asc' else 'asc' }}">
                         Sau
                         {% if sort_by == 'conduct_points' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th class="text-center" style="width: 90px;">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="conduct_progress" data-order="{{ 'desc' if sort_by == 'conduct_progress' and sort_order == 'asc' else 'asc' }}">
+                        ↓↑
+                        {% if sort_by == 'conduct_progress' %}
                             {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
                         {% else %}
                             <i class="fas fa-sort"></i>
@@ -4347,8 +4367,20 @@ def user_summary():
                     </td>
                     <td class="text-center">{{ record[7] if record|length > 7 else 0 }}</td>
                     <td class="text-center">{{ record[1] }}</td>
+                    <td class="text-center">
+                        {% set academic_progress = (record[1] - (record[7] if record|length > 7 else 0)) %}
+                        <span class="{% if academic_progress > 0 %}text-success{% elif academic_progress < 0 %}text-danger{% else %}text-muted{% endif %}">
+                            {% if academic_progress > 0 %}+{% endif %}{{ academic_progress }}
+                        </span>
+                    </td>
                     <td class="text-center">{{ record[8] if record|length > 8 else 0 }}</td>
                     <td class="text-center">{{ record[2] }}</td>
+                    <td class="text-center">
+                        {% set conduct_progress = (record[2] - (record[8] if record|length > 8 else 0)) %}
+                        <span class="{% if conduct_progress > 0 %}text-success{% elif conduct_progress < 0 %}text-danger{% else %}text-muted{% endif %}">
+                            {% if conduct_progress > 0 %}+{% endif %}{{ conduct_progress }}
+                        </span>
+                    </td>
                     <td>
                         <div class="d-flex align-items-center">
                             <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" rows="2" placeholder="Nhận xét...">{{ (record[5] if record[5] else record[6]) if record|length > 5 else '' }}</textarea>

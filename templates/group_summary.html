@@ -128,9 +128,9 @@
                 <div class="card search-form-card mb-3" id="searchFormCard" style="overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; max-height: 500px; opacity: 1;">
                     <div class="card-body">
                         <form method="POST" id="searchForm">
-                            <div class="row g-3">
-                                <!-- Cột bên trái: Điều kiện ngày tháng -->
-                                <div class="col-md-4">
+                            <div class="row g-3 justify-content-center">
+                                <!-- Cột bên trái: Điều kiện ngày tháng (centered) -->
+                                <div class="col-md-5">
                                     <div class="card h-100">
                                         <div class="card-body">
                                             <!-- Chọn loại thời gian -->
@@ -169,44 +169,9 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Cột giữa: Nhóm -->
-                                <div class="col-md-4">
-                                    <div class="card h-100">
-                                        <div class="card-body">
-                                            <div class="mb-3">
-                                                <label for="groups" class="form-label">Nhóm:</label>
-                                                <select name="groups" id="groups" multiple class="form-control" size="6">
-                                                    {% for group in groups %}
-                                                        <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
-                                                    {% endfor %}
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Cột phải: Nguồn dữ liệu -->
-                                <div class="col-md-4">
-                                    <div class="card h-100">
-                                        <div class="card-body">
-                                            <div class="mb-3">
-                                                <label class="form-label">Tìm theo:</label>
-                                                <div class="form-check">
-                                                    <input type="radio" class="form-check-input" id="user_conduct" name="data_source" value="user_conduct" {% if data_source == 'user_conduct' %}checked{% endif %}>
-                                                    <label class="form-check-label" for="user_conduct">Hạnh kiểm</label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input type="radio" class="form-check-input" id="user_subjects" name="data_source" value="user_subjects" {% if data_source == 'user_subjects' %}checked{% endif %}>
-                                                    <label class="form-check-label" for="user_subjects">Học tập</label>
-                                                </div>
-                                                <div class="form-check">
-                                                    <input type="radio" class="form-check-input" id="all" name="data_source" value="all" {% if data_source == 'all' or not data_source %}checked{% endif %}>
-                                                    <label class="form-check-label" for="all">Tất cả</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                <!-- Hidden inputs for default values -->
+                                <input type="hidden" name="groups" value="">
+                                <input type="hidden" name="data_source" value="all">
                             </div>
                             
                             <div class="row mt-3">
