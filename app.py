@@ -2324,14 +2324,12 @@ def user_conduct_list():
         # Sort modal_users by first name using Vietnamese normalization  
         modal_users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
 
-        # Tính toán ngày mặc định: Thứ 2~6 gần ngày hệ thống nhất
+        # Tính toán ngày mặc định: Thứ 2 của tuần hiện tại
         today = datetime.today()
-        if today.weekday() >= 5:  # Nếu là thứ Bảy (5) hoặc Chủ Nhật (6)
-            nearest_monday = today - timedelta(days=today.weekday())  # Thứ Hai tuần hiện tại
-        else:  # Nếu là thứ Hai (0) đến thứ Sáu (4)
-            nearest_monday = today - timedelta(days=today.weekday() + 7)  # Thứ Hai tuần trước
+        days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
+        nearest_monday = today - timedelta(days=days_since_monday)
         default_date_from = nearest_monday.strftime('%Y-%m-%d')
-        default_date_to = (nearest_monday + timedelta(days=4)).strftime('%Y-%m-%d')  # Thứ Sáu gần nhất
+        default_date_to = (nearest_monday + timedelta(days=6)).strftime('%Y-%m-%d')  # Chủ Nhật của tuần
 
         selected_users = []
         date_from = default_date_from
@@ -2931,14 +2929,12 @@ def user_subjects_list():
         # Sort modal_users by last word in name using Vietnamese normalization  
         modal_users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
 
-        # Tính toán ngày mặc định: Thứ 2~6 gần ngày hệ thống nhất
+        # Tính toán ngày mặc định: Thứ 2 của tuần hiện tại
         today = datetime.today()
-        if today.weekday() >= 5:  # Nếu là thứ Bảy (5) hoặc Chủ Nhật (6)
-            nearest_monday = today - timedelta(days=today.weekday())  # Thứ Hai tuần hiện tại
-        else:  # Nếu là thứ Hai (0) đến thứ Sáu (4)
-            nearest_monday = today - timedelta(days=today.weekday() + 7)  # Thứ Hai tuần trước
+        days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
+        nearest_monday = today - timedelta(days=days_since_monday)
         default_date_from = nearest_monday.strftime('%Y-%m-%d')
-        default_date_to = (nearest_monday + timedelta(days=4)).strftime('%Y-%m-%d')  # Thứ Sáu gần nhất
+        default_date_to = (nearest_monday + timedelta(days=6)).strftime('%Y-%m-%d')  # Chủ Nhật của tuần
 
         selected_users = []
         date_from = default_date_from
@@ -4307,7 +4303,7 @@ def user_summary():
                 </th>
                 <th class="text-center" style="width: 90px;">
                     <a href="#" class="sort-link text-decoration-none text-dark" data-sort="academic_progress" data-order="{{ 'desc' if sort_by == 'academic_progress' and sort_order == 'asc' else 'asc' }}">
-                        ↓↑
+                        ↑↓
                         {% if sort_by == 'academic_progress' %}
                             {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
                         {% else %}
@@ -4337,7 +4333,7 @@ def user_summary():
                 </th>
                 <th class="text-center" style="width: 90px;">
                     <a href="#" class="sort-link text-decoration-none text-dark" data-sort="conduct_progress" data-order="{{ 'desc' if sort_by == 'conduct_progress' and sort_order == 'asc' else 'asc' }}">
-                        ↓↑
+                        ↑↓
                         {% if sort_by == 'conduct_progress' %}
                             {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
                         {% else %}
