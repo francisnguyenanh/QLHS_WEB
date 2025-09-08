@@ -39,7 +39,7 @@
                                 </button>
                             </td>
                             <td class="text-nowrap">
-                                {% if role[1] not in ['GVCN', 'Master'] %}
+                                {% if role[1] not in ['GVCN', 'Master'] and role[0] != 9 %}
                                     <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ role[0] }})">Sửa</button>
                                     <button class="btn btn-sm btn-danger" onclick="confirmDelete('Bạn có chắc chắn muốn xóa chức vụ này?', () => deleteItem('{{ url_for('role_delete', id=role[0]) }}'))">Xoá</button>
                                 {% else %}

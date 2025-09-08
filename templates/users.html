@@ -105,21 +105,6 @@
                                 <label for="name" class="form-label">Họ tên *</label>
                                 <input type="text" class="form-control" id="name" name="name" required>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="username" class="form-label">Tên đăng nhập *</label>
-                                <input type="text" class="form-control" id="username" name="username" required>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="password" class="form-label">Mật khẩu *</label>
-                                <div class="input-group">
-                                    <input type="password" class="form-control" id="password" name="password" required>
-                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
-                                        <i class="fas fa-eye" id="togglePasswordIcon"></i>
-                                    </button>
-                                </div>
-                            </div>
                             <div class="col-md-6 mb-3" id="group_field">
                                 <label for="group_id" class="form-label">Nhóm</label>
                                 <select class="form-select" id="group_id" name="group_id">
@@ -129,6 +114,23 @@
                                     {% endfor %}
                                 </select>
                             </div>
+                            
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">Tên đăng nhập *</label>
+                                <input type="text" class="form-control" id="username" name="username" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="password" class="form-label">Mật khẩu *</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                    <button class="btn btn-outline-secondary" type="button" onclick="togglePassword()">
+                                        <i class="fas fa-eye" id="togglePasswordIcon"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
                         </div>
                         <div class="row">
                             <div class="col-md-6 mb-3" id="role_field">
@@ -141,6 +143,21 @@
                                         {% endif %}
                                     {% endfor %}
                                 </select>
+                            </div>
+                        </div>
+                        <div class="row" id="role_credentials_fields" style="display: none;">
+                            <div class="col-md-6 mb-3">
+                                <label for="role_username" class="form-label">Tên đăng nhập (chức vụ) *</label>
+                                <input type="text" class="form-control" id="role_username" name="role_username">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="role_password" class="form-label">Mật khẩu (chức vụ) *</label>
+                                <div class="input-group">
+                                    <input type="password" class="form-control" id="role_password" name="role_password">
+                                    <button class="btn btn-outline-secondary" type="button" onclick="toggleRolePassword()">
+                                        <i class="fas fa-eye" id="toggleRolePasswordIcon"></i>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </form>
@@ -182,12 +199,47 @@
             document.getElementById('role_field').style.display = 'block';
             document.getElementById('group_id').disabled = false;
             document.getElementById('role_id').disabled = false;
+            // Hide role credentials initially
+            document.getElementById('role_credentials_fields').style.display = 'none';
+            document.getElementById('role_username').required = false;
+            document.getElementById('role_password').required = false;
             new bootstrap.Modal(document.getElementById('userModal')).show();
         }
 
         function handleRoleChange() {
-            // This function is called when role changes, but since we don't allow GVCN selection
-            // it's mainly for future extensibility
+            const roleSelect = document.getElementById('role_id');
+            const selectedRoleId = roleSelect.value;
+            const roleCredentialsFields = document.getElementById('role_credentials_fields');
+            const roleUsernameField = document.getElementById('role_username');
+            const rolePasswordField = document.getElementById('role_password');
+            
+            if (selectedRoleId) {
+                // Get role name to check if it's "Học sinh" or role ID = 9
+                const selectedOption = roleSelect.querySelector(`option[value="${selectedRoleId}"]`);
+                const roleName = selectedOption ? selectedOption.textContent : '';
+                
+                if (roleName === 'Học sinh' || selectedRoleId === '9') {
+                    // Hide role credentials fields for student role or role ID 9
+                    roleCredentialsFields.style.display = 'none';
+                    roleUsernameField.required = false;
+                    rolePasswordField.required = false;
+                    // Clear the values when switching to role ID 9
+                    roleUsernameField.value = '';
+                    rolePasswordField.value = '';
+                } else {
+                    // Show role credentials fields for non-student roles
+                    roleCredentialsFields.style.display = 'block';
+                    roleUsernameField.required = true;
+                    rolePasswordField.required = true;
+                }
+            } else {
+                // No role selected, hide fields
+                roleCredentialsFields.style.display = 'none';
+                roleUsernameField.required = false;
+                rolePasswordField.required = false;
+                roleUsernameField.value = '';
+                rolePasswordField.value = '';
+            }
         }
 
         function checkUserRole(roleId) {
@@ -215,6 +267,8 @@
                     document.getElementById('password').value = data.password || '';
                     document.getElementById('group_id').value = data.group_id || '';
                     document.getElementById('role_id').value = data.role_id || '';
+                    document.getElementById('role_username').value = data.role_username || '';
+                    document.getElementById('role_password').value = data.role_password || '';
                     
                     // Check if current user has GVCN role (need to get role name from backend)
                     fetch(`/api/roles/${data.role_id}`)
@@ -224,12 +278,15 @@
                                 // Hide group and role selection for GVCN users
                                 document.getElementById('group_field').style.display = 'none';
                                 document.getElementById('role_field').style.display = 'none';
+                                document.getElementById('role_credentials_fields').style.display = 'none';
                             } else {
                                 // Show and enable fields for non-GVCN users
                                 document.getElementById('group_field').style.display = 'block';
                                 document.getElementById('role_field').style.display = 'block';
                                 document.getElementById('group_id').disabled = false;
                                 document.getElementById('role_id').disabled = false;
+                                // Handle role credentials visibility
+                                handleRoleChange();
                             }
                         })
                         .catch(error => {
@@ -239,6 +296,7 @@
                             document.getElementById('role_field').style.display = 'block';
                             document.getElementById('group_id').disabled = false;
                             document.getElementById('role_id').disabled = false;
+                            handleRoleChange();
                         });
                     
                     new bootstrap.Modal(document.getElementById('userModal')).show();
@@ -252,6 +310,7 @@
         function saveUser() {
             const form = document.getElementById('userForm');
             const formData = new FormData(form);
+            
             // Validate required fields
             if (!formData.get('name') || !formData.get('username')) {
                 showWarning('Vui lòng nhập đầy đủ thông tin bắt buộc');
@@ -262,11 +321,27 @@
                 return;
             }
             
+            // Check if role credentials are required
+            const roleSelect = document.getElementById('role_id');
+            const selectedRoleId = roleSelect.value;
+            const roleCredentialsVisible = document.getElementById('role_credentials_fields').style.display !== 'none';
+            
+            if (roleCredentialsVisible && selectedRoleId) {
+                const selectedOption = roleSelect.querySelector(`option[value="${selectedRoleId}"]`);
+                const roleName = selectedOption ? selectedOption.textContent : '';
+                
+                if (roleName !== 'Học sinh' && selectedRoleId !== '9') {
+                    if (!formData.get('role_username') || !formData.get('role_password')) {
+                        showWarning('Vui lòng nhập đầy đủ Tên đăng nhập (chức vụ) và Mật khẩu (chức vụ) cho chức vụ này');
+                        return;
+                    }
+                }
+            }
+            
             // Check if fields are hidden (for GVCN users)
             const groupField = document.getElementById('group_field');
             const roleField = document.getElementById('role_field');
             const groupSelect = document.getElementById('group_id');
-            const roleSelect = document.getElementById('role_id');
             
             const data = {
                 name: formData.get('name'),
@@ -274,7 +349,9 @@
                 password: formData.get('password'),
                 class_id: null,
                 group_id: (groupField.style.display === 'none') ? null : (formData.get('group_id') || null),
-                role_id: (roleField.style.display === 'none') ? null : (formData.get('role_id') || null)
+                role_id: (roleField.style.display === 'none') ? null : (formData.get('role_id') || null),
+                role_username: (selectedRoleId === '9') ? null : (formData.get('role_username') || null),
+                role_password: (selectedRoleId === '9') ? null : (formData.get('role_password') || null)
             };
             
             // For edit mode, if fields are hidden, keep current values
@@ -314,6 +391,19 @@
         function togglePassword() {
             const passwordInput = document.getElementById('password');
             const toggleIcon = document.getElementById('togglePasswordIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.className = 'fas fa-eye-slash';
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.className = 'fas fa-eye';
+            }
+        }
+
+        function toggleRolePassword() {
+            const passwordInput = document.getElementById('role_password');
+            const toggleIcon = document.getElementById('toggleRolePasswordIcon');
             
             if (passwordInput.type === 'password') {
                 passwordInput.type = 'text';

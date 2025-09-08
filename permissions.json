@@ -84,14 +84,24 @@
         }
       }
     },
-    "comment_management": {
-      "name": "Chức năng quản lý nhận xét",
-      "description": "Quản lý mẫu nhận xét và nhận xét học sinh",
+    "student_report": {
+      "name": "Chức năng báo cáo học sinh",
+      "description": "Xem và tạo báo cáo học sinh",
       "levels": {
         "all": {
           "name": "Tất cả",
-          "permissions": ["view", "create", "edit", "delete"],
+          "permissions": ["view", "create"],
           "search_conditions": "all"
+        },
+        "group_only": {
+          "name": "Chỉ nhóm của mình",
+          "permissions": ["view", "create"],
+          "search_conditions": "group_restricted"
+        },
+        "self_only": {
+          "name": "Chỉ mình",
+          "permissions": ["view", "create"],
+          "search_conditions": "self_restricted"
         }
       }
     }
@@ -102,6 +112,6 @@
     "academic_management": "none",
     "group_statistics": "none",
     "student_statistics": "none",
-    "comment_management": "none"
+    "student_report": "none"
   }
 }

@@ -565,6 +565,17 @@ def setup_sample_data():
         INSERT OR IGNORE INTO Settings (setting_key, setting_value) 
         VALUES ('background_image', '')
     """)
+    
+    # Thêm các cột mới cho Users table nếu chưa tồn tại
+    try:
+        conn.execute("ALTER TABLE Users ADD COLUMN role_username TEXT")
+    except:
+        pass  # Column already exists
+    
+    try:
+        conn.execute("ALTER TABLE Users ADD COLUMN role_password TEXT")
+    except:
+        pass  # Column already exists
     # conn.executescript("""
     #     CREATE TABLE IF NOT EXISTS Classes (
     #         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -688,7 +699,12 @@ def get_user_permissions():
     if not user or not user[6]:  # role_id at index 6
         return {}
     
-    role_id = user[6]
+    # Check if there's a forced role ID (for normal login with role ID 9)
+    if 'force_role_id' in session:
+        role_id = session['force_role_id']
+    else:
+        role_id = user[6]
+    
     conn = connect_db()
     cursor = conn.cursor()
     cursor.execute("""
@@ -1367,7 +1383,7 @@ def role_edit(id):
 def role_delete(id):
     # Kiểm tra role hiện tại
     role_data = read_record_by_id('Roles', id, ['id', 'name'])
-    if role_data and role_data[1] in ['GVCN', 'Master']:
+    if role_data and (role_data[1] in ['GVCN', 'Master', 'Học sinh']):
         flash('Không thể xóa role hệ thống', 'error')
         return redirect(url_for('roles_list'))
     
@@ -1734,7 +1750,7 @@ def criteria_delete(id):
 @app.route('/api/users/<int:id>')
 def get_user_api(id):
     if 'user_id' in session:
-        user_data = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
+        user_data = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id', 'role_username', 'role_password'])
         return jsonify({
             'id': user_data[0],
             'name': user_data[1],
@@ -1742,7 +1758,9 @@ def get_user_api(id):
             'password': user_data[3],
             'class_id': user_data[4],
             'group_id': user_data[5],
-            'role_id': user_data[6]
+            'role_id': user_data[6],
+            'role_username': user_data[7] if len(user_data) > 7 else None,
+            'role_password': user_data[8] if len(user_data) > 8 else None
         })
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1755,6 +1773,8 @@ def create_user_api():
         class_id = request.json['class_id']
         role_id = request.json['role_id']
         group_id = request.json.get('group_id')
+        role_username = request.json.get('role_username')
+        role_password = request.json.get('role_password')
 
         # Kiểm tra trùng username
         conn = connect_db()
@@ -1764,6 +1784,20 @@ def create_user_api():
             conn.close()
             return jsonify({'error': 'Tên đăng nhập đã tồn tại'}), 400
 
+        # Kiểm tra trùng password với tất cả các password và role_password trong DB
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM Users WHERE (password = ? OR role_password = ?) AND is_deleted = 0", (password, password))
+        if cursor.fetchone()[0] > 0:
+            conn.close()
+            return jsonify({'error': 'Mật khẩu đã tồn tại trong hệ thống. Vui lòng chọn mật khẩu khác'}), 400
+
+        # Kiểm tra trùng role_password nếu có
+        if role_password:
+            cursor.execute("SELECT COUNT(*) FROM Users WHERE (password = ? OR role_password = ?) AND is_deleted = 0", (role_password, role_password))
+            if cursor.fetchone()[0] > 0:
+                conn.close()
+                return jsonify({'error': 'Role Password đã tồn tại trong hệ thống. Vui lòng chọn role password khác'}), 400
+
         data = {
             'name': name,
             'username': username,
@@ -1771,6 +1805,8 @@ def create_user_api():
             'class_id': class_id,
             'group_id': group_id,
             'role_id': role_id,
+            'role_username': role_username,
+            'role_password': role_password,
             'is_deleted': 0
         }
         create_record('Users', data)
@@ -1783,10 +1819,6 @@ def update_user_api(id):
     if 'user_id' in session:
         # Kiểm tra user hiện tại có role Master hoặc GVCN không
         user_data = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
-        if user_data and user_data[6]:  # role_id at index 6
-            role_data = read_record_by_id('Roles', user_data[6], ['id', 'name'])
-            if role_data and role_data[1] in ['Master', 'GVCN']:
-                return jsonify({'success': False, 'error': f'Không thể thay đổi user {role_data[1]}'}), 400
         
         name = request.json['name']
         username = request.json['username']
@@ -1794,6 +1826,8 @@ def update_user_api(id):
         class_id = request.json['class_id']
         role_id = request.json['role_id']
         group_id = request.json.get('group_id')
+        role_username = request.json.get('role_username')
+        role_password = request.json.get('role_password')
 
         # Kiểm tra trùng username (trừ user hiện tại)
         conn = connect_db()
@@ -1803,14 +1837,41 @@ def update_user_api(id):
             conn.close()
             return jsonify({'error': 'Tên đăng nhập đã tồn tại'}), 400
 
-        data = {
+        # Kiểm tra trùng password với tất cả các password và role_password trong DB (trừ user hiện tại)
+        cursor.execute("SELECT COUNT(*) FROM Users WHERE (password = ? OR role_password = ?) AND id != ? AND is_deleted = 0", (password, password, id))
+        if cursor.fetchone()[0] > 0:
+            conn.close()
+            return jsonify({'error': 'Mật khẩu đã tồn tại trong hệ thống. Vui lòng chọn mật khẩu khác'}), 400
+
+        # Kiểm tra trùng role_password nếu có (trừ user hiện tại)
+        if role_password:
+            cursor.execute("SELECT COUNT(*) FROM Users WHERE (password = ? OR role_password = ?) AND id != ? AND is_deleted = 0", (role_password, role_password, id))
+            if cursor.fetchone()[0] > 0:
+                conn.close()
+                return jsonify({'error': 'Role Password đã tồn tại trong hệ thống. Vui lòng chọn role password khác'}), 400
+        
+        if id == 41:
+            data = {
             'name': name,
             'username': username,
             'password': password,
             'class_id': class_id,
             'group_id': group_id,
-            'role_id': role_id
+            'role_id': 5,
+            'role_username': username,
+            'role_password': password
         }
+        else:
+            data = {
+                'name': name,
+                'username': username,
+                'password': password,
+                'class_id': class_id,
+                'group_id': group_id,
+                'role_id': role_id,
+                'role_username': role_username,
+                'role_password': role_password
+            }
         update_record('Users', id, data)
         conn.close()
         return jsonify({'success': True, 'message': 'Cập nhật thành công'})
@@ -4465,10 +4526,30 @@ def login():
         username = request.form['username']
         password = request.form['password']
         print(f"{username}, {password}")
+        
+        # First try normal username/password login
         user = read_all_records('Users', condition=f"username = '{username}' AND password = '{password}'")
-        print(user)
+        
+        # If normal login fails, try role_username/role_password login
+        if not user:
+            user = read_all_records('Users', condition=f"role_username = '{username}' AND role_password = '{password}'")
+            
         if user:
             user_id = user[0][0]
+            
+            # Determine which login method was used and set appropriate role permissions
+            # Check if it was role_username/role_password login
+            role_login = read_all_records('Users', condition=f"role_username = '{username}' AND role_password = '{password}' AND id = {user_id}")
+            
+            if role_login:
+                # Role login - use the user's actual role
+                session['user_id'] = user_id
+                session['login_type'] = 'role_login'
+            else:
+                # Normal login - force role ID 9 permissions
+                session['user_id'] = user_id
+                session['login_type'] = 'normal_login'
+                session['force_role_id'] = 9
             
             # Kiểm tra nếu user không phải master thì check ngày hiệu lực
             if not is_master_user(user_id):
@@ -4476,7 +4557,6 @@ def login():
                     error = 'Hệ thống đã hết hiệu lực. Vui lòng liên hệ quản trị viên.'
                     return render_template('login.html', error=error, class_name=class_name, permissions={})
             
-            session['user_id'] = user_id
             return redirect(url_for('home'))
         else:
             error = 'Invalid username or password'
@@ -4507,6 +4587,8 @@ def serve_background(filename):
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)  # Xóa user_id khỏi session
+    session.pop('login_type', None)  # Xóa login_type khỏi session
+    session.pop('force_role_id', None)  # Xóa force_role_id khỏi session
     return redirect(url_for('login'))
 
 # --- Settings Page ---
@@ -4658,16 +4740,16 @@ def reset_table(table_name):
             
             # Xóa dữ liệu với điều kiện đặc biệt
             if table_name == 'Role_Permissions':
-                # Không xóa phân quyền của role Master, GVCN
+                # Không xóa phân quyền của role Master, GVCN và role ID = 9
                 cursor.execute("""
                     DELETE FROM Role_Permissions 
                     WHERE role_id NOT IN (
-                        SELECT id FROM Roles WHERE name IN ('Master', 'GVCN')
+                        SELECT id FROM Roles WHERE name IN ('Master', 'GVCN') OR id = 9
                     )
                 """)
             elif table_name == 'Roles':
-                # Không xóa role Master, GVCN
-                cursor.execute("DELETE FROM Roles WHERE name NOT IN ('Master', 'GVCN')")
+                # Không xóa role Master, GVCN và role ID = 9
+                cursor.execute("DELETE FROM Roles WHERE name NOT IN ('Master', 'GVCN') AND id != 9")
             elif table_name == 'Users':
                 # Không xóa user có role Master, GVCN
                 cursor.execute("""
@@ -5352,12 +5434,16 @@ def student_report():
             conn = connect_db()
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT id, name FROM Users 
-                WHERE role_id IN (SELECT id FROM Roles WHERE name = 'Student')
-                ORDER BY name
+                SELECT u.id, u.name FROM Users u
+                LEFT JOIN Roles r ON u.role_id = r.id
+                WHERE u.is_deleted = 0 
+                AND (r.name IS NULL OR r.name NOT IN ('GVCN', 'Master', 'Quản trị viên'))
             """)
             users = cursor.fetchall()
             conn.close()
+            
+            # Sort users by Vietnamese first name like user_summary
+            users = sorted(users, key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
         
         return render_template('student_report.html', 
                              permissions=permissions,
