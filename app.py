@@ -5259,7 +5259,7 @@ def user_report_secure(token):
             ''', (user_id, date_from, date_from, date_from, date_to, date_from, date_to))
             comment_result = cursor.fetchone()
         
-        if comment_result and comment_result[0]:
+        if comment_result and comment_result[0] is not None and comment_result[0] != "None":
             user_comment = comment_result[0]
     
     conn.close()
@@ -5549,6 +5549,10 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         """, (user_id, date_from, date_to))
         comments_data = cursor.fetchall()
         
+        cursor.execute("SELECT id, name FROM Classes WHERE is_deleted = 0 ORDER BY name")
+        classes = cursor.fetchall()
+        classnames = classes[0][1] if classes else "Chưa phân lớp"
+        
         # Calculate statistics
         total_subjects = len(set([row[0] for row in subjects_data]))
         total_conduct_points = sum([row[1] for row in conduct_data])
@@ -5643,7 +5647,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
                 border-radius: 10px 10px 0 0;
                 margin-bottom: 0;
             ">
-                <h1 class="text-center mb-3" style="color: white; font-weight: bold; font-size: 2.2rem;">BÁO CÁO KẾT QUẢ RÈN LUYỆN</h1>
+                <h1 class="text-center mb-3" style="color: white; font-weight: bold; font-size: 1.8rem;">KẾT QUẢ RÈN LUYỆN LỚP {classnames}</h1>
                 <div class="student-teacher-row d-flex justify-content-between align-items-center">
                     <div class="student-name fw-bold" style="color: #ecf0f1; font-size: 1.1rem;">Học sinh: {student['name']}</div>
                     <div class="period-info text-center" style="color: #bdc3c7; font-size: 1rem; font-weight: 500;">{period_text}</div>

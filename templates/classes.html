@@ -37,7 +37,6 @@
                             <td>{{ class[1] }}</td>
                             <td class="text-nowrap">
                                 <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ class[0] }})">Sửa</button>
-                                <button class="btn btn-sm btn-danger" onclick="confirmDelete('Bạn có chắc chắn muốn xóa lớp này?', () => deleteItem('{{ url_for('class_delete', id=class[0]) }}'))">Xoá</button>
                             </td>
                         </tr>
                     {% endfor %}
