@@ -242,7 +242,7 @@
                     <a class="nav-link" href="{{ url_for('user_subjects_list') }}">Quản lý học tập</a>
                 </li>
                 {% endif %}
-                {% if permissions is defined and (permissions.get('master', False) or permissions.get('student_statistics', 'none') != 'none') %}
+                {% if permissions is defined and (permissions.get('master', False) or permissions.get('group_statistics', 'none') != 'none') %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('group_summary') }}">Thống kê nhóm</a>
                 </li>
