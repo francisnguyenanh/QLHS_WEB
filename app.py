@@ -721,6 +721,25 @@ def get_user_group_id(user_id):
     user = read_record_by_id('Users', user_id)
     return user[5] if user else None  # group_id is at index 5
 
+def get_user_by_id(user_id):
+    """Get user information by user_id"""
+    user_record = read_record_by_id('Users', user_id)
+    if not user_record:
+        return None
+    
+    # Convert tuple to dictionary for easier access
+    # Correct mapping: id, name, username, password, class_id, group_id, role_id, is_deleted
+    return {
+        'id': user_record[0],
+        'name': user_record[1],           # name is at index 1
+        'username': user_record[2],       # username is at index 2  
+        'password': user_record[3],       # password is at index 3
+        'class_id': user_record[4],       # class_id is at index 4
+        'group_id': user_record[5],       # group_id is at index 5
+        'role_id': user_record[6],        # role_id is at index 6
+        'is_deleted': user_record[7]      # is_deleted is at index 7
+    }
+
 def has_permission(permission_type, required_level=None):
     """Check if current user has specific permission"""
     permissions = get_user_permissions()
@@ -5307,6 +5326,458 @@ def comment_template_edit_secure(id, token):
 def comment_template_delete_secure(id, token):
     flash('Chức năng đang được phát triển', 'info')
     return redirect(url_for('comment_management'))
+
+
+@app.route('/student_report', methods=['GET', 'POST'])
+def student_report():
+    """Báo cáo kết quả học sinh"""
+    # Check permissions
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Get user permissions
+    permissions = get_user_permissions()
+    
+    # Get current user info
+    current_user = get_user_by_id(session['user_id'])
+    if not current_user:
+        flash('Không tìm thấy thông tin người dùng', 'error')
+        return redirect(url_for('login'))
+    
+    # Students can only view their own reports, masters can view all
+    if request.method == 'GET':
+        # Get list of users for master users
+        users = []
+        if permissions.get('master', False):
+            conn = connect_db()
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, name FROM Users 
+                WHERE role_id IN (SELECT id FROM Roles WHERE name = 'Student')
+                ORDER BY name
+            """)
+            users = cursor.fetchall()
+            conn.close()
+        
+        return render_template('student_report.html', 
+                             permissions=permissions,
+                             current_user_info=current_user,
+                             users=users)
+    
+    # Handle POST request (search for report data)
+    if request.method == 'POST':
+        try:
+            user_id = request.form.get('user_id')
+            date_from = request.form.get('date_from')
+            date_to = request.form.get('date_to')
+            
+            # Validation
+            if not user_id:
+                return jsonify({'success': False, 'error': 'Vui lòng chọn học sinh'})
+            
+            if not date_from or not date_to:
+                return jsonify({'success': False, 'error': 'Vui lòng chọn khoảng thời gian'})
+            
+            # Permission check: students can only view their own data
+            if not permissions.get('master', False) and str(user_id) != str(session['user_id']):
+                return jsonify({'success': False, 'error': 'Bạn không có quyền xem báo cáo này'})
+            
+            # Get student info
+            student = get_user_by_id(user_id)
+            if not student:
+                return jsonify({'success': False, 'error': 'Không tìm thấy thông tin học sinh'})
+            
+            # Get teacher info (homeroom teacher)
+            conn = connect_db()
+            cursor = conn.cursor()
+            try:
+                # Make sure student has class_id
+                cursor.execute("""
+                        SELECT u.name 
+                        FROM Users u 
+                        JOIN Roles r ON u.role_id = r.id 
+                        WHERE r.name = 'GVCN' AND u.is_deleted = 0
+                        LIMIT 1
+                    """)
+                teacher_info = cursor.fetchone()
+                teacher_name = teacher_info[0] if teacher_info else "Chưa phân công"
+            except Exception as e:
+                teacher_name = "Chưa phân công"
+            finally:
+                conn.close()
+            
+            # Generate report HTML
+            report_html = generate_student_report_html(user_id, date_from, date_to, student, teacher_name)
+            
+            return jsonify({'success': True, 'html': report_html})
+            
+        except Exception as e:
+            return jsonify({'success': False, 'error': str(e)})
+
+
+def generate_student_report_html(user_id, date_from, date_to, student, teacher_info):
+    """Generate HTML content for student report"""
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    try:
+        # Parse dates
+        from_date = datetime.strptime(date_from, '%Y-%m-%d')
+        to_date = datetime.strptime(date_to, '%Y-%m-%d')
+        
+        # Determine period display
+        if (to_date - from_date).days == 6:  # Weekly report
+            period_text = f"Tuần từ {from_date.strftime('%d/%m/%Y')} đến {to_date.strftime('%d/%m/%Y')}"
+        else:  # Monthly report
+            period_text = f"Tháng {from_date.strftime('%m/%Y')}"
+        
+        # Get subjects data
+        cursor.execute("""
+            SELECT s.name, COALESCE(c.name, 'Chưa đánh giá') as result, us.total_points, us.registered_date
+            FROM User_Subjects us
+            JOIN Subjects s ON us.subject_id = s.id
+            LEFT JOIN Criteria c ON us.criteria_id = c.id
+            WHERE us.user_id = ? AND us.is_deleted = 0 AND us.registered_date >= ? AND us.registered_date <= ?
+            ORDER BY us.registered_date, s.name
+        """, (user_id, date_from, date_to))
+        subjects_data = cursor.fetchall()
+        
+        # Get conduct data
+        cursor.execute("""
+            SELECT c.name, uc.total_points, uc.registered_date
+            FROM User_Conduct uc
+            JOIN Conduct c ON uc.conduct_id = c.id
+            WHERE uc.user_id = ? AND uc.is_deleted = 0
+            AND uc.registered_date >= ? AND uc.registered_date <= ?
+            ORDER BY uc.registered_date, c.name
+        """, (user_id, date_from, date_to))
+        conduct_data = cursor.fetchall()
+        
+        # Get teacher comments for the period - exact match with search period
+        cursor.execute("""
+            SELECT uc.comment_text, uc.created_date, uc.period_start, uc.period_end
+            FROM User_Comments uc
+            WHERE uc.user_id = ? 
+            AND uc.period_start = ? AND uc.period_end = ?
+            ORDER BY uc.created_date DESC
+        """, (user_id, date_from, date_to))
+        comments_data = cursor.fetchall()
+        
+        # Calculate statistics
+        total_subjects = len(set([row[0] for row in subjects_data]))
+        total_conduct_points = sum([row[1] for row in conduct_data])
+        conduct_entries = len(conduct_data)
+        avg_conduct = round(total_conduct_points / conduct_entries, 1) if conduct_entries > 0 else 0
+        
+        # Additional statistics for enhanced report
+        unique_subjects = total_subjects
+        total_academic_points = 0  # Will be calculated properly below
+        prev_academic_points = 0
+        prev_conduct_points = 0
+        
+        # Calculate total academic points from subjects_data if available
+        try:
+            cursor.execute("""
+                SELECT SUM(total_points) FROM User_Subjects
+                WHERE user_id = ? AND is_deleted = 0 
+                AND registered_date >= ? AND registered_date <= ?
+            """, (user_id, date_from, date_to))
+            total_academic_points = cursor.fetchone()[0] or 0
+        except:
+            total_academic_points = 0
+        
+        # Calculate previous period points for comparison
+        try:
+            from_date_obj = datetime.strptime(date_from, '%Y-%m-%d')
+            to_date_obj = datetime.strptime(date_to, '%Y-%m-%d')
+            period_duration = (to_date_obj - from_date_obj).days
+            prev_period_end = from_date_obj - timedelta(days=1)
+            prev_period_start = prev_period_end - timedelta(days=period_duration)
+            prev_date_from_str = prev_period_start.strftime('%Y-%m-%d')
+            prev_date_to_str = prev_period_end.strftime('%Y-%m-%d')
+            
+            # Previous academic points
+            cursor.execute("""
+                SELECT SUM(total_points) FROM User_Subjects
+                WHERE user_id = ? AND is_deleted = 0 
+                AND registered_date >= ? AND registered_date <= ?
+            """, (user_id, prev_date_from_str, prev_date_to_str))
+            prev_academic_points = cursor.fetchone()[0] or 0
+            
+            # Previous conduct points
+            cursor.execute("""
+                SELECT SUM(total_points) FROM User_Conduct
+                WHERE user_id = ? AND is_deleted = 0 
+                AND registered_date >= ? AND registered_date <= ?
+            """, (user_id, prev_date_from_str, prev_date_to_str))
+            prev_conduct_points = cursor.fetchone()[0] or 0
+        except:
+            prev_academic_points = 0
+            prev_conduct_points = 0
+        
+        # Calculate progress
+        academic_progress = total_academic_points - prev_academic_points
+        conduct_progress = total_conduct_points - prev_conduct_points
+        
+        # Progress indicators
+        def get_progress_class(progress):
+            if progress > 0:
+                return "text-success", "fa-arrow-up", f"+{progress}"
+            elif progress < 0:
+                return "text-danger", "fa-arrow-down", str(progress)
+            else:
+                return "text-muted", "fa-minus", "0"
+        
+        academic_class, academic_icon, academic_text = get_progress_class(academic_progress)
+        conduct_class, conduct_icon, conduct_text = get_progress_class(conduct_progress)
+        
+        # Group subjects by result
+        subjects_by_result = {}
+        for subject, result, points, date in subjects_data:
+            if result not in subjects_by_result:
+                subjects_by_result[result] = []
+            subjects_by_result[result].append((subject, points, date))
+        
+        # Group conduct by week
+        conduct_by_week = {}
+        for conduct, points, registered_date in conduct_data:
+            if registered_date not in conduct_by_week:
+                conduct_by_week[registered_date] = []
+            conduct_by_week[registered_date].append((conduct, points))
+        
+        # Generate HTML with proper CSS classes
+        html = f"""
+        <div class="position-relative">
+            
+            
+            <div class="report-header" style="
+                background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+                color: white;
+                padding: 30px 20px;
+                border-radius: 10px 10px 0 0;
+                margin-bottom: 0;
+            ">
+                <h1 class="text-center mb-3" style="color: white; font-weight: bold; font-size: 2.2rem;">BÁO CÁO KẾT QUẢ RÈN LUYỆN</h1>
+                <div class="student-teacher-row d-flex justify-content-between align-items-center">
+                    <div class="student-name fw-bold" style="color: #ecf0f1; font-size: 1.1rem;">Học sinh: {student['name']}</div>
+                    <div class="period-info text-center" style="color: #bdc3c7; font-size: 1rem; font-weight: 500;">{period_text}</div>
+                    <div class="teacher-name fw-bold" style="color: #ecf0f1; font-size: 1.1rem;">GVCN: {teacher_info}</div>
+                </div>
+            </div>
+            
+            <div class="report-body p-4">
+                <!-- Summary Cards -->
+                <div class="summary-cards row g-3 mb-4">
+                    <div class="col-md-4">
+                        <div class="summary-card study-card h-100 p-3 text-center" style="background: #7cc1ffe8; color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
+                            <h3 class="mb-2" style="font-size: 2rem; font-weight: bold;">{total_academic_points}</h3>
+                            <p class="mb-2" style="font-size: 1.1rem;">Điểm học tập</p>
+                            <small class="mt-1 d-block">
+                                <i class="fas {academic_icon} {academic_class}"></i>
+                                <span class="{academic_class}">{academic_text} điểm</span>
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="summary-card conduct-card h-100 p-3 text-center" style="background: #b4b4b4; color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
+                            <h3 class="mb-2" style="font-size: 2rem; font-weight: bold;">{total_conduct_points}</h3>
+                            <p class="mb-2" style="font-size: 1.1rem;">Điểm rèn luyện</p>
+                            <small class="mt-1 d-block">
+                                <i class="fas {conduct_icon} {conduct_class}"></i>
+                                <span class="{conduct_class}">{conduct_text} điểm</span>
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="summary-card total-card h-100 p-3 text-center" style="background: #075e6770; color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
+                            <h3 class="mb-2" style="font-size: 2rem; font-weight: bold;">{total_academic_points + total_conduct_points}</h3>
+                            <p class="mb-2" style="font-size: 1.1rem;">Tổng điểm</p>
+                            <small class="mt-1 d-block" style="color: rgba(255,255,255,0.9);">
+                                Kỳ trước: {prev_academic_points} điểm
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Subjects Detail -->
+                <div class="details-section mb-4 p-4" style="background: #fdfdfd; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border: 1px solid #e8e8e8;">
+                    <h3 class="mb-3" style="color: #000000; border-bottom: 3px solid #3498db; padding-bottom: 10px; font-weight: 600;">
+                        <i class="fas fa-book me-2" style="color: #3498db;"></i>Kết quả Học tập
+                    </h3>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead style="background: linear-gradient(135deg, #000000 0%, #34495e 100%); color: white;">
+                                <tr>
+                                    <th style="border: none; padding: 15px; font-weight: 500;">Môn học</th>
+                                    <th style="border: none; padding: 15px; font-weight: 500;">Kết quả</th>
+                                    <th style="border: none; padding: 15px; font-weight: 500;">Điểm</th>
+                                    <th style="border: none; padding: 15px; font-weight: 500;">Ngày</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+        """
+        
+        # Add subjects data
+        for subject, result, points, date in subjects_data:
+            result_class = ""
+            if result in ['Giỏi', 'Tốt']:
+                result_class = "text-success fw-bold"
+            elif result in ['Khá']:
+                result_class = "text-primary fw-bold"
+            elif result in ['Trung bình']:
+                result_class = "text-success fw-bold"
+            else:
+                result_class = "text-danger fw-bold"
+            
+            # Format date
+            try:
+                formatted_date = datetime.strptime(date, '%Y-%m-%d').strftime('%d/%m/%Y')
+            except:
+                formatted_date = date
+                
+            # Format points with color
+            points_class = ""
+            if points > 0:
+                points_class = "text-success fw-bold"
+                points_display = f"+{points}"
+            elif points < 0:
+                points_class = "text-danger fw-bold"
+                points_display = str(points)
+            else:
+                points_class = "text-muted"
+                points_display = "0"
+                
+            html += f"""
+                                <tr style="border-bottom: 1px solid #f1f2f6; background: white;">
+                                    <td style="padding: 15px; font-weight: 500; color: #000000;">{subject}</td>
+                                    <td style="padding: 15px;"><span class="{result_class}">{result}</span></td>
+                                    <td style="padding: 15px;"><span class="{points_class}">{points_display}</span></td>
+                                    <td style="padding: 15px; color: #000000; font-size: 0.95rem;">{formatted_date}</td>
+                                </tr>
+            """
+        
+        if not subjects_data:
+            html += """
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted" style="padding: 20px;">Chưa có dữ liệu học tập</td>
+                                </tr>
+            """
+        
+        html += """
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Conduct Detail -->
+                <div class="details-section mb-4 p-4" style="background: #fdfdfd; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border: 1px solid #e8e8e8;">
+                    <h3 class="mb-3" style="color: #000000; border-bottom: 3px solid #b4b4b4; padding-bottom: 10px; font-weight: 600;">
+                        <i class="fas fa-star me-2" style="color: #b4b4b4;"></i>Kết quả Hạnh kiểm
+                    </h3>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0">
+                            <thead style="background: linear-gradient(135deg, #000000 0%, #34495e 100%); color: white;">
+                                <tr>
+                                    <th style="border: none; padding: 15px; font-weight: 500;">Tiêu chí</th>
+                                    <th style="border: none; padding: 15px; font-weight: 500;">Điểm</th>
+                                    <th style="border: none; padding: 15px; font-weight: 500;">Ngày</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+        """
+        
+        # Add conduct data
+        for conduct, points, registered_date in conduct_data:
+            points_class = ""
+            if points >= 0:
+                points_class = "text-success fw-bold"
+            else:
+                points_class = "text-danger fw-bold"
+            
+            points_display = f"+{points}" if points > 0 else str(points)
+            
+            # Format date
+            try:
+                formatted_date = datetime.strptime(registered_date, '%Y-%m-%d').strftime('%d/%m/%Y')
+            except:
+                formatted_date = registered_date
+                
+            html += f"""
+                                <tr style="border-bottom: 1px solid #f1f2f6; background: white;">
+                                    <td style="padding: 15px; font-weight: 500; color: #000000;">{conduct}</td>
+                                    <td style="padding: 15px;"><span class="{points_class}">{points_display}</span></td>
+                                    <td style="padding: 15px; color: #000000; font-size: 0.95rem;">{formatted_date}</td>
+                                </tr>
+            """
+        
+        if not conduct_data:
+            html += """
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted" style="padding: 20px;">Chưa có dữ liệu hạnh kiểm</td>
+                                </tr>
+            """
+        
+        html += """
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+        """
+        
+        # Add teacher comments section if there are any comments
+        if comments_data:
+            html += """
+                <!-- Teacher Comments -->
+                <div class="details-section mb-4 p-4" style="background: #fdfdfd; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border: 1px solid #e8e8e8;">
+                    <h3 class="mb-3" style="color: #000000; border-bottom: 3px solid #f39c12; padding-bottom: 10px; font-weight: 600;">
+                        <i class="fas fa-comment me-2" style="color: #f39c12;"></i>Nhận xét của giáo viên
+                    </h3>
+            """
+            
+            for comment_text, created_date, period_start, period_end in comments_data:
+                try:
+                    formatted_date = datetime.strptime(created_date, '%Y-%m-%d %H:%M:%S').strftime('%d/%m/%Y %H:%M')
+                except:
+                    try:
+                        formatted_date = datetime.strptime(created_date, '%Y-%m-%d').strftime('%d/%m/%Y')
+                    except:
+                        formatted_date = created_date
+                
+                # Format period display
+                try:
+                    period_from = datetime.strptime(period_start, '%Y-%m-%d').strftime('%d/%m/%Y')
+                    period_to = datetime.strptime(period_end, '%Y-%m-%d').strftime('%d/%m/%Y')
+                    period_display = f"({period_from} - {period_to})"
+                except:
+                    period_display = ""
+                
+                # Escape HTML in comment content
+                safe_comment = str(comment_text).replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
+                
+                if safe_comment and safe_comment != "None":
+                    html += f"""
+                        <div class=\"comment-item mb-3 p-3\" style=\"background: #f8f9fa; border-left: 4px solid #f39c12; border-radius: 5px;\">
+                            <div class=\"comment-content\" style=\"color: #34495e; line-height: 1.6;\">
+                                {safe_comment}
+                            </div>
+                        </div>
+                    """
+            
+            html += """
+                </div>
+            """
+        
+        html += """
+            </div>
+        </div>
+        """
+        
+        return html
+        
+    except Exception as e:
+        return f'<div class="alert alert-danger">Có lỗi xảy ra: {str(e)}</div>'
+    finally:
+        conn.close()
 
 
 if __name__ == '__main__':
