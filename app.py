@@ -5609,6 +5609,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         academic_progress = total_academic_points - prev_academic_points
         conduct_progress = total_conduct_points - prev_conduct_points
         
+        
         # Progress indicators
         def get_progress_class(progress):
             if progress > 0:
@@ -5683,7 +5684,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
                             <h3 class="mb-2" style="font-size: 2rem; font-weight: bold;">{total_academic_points + total_conduct_points}</h3>
                             <p class="mb-2" style="font-size: 1.1rem;">Tổng điểm</p>
                             <small class="mt-1 d-block" style="color: rgba(255,255,255,0.9);">
-                                Kỳ trước: {prev_academic_points} điểm
+                                Kỳ trước: {prev_academic_points + prev_conduct_points} điểm
                             </small>
                         </div>
                     </div>
