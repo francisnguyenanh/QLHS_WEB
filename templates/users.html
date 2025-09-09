@@ -19,8 +19,11 @@
             <div class="col-12">
                 <div class="d-flex gap-2 flex-wrap">
                     <button type="button" class="btn btn-success" onclick="openCreateModal()">Tạo mới</button>
+                    <a href="{{ url_for('static', filename='student.xlsx') }}" class="btn btn-secondary" download="student_template.xlsx">
+                        <i class="fas fa-download me-1"></i>Tải danh sách mẫu
+                    </a>
                     <button type="button" class="btn btn-info" onclick="openUploadModal()">
-                        <i class="fas fa-upload me-1"></i>Upload Excel
+                        <i class="fas fa-upload me-1"></i>Upload danh sách
                     </button>
                 </div>
             </div>
@@ -185,13 +188,12 @@
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-info">
-                        <strong>Định dạng Excel yêu cầu:</strong><br>
-                        - Cột 1: STT (số thứ tự)<br>
-                        - Cột 2: Họ và tên<br>
+                        ① Hãy tải danh sách mẫu để điển tên học sinh<br>
+                        ② Upload danh sách học sinh đúng định dạng đã tải<br>
                         <small class="text-muted">
-                            * Tên đăng nhập sẽ được tạo từ từ cuối của họ tên<br>
-                            * Mật khẩu: STT + tên đăng nhập (vd: 1nguyen)<br>
-                            * Tất cả tài khoản sẽ có role Học sinh
+                            * Tên đăng nhập và Mật khẩu: sẽ được tạo từ Tên + số ngẫu nhiên (vd: Anh23)<br>
+                            * Tất cả tài khoản sẽ có chức vụ Học sinh<br>
+                            * Cần chọn nhóm cho học sinh sau khi tạo<br>
                         </small>
                     </div>
                     <form id="uploadForm" enctype="multipart/form-data">
