@@ -340,16 +340,7 @@
                                         <label for="modal_conduct_id">Hạnh kiểm:</label>
                                         <select name="conduct_id" id="modal_conduct_id" class="form-control" onchange="loadModalConductPoints()">
                                             <option value="">Chọn hạnh kiểm</option>
-                                            {% for conduct in all_conducts %}
-                                                <option value="{{ conduct[0] }}" data-points="{{ conduct[3] }}">
-                                                    {{ conduct[1] }} 
-                                                    {% if conduct[2] == 'điểm cộng' %}
-                                                        (+{{ conduct[3] }} điểm)
-                                                    {% else %}
-                                                        ({{ conduct[3] }} điểm)
-                                                    {% endif %}
-                                                </option>
-                                            {% endfor %}
+                                            <!-- Options will be loaded dynamically -->
                                         </select>
                                     </div>
                                 </div>
@@ -365,22 +356,7 @@
                                                     <i class="fas fa-plus-circle"></i> Hạnh kiểm tích cực
                                                 </h6>
                                                 <div class="row">
-                                                    {% for conduct in all_conducts %}
-                                                        {% if conduct[2] == 'điểm cộng' %}
-                                                            <div class="col-12 col-md-6 mb-2">
-                                                                <div class="form-check">
-                                                                    <input class="form-check-input conduct-checkbox" type="checkbox" 
-                                                                           value="{{ conduct[0] }}" 
-                                                                           data-points="{{ conduct[3] }}"
-                                                                           id="conduct_{{ conduct[0] }}"
-                                                                           onchange="updateSelectedConducts()">
-                                                                    <label class="form-check-label text-success" for="conduct_{{ conduct[0] }}">
-                                                                        {{ conduct[1] }} (+{{ conduct[3] }} điểm)
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                        {% endif %}
-                                                    {% endfor %}
+                                                    <!-- Will be populated dynamically -->
                                                 </div>
                                             </div>
                                             
@@ -390,22 +366,7 @@
                                                     <i class="fas fa-minus-circle"></i> Hạnh kiểm tiêu cực
                                                 </h6>
                                                 <div class="row">
-                                                    {% for conduct in all_conducts %}
-                                                        {% if conduct[2] == 'điểm trừ' %}
-                                                            <div class="col-12 col-md-6 mb-2">
-                                                                <div class="form-check">
-                                                                    <input class="form-check-input conduct-checkbox" type="checkbox" 
-                                                                           value="{{ conduct[0] }}" 
-                                                                           data-points="{{ conduct[3] }}"
-                                                                           id="conduct_{{ conduct[0] }}"
-                                                                           onchange="updateSelectedConducts()">
-                                                                    <label class="form-check-label text-danger" for="conduct_{{ conduct[0] }}">
-                                                                        {{ conduct[1] }} ({{ conduct[3] }} điểm)
-                                                                    </label>
-                                                                </div>
-                                                            </div>
-                                                        {% endif %}
-                                                    {% endfor %}
+                                                    <!-- Will be populated dynamically -->
                                                 </div>
                                             </div>
                                         </div>
@@ -460,10 +421,8 @@
             document.getElementById('conduct-list-container').style.display = 'block';
             document.getElementById('conduct-dropdown-container').style.display = 'none';
             
-            // Bỏ chọn tất cả checkbox
-            document.querySelectorAll('.conduct-checkbox').forEach(checkbox => {
-                checkbox.checked = false;
-            });
+            // Load filtered conducts for modal
+            loadFilteredConductsForModal();
             
             // Tự động set người tạo
             document.getElementById('modal_entered_by').value = '{{ current_user_info.name if current_user_info else "" }}';
@@ -481,18 +440,24 @@
             document.getElementById('conduct-list-container').style.display = 'none';
             document.getElementById('conduct-dropdown-container').style.display = 'block';
             
+            // Load filtered conducts for modal
+            loadFilteredConductsForModal();
+            
             // Fetch record data
             fetch(`/api/user_conduct/${id}`)
                 .then(response => response.json())
                 .then(data => {
                     document.getElementById('modal_id').value = data.id;
                     document.getElementById('modal_user_id').value = data.user_id;
-                    document.getElementById('modal_conduct_id').value = data.conduct_id;
+                    
+                    // Small delay to ensure dropdown is populated before setting value
+                    setTimeout(() => {
+                        document.getElementById('modal_conduct_id').value = data.conduct_id;
+                        loadModalConductPoints();
+                    }, 100);
+                    
                     document.getElementById('modal_registered_date').value = data.registered_date;
                     document.getElementById('modal_entered_by').value = data.entered_by;
-                    
-                    // Load conduct points and calculate total
-                    loadModalConductPoints();
                     
                     const modal = new bootstrap.Modal(document.getElementById('conductModal'));
                     modal.show();
@@ -557,6 +522,71 @@
             } else {
                 document.getElementById('modal_total_points').value = conductPoints;
             }
+        }
+
+        function loadFilteredConductsForModal() {
+            // Load conducts for dropdown (edit mode)
+            fetch('/api/conducts/filtered')
+                .then(response => response.json())
+                .then(data => {
+                    const dropdown = document.getElementById('modal_conduct_id');
+                    // Clear existing options except the first one
+                    dropdown.innerHTML = '<option value="">Chọn hạnh kiểm</option>';
+                    
+                    data.conducts.forEach(conduct => {
+                        const option = document.createElement('option');
+                        option.value = conduct.id;
+                        option.dataset.points = conduct.conduct_points;
+                        option.textContent = `${conduct.name} ${conduct.conduct_type === 'điểm cộng' ? '(+' + conduct.conduct_points + ' điểm)' : '(' + conduct.conduct_points + ' điểm)'}`;
+                        dropdown.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error loading filtered conducts:', error));
+            
+            // Load conducts for checkbox list (create mode)
+            fetch('/api/conducts/filtered')
+                .then(response => response.json())
+                .then(data => {
+                    const positiveContainer = document.querySelector('.conduct-list-container .text-success').nextElementSibling;
+                    const negativeContainer = document.querySelector('.conduct-list-container .text-danger').nextElementSibling;
+                    
+                    // Clear existing checkboxes
+                    positiveContainer.innerHTML = '';
+                    negativeContainer.innerHTML = '';
+                    
+                    data.conducts.forEach(conduct => {
+                        const colDiv = document.createElement('div');
+                        colDiv.className = 'col-12 col-md-6 mb-2';
+                        
+                        const formCheckDiv = document.createElement('div');
+                        formCheckDiv.className = 'form-check';
+                        
+                        const input = document.createElement('input');
+                        input.className = 'form-check-input conduct-checkbox';
+                        input.type = 'checkbox';
+                        input.name = 'conduct_ids';
+                        input.value = conduct.id;
+                        input.id = `conduct_${conduct.id}`;
+                        input.dataset.points = conduct.conduct_points;
+                        input.addEventListener('change', updateSelectedConducts);
+                        
+                        const label = document.createElement('label');
+                        label.className = 'form-check-label';
+                        label.setAttribute('for', input.id);
+                        label.textContent = `${conduct.name} ${conduct.conduct_type === 'điểm cộng' ? '(+' + conduct.conduct_points + ')' : '(' + conduct.conduct_points + ')'}`;
+                        
+                        formCheckDiv.appendChild(input);
+                        formCheckDiv.appendChild(label);
+                        colDiv.appendChild(formCheckDiv);
+                        
+                        if (conduct.conduct_type === 'điểm cộng') {
+                            positiveContainer.appendChild(colDiv);
+                        } else {
+                            negativeContainer.appendChild(colDiv);
+                        }
+                    });
+                })
+                .catch(error => console.error('Error loading filtered conducts for checkboxes:', error));
         }
 
         function saveConduct() {

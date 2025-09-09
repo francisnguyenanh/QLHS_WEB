@@ -280,9 +280,7 @@
                                     <label for="modal_user_id">Họ tên:</label>
                                     <select name="user_id" id="modal_user_id" class="form-control" required>
                                         <option value="">Chọn học sinh</option>
-                                        {% for user in all_users %}
-                                            <option value="{{ user[0] }}">{{ user[1] }}</option>
-                                        {% endfor %}
+                                        <!-- Options will be loaded dynamically -->
                                     </select>
                                 </div>
                                 <div class="form-group mt-3">
@@ -299,29 +297,7 @@
                                 <div class="form-group" id="create_subjects_section">
                                     <label>Môn học & Kết quả:</label>
                                     <div id="subjects_container" style="max-height: 300px; overflow-y: auto; border: 1px solid #ced4da; border-radius: 0.375rem; padding: 0.5rem;">
-                                        {% for subject in all_subjects %}
-                                        <div class="row align-items-center mb-2 subject-row" data-subject-id="{{ subject[0] }}">
-                                            <div class="col-4">
-                                                <div class="form-check">
-                                                    <input class="form-check-input subject-checkbox" type="checkbox" 
-                                                           id="subject_{{ subject[0] }}" value="{{ subject[0] }}"
-                                                           onchange="handleSubjectCheck({{ subject[0] }})">
-                                                    <label class="form-check-label small" for="subject_{{ subject[0] }}">
-                                                        {{ subject[1] }}
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-8">
-                                                <select class="form-control form-control-sm criteria-select" 
-                                                        id="criteria_{{ subject[0] }}" disabled>
-                                                    <option value="">Chọn kết quả</option>
-                                                    {% for criterion in all_criteria %}
-                                                        <option value="{{ criterion[0] }}">{{ criterion[1] }}</option>
-                                                    {% endfor %}
-                                                </select>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
+                                        <!-- Will be populated dynamically -->
                                     </div>
                                 </div>
                                 
@@ -330,9 +306,7 @@
                                     <label for="modal_subject_id_edit">Môn học:</label>
                                     <select name="subject_id" id="modal_subject_id_edit" class="form-control" required>
                                         <option value="">Chọn môn học</option>
-                                        {% for subject in all_subjects %}
-                                            <option value="{{ subject[0] }}">{{ subject[1] }}</option>
-                                        {% endfor %}
+                                        <!-- Options will be loaded dynamically -->
                                     </select>
                                 </div>
                                 
@@ -340,9 +314,7 @@
                                     <label for="modal_criteria_id_edit">Kết quả:</label>
                                     <select name="criteria_id" id="modal_criteria_id_edit" class="form-control" required>
                                         <option value="">Chọn kết quả</option>
-                                        {% for criterion in all_criteria %}
-                                            <option value="{{ criterion[0] }}">{{ criterion[1] }}</option>
-                                        {% endfor %}
+                                        <!-- Options will be loaded dynamically -->
                                     </select>
                                 </div>
                             </div>
@@ -366,6 +338,116 @@
         var currentSortBy = '{{ sort_by }}';
         var currentSortOrder = '{{ sort_order }}';
 
+        // Load filtered users for modal
+        function loadFilteredUsersForModal() {
+            fetch('/api/users/filtered')
+                .then(response => response.json())
+                .then(data => {
+                    const userSelect = document.getElementById('modal_user_id');
+                    const currentValue = userSelect.value;
+                    userSelect.innerHTML = '<option value="">Chọn học sinh</option>';
+                    data.users.forEach(user => {
+                        const option = document.createElement('option');
+                        option.value = user.id;
+                        option.textContent = user.name;
+                        userSelect.appendChild(option);
+                    });
+                    userSelect.value = currentValue; // Restore selection
+                })
+                .catch(error => {
+                    console.error('Error loading users:', error);
+                });
+        }
+
+        // Load filtered subjects for modal
+        function loadFilteredSubjectsForModal() {
+            fetch('/api/subjects/filtered')
+                .then(response => response.json())
+                .then(data => {
+                    // Load for create mode
+                    const container = document.getElementById('subjects_container');
+                    container.innerHTML = '';
+                    
+                    data.subjects.forEach(subject => {
+                        const subjectRow = document.createElement('div');
+                        subjectRow.className = 'row align-items-center mb-2 subject-row';
+                        subjectRow.setAttribute('data-subject-id', subject.id);
+                        
+                        subjectRow.innerHTML = `
+                            <div class="col-4">
+                                <div class="form-check">
+                                    <input class="form-check-input subject-checkbox" type="checkbox" 
+                                           id="subject_${subject.id}" value="${subject.id}"
+                                           onchange="handleSubjectCheck(${subject.id})">
+                                    <label class="form-check-label small" for="subject_${subject.id}">
+                                        ${subject.name}
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-8">
+                                <select class="form-control form-control-sm criteria-select" 
+                                        id="criteria_${subject.id}" disabled>
+                                    <option value="">Chọn kết quả</option>
+                                </select>
+                            </div>
+                        `;
+                        
+                        container.appendChild(subjectRow);
+                    });
+                    
+                    // Load for edit mode
+                    const editSelect = document.getElementById('modal_subject_id_edit');
+                    editSelect.innerHTML = '<option value="">Chọn môn học</option>';
+                    data.subjects.forEach(subject => {
+                        const option = document.createElement('option');
+                        option.value = subject.id;
+                        option.textContent = subject.name;
+                        editSelect.appendChild(option);
+                    });
+                    
+                    // Load criteria for both modes
+                    loadFilteredCriteriaForModal();
+                })
+                .catch(error => {
+                    console.error('Error loading subjects:', error);
+                });
+        }
+
+        // Load filtered criteria for modal
+        function loadFilteredCriteriaForModal() {
+            fetch('/api/criteria/filtered')
+                .then(response => response.json())
+                .then(data => {
+                    // Load for create mode criteria selects
+                    document.querySelectorAll('.criteria-select').forEach(select => {
+                        const currentValue = select.value;
+                        select.innerHTML = '<option value="">Chọn kết quả</option>';
+                        data.criteria.forEach(criterion => {
+                            const option = document.createElement('option');
+                            option.value = criterion.id;
+                            option.textContent = criterion.name;
+                            select.appendChild(option);
+                        });
+                        select.value = currentValue; // Restore selection
+                    });
+                    
+                    // Load for edit mode
+                    const editCriteriaSelect = document.getElementById('modal_criteria_id_edit');
+                    const currentCriteriaValue = editCriteriaSelect.value;
+                    editCriteriaSelect.innerHTML = '<option value="">Chọn kết quả</option>';
+                    data.criteria.forEach(criterion => {
+                        const option = document.createElement('option');
+                        option.value = criterion.id;
+                        option.textContent = criterion.name;
+                        editCriteriaSelect.appendChild(option);
+                    });
+                    editCriteriaSelect.value = currentCriteriaValue; // Restore selection
+                })
+                .catch(error => {
+                    console.error('Error loading criteria:', error);
+                });
+        }
+
         function openCreateModal() {
             isEditMode = false;
             currentEditId = null;
@@ -378,14 +460,9 @@
             document.getElementById('edit_subjects_section').style.display = 'none';
             document.getElementById('edit_criteria_section').style.display = 'none';
             
-            // Reset all checkboxes and disable criteria selects
-            document.querySelectorAll('.subject-checkbox').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-            document.querySelectorAll('.criteria-select').forEach(select => {
-                select.disabled = true;
-                select.value = '';
-            });
+            // Load filtered data
+            loadFilteredUsersForModal();
+            loadFilteredSubjectsForModal();
             
             // Set người tạo
             document.getElementById('modal_entered_by').value = '{{ current_user_info.name if current_user_info else "" }}';
@@ -420,30 +497,26 @@
             document.getElementById('edit_subjects_section').style.display = 'block';
             document.getElementById('edit_criteria_section').style.display = 'block';
             
-            // Reset create mode elements
-            document.querySelectorAll('.subject-checkbox').forEach(checkbox => {
-                checkbox.checked = false;
-            });
-            document.querySelectorAll('.criteria-select').forEach(select => {
-                select.disabled = true;
-                select.value = '';
-            });
+            // Load filtered data first
+            loadFilteredUsersForModal();
+            loadFilteredSubjectsForModal();
             
-            // Fetch record data
-            fetch(`/api/user_subjects/${id}`)
-                .then(response => response.json())
-                .then(data => {
-                    // Set basic fields
-                    document.getElementById('modal_id').value = data.id;
-                    document.getElementById('modal_user_id').value = data.user_id;
-                    document.getElementById('modal_registered_date').value = data.registered_date;
-                    document.getElementById('modal_entered_by').value = data.entered_by;
-                    
-                    // Set edit mode fields
-                    document.getElementById('modal_subject_id_edit').value = data.subject_id;
-                    document.getElementById('modal_criteria_id_edit').value = data.criteria_id || '';
-                    
-                    const modal = new bootstrap.Modal(document.getElementById('userSubjectsModal'));
+            // Fetch record data with small delay to ensure dropdowns are populated
+            setTimeout(() => {
+                fetch(`/api/user_subjects/${id}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Set basic fields
+                        document.getElementById('modal_id').value = data.id;
+                        document.getElementById('modal_user_id').value = data.user_id;
+                        document.getElementById('modal_registered_date').value = data.registered_date;
+                        document.getElementById('modal_entered_by').value = data.entered_by;
+                        
+                        // Set edit mode fields
+                        document.getElementById('modal_subject_id_edit').value = data.subject_id;
+                        document.getElementById('modal_criteria_id_edit').value = data.criteria_id || '';
+                        
+                        const modal = new bootstrap.Modal(document.getElementById('userSubjectsModal'));
                     modal.show();
                 })
                 .catch(error => {

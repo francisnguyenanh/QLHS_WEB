@@ -457,6 +457,59 @@ def setup_sample_data():
                 FOREIGN KEY (role_id) REFERENCES Roles(id)
             );
 
+            CREATE TABLE IF NOT EXISTS Role_Menu_Permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                role_id INTEGER NOT NULL,
+                menu_name TEXT NOT NULL,
+                is_allowed BOOLEAN DEFAULT 0,
+                FOREIGN KEY (role_id) REFERENCES Roles(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS Role_Subject_Permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                role_id INTEGER NOT NULL,
+                subject_id INTEGER,
+                is_all BOOLEAN DEFAULT 0,
+                FOREIGN KEY (role_id) REFERENCES Roles(id),
+                FOREIGN KEY (subject_id) REFERENCES Subjects(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS Role_Criteria_Permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                role_id INTEGER NOT NULL,
+                criteria_id INTEGER,
+                is_all BOOLEAN DEFAULT 0,
+                FOREIGN KEY (role_id) REFERENCES Roles(id),
+                FOREIGN KEY (criteria_id) REFERENCES Criteria(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS Role_Conduct_Permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                role_id INTEGER NOT NULL,
+                conduct_id INTEGER,
+                is_all BOOLEAN DEFAULT 0,
+                FOREIGN KEY (role_id) REFERENCES Roles(id),
+                FOREIGN KEY (conduct_id) REFERENCES Conduct(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS Role_Group_Permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                role_id INTEGER NOT NULL,
+                group_id INTEGER,
+                is_all BOOLEAN DEFAULT 0,
+                FOREIGN KEY (role_id) REFERENCES Roles(id),
+                FOREIGN KEY (group_id) REFERENCES Groups(id)
+            );
+
+            CREATE TABLE IF NOT EXISTS Role_User_Permissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                role_id INTEGER NOT NULL,
+                user_id INTEGER,
+                is_all BOOLEAN DEFAULT 0,
+                FOREIGN KEY (role_id) REFERENCES Roles(id),
+                FOREIGN KEY (user_id) REFERENCES Users(id)
+            );
+
             CREATE TABLE IF NOT EXISTS Groups (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
@@ -826,6 +879,26 @@ def can_access_master():
     permissions = get_user_permissions()
     return permissions.get('master', False)
 
+def can_access_menu(menu_name):
+    """Check if user can access specific menu based on role permissions"""
+    if 'role_id' not in session:
+        return False
+    
+    role_id = session['role_id']
+    
+    # Master role always has access
+    if session.get('role_name') == 'Master':
+        return True
+    
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT is_allowed FROM Role_Menu_Permissions WHERE role_id = ? AND menu_name = ?", 
+                   (role_id, menu_name))
+    result = cursor.fetchone()
+    conn.close()
+    
+    return result[0] if result else False
+
 def can_access_conduct_management():
     """Check if user can access conduct management"""
     permissions = get_user_permissions()
@@ -866,7 +939,39 @@ def render_template_with_permissions(template_name, **kwargs):
         kwargs['current_user_info'] = get_current_user_info()
         # Thêm thông tin master role để kiểm tra trong template
         kwargs['is_master'] = is_master_user(session['user_id'])
+        # Thêm menu permissions
+        kwargs['menu_permissions'] = get_menu_permissions()
     return render_template(template_name, **kwargs)
+
+def get_menu_permissions():
+    """Get menu permissions for current user's role"""
+    if 'role_id' not in session:
+        return {}
+    
+    role_id = session['role_id']
+    
+    # Master role has all permissions
+    if session.get('role_name') == 'Master':
+        return {
+            'master': True,
+            'user_conduct': True,
+            'user_subject': True,
+            'group_summary': True,
+            'user_summary': True,
+            'student_report': True
+        }
+    
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT menu_name, is_allowed FROM Role_Menu_Permissions WHERE role_id = ?", (role_id,))
+    results = cursor.fetchall()
+    conn.close()
+    
+    menu_permissions = {}
+    for menu_name, is_allowed in results:
+        menu_permissions[menu_name] = bool(is_allowed)
+    
+    return menu_permissions
 
 def get_current_user_info():
     """Get current user information for display"""
@@ -1036,6 +1141,251 @@ def clear_all_background_images():
     except Exception as e:
         print(f"Error clearing background images: {e}")
         return False
+
+def get_filtered_users_by_role():
+    """Get filtered users based on current user's role permissions"""
+    if 'role_id' not in session:
+        return []
+    
+    role_id = session['role_id']
+    
+    # Master role gets all users
+    if session.get('role_name') == 'Master':
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, username, name FROM Users WHERE is_deleted = 0 ORDER BY name")
+        users = cursor.fetchall()
+        conn.close()
+        return [{'id': user[0], 'username': user[1], 'name': user[2]} for user in users]
+    
+    # Get user permissions for this role
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    # Check if role has permission to all users
+    cursor.execute("SELECT is_all FROM Role_User_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
+    is_all_result = cursor.fetchone()
+    
+    if is_all_result and is_all_result[0]:
+        # Role has access to all users
+        cursor.execute("SELECT id, username, name FROM Users WHERE is_deleted = 0")
+        users = cursor.fetchall()
+        conn.close()
+        return [{'id': user[0], 'username': user[1], 'name': user[2]} for user in users]
+    
+    # Get specific user IDs for this role
+    cursor.execute("SELECT user_id FROM Role_User_Permissions WHERE role_id = ?", (role_id,))
+    user_ids = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    
+    if not user_ids:
+        return []
+    
+    # Get user details
+    conn = connect_db()
+    cursor = conn.cursor()
+    placeholders = ','.join('?' * len(user_ids))
+    cursor.execute(f"SELECT id, username, name FROM Users WHERE id IN ({placeholders}) AND is_deleted = 0 ORDER BY username", user_ids)
+    users = cursor.fetchall()
+    conn.close()
+    
+    return [{'id': user[0], 'username': user[1], 'name': user[2]} for user in users]
+
+def get_filtered_groups_by_role():
+    """Get filtered groups based on current user's role permissions"""
+    if 'role_id' not in session:
+        return []
+    
+    role_id = session['role_id']
+    
+    # Master role gets all groups
+    if session.get('role_name') == 'Master':
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 ORDER BY name")
+        groups = cursor.fetchall()
+        conn.close()
+        return [{'id': group[0], 'name': group[1]} for group in groups]
+    
+    # Get group permissions for this role
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    # Check if role has permission to all groups
+    cursor.execute("SELECT is_all FROM Role_Group_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
+    is_all_result = cursor.fetchone()
+    
+    if is_all_result and is_all_result[0]:
+        # Role has access to all groups
+        cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 ORDER BY name")
+        groups = cursor.fetchall()
+        conn.close()
+        return [{'id': group[0], 'name': group[1]} for group in groups]
+    
+    # Get specific group IDs for this role
+    cursor.execute("SELECT group_id FROM Role_Group_Permissions WHERE role_id = ?", (role_id,))
+    group_ids = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    
+    if not group_ids:
+        return []
+    
+    # Get group details
+    conn = connect_db()
+    cursor = conn.cursor()
+    placeholders = ','.join('?' * len(group_ids))
+    cursor.execute(f"SELECT id, name FROM Groups WHERE id IN ({placeholders}) AND is_deleted = 0 ORDER BY name", group_ids)
+    groups = cursor.fetchall()
+    conn.close()
+    
+    return [{'id': group[0], 'name': group[1]} for group in groups]
+
+def get_filtered_conducts_by_role():
+    """Get filtered conducts based on current user's role permissions"""
+    if 'role_id' not in session:
+        return []
+    
+    role_id = session['role_id']
+    
+    # Master role gets all conducts
+    if session.get('role_name') == 'Master':
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type, conduct_points DESC")
+        conducts = cursor.fetchall()
+        conn.close()
+        return [{'id': conduct[0], 'name': conduct[1], 'conduct_type': conduct[2], 'conduct_points': conduct[3]} for conduct in conducts]
+    
+    # Get conduct permissions for this role
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    # Check if role has permission to all conducts
+    cursor.execute("SELECT is_all FROM Role_Conduct_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
+    is_all_result = cursor.fetchone()
+    
+    if is_all_result and is_all_result[0]:
+        # Role has access to all conducts
+        cursor.execute("SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type, conduct_points DESC")
+        conducts = cursor.fetchall()
+        conn.close()
+        return [{'id': conduct[0], 'name': conduct[1], 'conduct_type': conduct[2], 'conduct_points': conduct[3]} for conduct in conducts]
+    
+    # Get specific conduct IDs for this role
+    cursor.execute("SELECT conduct_id FROM Role_Conduct_Permissions WHERE role_id = ?", (role_id,))
+    conduct_ids = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    
+    if not conduct_ids:
+        return []
+    
+    # Get conduct details
+    conn = connect_db()
+    cursor = conn.cursor()
+    placeholders = ','.join('?' * len(conduct_ids))
+    cursor.execute(f"SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE id IN ({placeholders}) AND is_deleted = 0 ORDER BY conduct_type, conduct_points DESC", conduct_ids)
+    conducts = cursor.fetchall()
+    conn.close()
+    
+    return [{'id': conduct[0], 'name': conduct[1], 'conduct_type': conduct[2], 'conduct_points': conduct[3]} for conduct in conducts]
+
+def get_filtered_subjects_by_role():
+    """Get filtered subjects based on current user's role permissions"""
+    if 'role_id' not in session:
+        return []
+    
+    role_id = session['role_id']
+    
+    # Master role gets all subjects
+    if session.get('role_name') == 'Master':
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM Subjects WHERE is_deleted = 0 ORDER BY name")
+        subjects = cursor.fetchall()
+        conn.close()
+        return [{'id': subject[0], 'name': subject[1]} for subject in subjects]
+    
+    # Get subject permissions for this role
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    # Check if role has permission to all subjects
+    cursor.execute("SELECT is_all FROM Role_Subject_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
+    is_all_result = cursor.fetchone()
+    
+    if is_all_result and is_all_result[0]:
+        # Role has access to all subjects
+        cursor.execute("SELECT id, name FROM Subjects WHERE is_deleted = 0 ORDER BY name")
+        subjects = cursor.fetchall()
+        conn.close()
+        return [{'id': subject[0], 'name': subject[1]} for subject in subjects]
+    
+    # Get specific subject IDs for this role
+    cursor.execute("SELECT subject_id FROM Role_Subject_Permissions WHERE role_id = ?", (role_id,))
+    subject_ids = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    
+    if not subject_ids:
+        return []
+    
+    # Get subject details
+    conn = connect_db()
+    cursor = conn.cursor()
+    placeholders = ','.join('?' * len(subject_ids))
+    cursor.execute(f"SELECT id, name FROM Subjects WHERE id IN ({placeholders}) AND is_deleted = 0 ORDER BY name", subject_ids)
+    subjects = cursor.fetchall()
+    conn.close()
+    
+    return [{'id': subject[0], 'name': subject[1]} for subject in subjects]
+
+def get_filtered_criteria_by_role():
+    """Get filtered criteria based on current user's role permissions"""
+    if 'role_id' not in session:
+        return []
+    
+    role_id = session['role_id']
+    
+    # Master role gets all criteria
+    if session.get('role_name') == 'Master':
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, criterion_type, criterion_points FROM Criteria WHERE is_deleted = 0 ORDER BY criterion_type, name")
+        criteria = cursor.fetchall()
+        conn.close()
+        return [{'id': criterion[0], 'name': criterion[1], 'criterion_type': criterion[2], 'criterion_points': criterion[3]} for criterion in criteria]
+    
+    # Get criteria permissions for this role
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    # Check if role has permission to all criteria
+    cursor.execute("SELECT is_all FROM Role_Criteria_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
+    is_all_result = cursor.fetchone()
+    
+    if is_all_result and is_all_result[0]:
+        # Role has access to all criteria
+        cursor.execute("SELECT id, name, criterion_type, criterion_points FROM Criteria WHERE is_deleted = 0 ORDER BY criterion_type, name")
+        criteria = cursor.fetchall()
+        conn.close()
+        return [{'id': criterion[0], 'name': criterion[1], 'criterion_type': criterion[2], 'criterion_points': criterion[3]} for criterion in criteria]
+    
+    # Get specific criteria IDs for this role
+    cursor.execute("SELECT criteria_id FROM Role_Criteria_Permissions WHERE role_id = ?", (role_id,))
+    criteria_ids = [row[0] for row in cursor.fetchall()]
+    conn.close()
+    
+    if not criteria_ids:
+        return []
+    
+    # Get criteria details
+    conn = connect_db()
+    cursor = conn.cursor()
+    placeholders = ','.join('?' * len(criteria_ids))
+    cursor.execute(f"SELECT id, name, criterion_type, criterion_points FROM Criteria WHERE id IN ({placeholders}) AND is_deleted = 0 ORDER BY criterion_type, name", criteria_ids)
+    criteria = cursor.fetchall()
+    conn.close()
+    
+    return [{'id': criterion[0], 'name': criterion[1], 'criterion_type': criterion[2], 'criterion_points': criterion[3]} for criterion in criteria]
 
 
 # Trang chủ
@@ -1405,6 +1755,367 @@ def role_delete(id):
     
     return redirect(url_for('roles_list'))
 
+# --- API routes for Role Permissions ---
+@app.route('/api/roles/<int:role_id>/menu-permissions')
+def get_role_menu_permissions(role_id):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT menu_name FROM Role_Menu_Permissions WHERE role_id = ? AND is_allowed = 1", (role_id,))
+        menus = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify({'menus': menus})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/roles/<int:role_id>/menu-permissions', methods=['POST'])
+def save_role_menu_permissions(role_id):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        menus = request.json.get('menus', [])
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        # Delete existing permissions
+        cursor.execute("DELETE FROM Role_Menu_Permissions WHERE role_id = ?", (role_id,))
+        
+        # Insert new permissions
+        menu_options = ['master', 'user_conduct', 'user_subject', 'group_summary', 'user_summary', 'student_report']
+        for menu in menu_options:
+            is_allowed = 1 if menu in menus else 0
+            cursor.execute("INSERT INTO Role_Menu_Permissions (role_id, menu_name, is_allowed) VALUES (?, ?, ?)", 
+                         (role_id, menu, is_allowed))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Lưu quyền menu thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/roles/<int:role_id>/subject-permissions')
+def get_role_subject_permissions(role_id):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_all FROM Role_Subject_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
+        is_all_row = cursor.fetchone()
+        is_all = is_all_row[0] if is_all_row else False
+        
+        cursor.execute("SELECT subject_id FROM Role_Subject_Permissions WHERE role_id = ? AND subject_id IS NOT NULL", (role_id,))
+        subject_ids = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify({'is_all': is_all, 'subject_ids': subject_ids})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/roles/<int:role_id>/subject-permissions', methods=['POST'])
+def save_role_subject_permissions(role_id):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        is_all = request.json.get('is_all', False)
+        subject_ids = request.json.get('subject_ids', [])
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        # Delete existing permissions
+        cursor.execute("DELETE FROM Role_Subject_Permissions WHERE role_id = ?", (role_id,))
+        
+        # Insert new permissions
+        if is_all:
+            cursor.execute("INSERT INTO Role_Subject_Permissions (role_id, subject_id, is_all) VALUES (?, NULL, 1)", (role_id,))
+        else:
+            for subject_id in subject_ids:
+                cursor.execute("INSERT INTO Role_Subject_Permissions (role_id, subject_id, is_all) VALUES (?, ?, 0)", 
+                             (role_id, subject_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Lưu quyền môn học thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/subjects')
+def get_subjects_api():
+    if 'user_id' in session:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM Subjects WHERE is_deleted = 0 ORDER BY name")
+        subjects = [{'id': row[0], 'name': row[1]} for row in cursor.fetchall()]
+        conn.close()
+        return jsonify(subjects)
+    return jsonify({'error': 'Unauthorized'}), 401
+
+# --- API routes for Criteria Permissions ---
+@app.route('/api/roles/<int:role_id>/criteria-permissions')
+def get_role_criteria_permissions(role_id):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_all FROM Role_Criteria_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
+        is_all_row = cursor.fetchone()
+        is_all = is_all_row[0] if is_all_row else False
+        
+        cursor.execute("SELECT criteria_id FROM Role_Criteria_Permissions WHERE role_id = ? AND criteria_id IS NOT NULL", (role_id,))
+        criteria_ids = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify({'is_all': is_all, 'criteria_ids': criteria_ids})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/roles/<int:role_id>/criteria-permissions', methods=['POST'])
+def save_role_criteria_permissions(role_id):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        is_all = request.json.get('is_all', False)
+        criteria_ids = request.json.get('criteria_ids', [])
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        # Delete existing permissions
+        cursor.execute("DELETE FROM Role_Criteria_Permissions WHERE role_id = ?", (role_id,))
+        
+        # Insert new permissions
+        if is_all:
+            cursor.execute("INSERT INTO Role_Criteria_Permissions (role_id, criteria_id, is_all) VALUES (?, NULL, 1)", (role_id,))
+        else:
+            for criteria_id in criteria_ids:
+                cursor.execute("INSERT INTO Role_Criteria_Permissions (role_id, criteria_id, is_all) VALUES (?, ?, 0)", 
+                             (role_id, criteria_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Lưu quyền tiêu chí thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/criteria')
+def get_all_criteria_api():
+    if 'user_id' in session:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM Criteria WHERE is_deleted = 0 ORDER BY name")
+        criteria = [{'id': row[0], 'name': row[1]} for row in cursor.fetchall()]
+        conn.close()
+        return jsonify(criteria)
+    return jsonify({'error': 'Unauthorized'}), 401
+
+# --- API routes for Conduct Permissions ---
+@app.route('/api/roles/<int:role_id>/conduct-permissions')
+def get_role_conduct_permissions(role_id):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_all FROM Role_Conduct_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
+        is_all_row = cursor.fetchone()
+        is_all = is_all_row[0] if is_all_row else False
+        
+        cursor.execute("SELECT conduct_id FROM Role_Conduct_Permissions WHERE role_id = ? AND conduct_id IS NOT NULL", (role_id,))
+        conduct_ids = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify({'is_all': is_all, 'conduct_ids': conduct_ids})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/roles/<int:role_id>/conduct-permissions', methods=['POST'])
+def save_role_conduct_permissions(role_id):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        is_all = request.json.get('is_all', False)
+        conduct_ids = request.json.get('conduct_ids', [])
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        # Delete existing permissions
+        cursor.execute("DELETE FROM Role_Conduct_Permissions WHERE role_id = ?", (role_id,))
+        
+        # Insert new permissions
+        if is_all:
+            cursor.execute("INSERT INTO Role_Conduct_Permissions (role_id, conduct_id, is_all) VALUES (?, NULL, 1)", (role_id,))
+        else:
+            for conduct_id in conduct_ids:
+                cursor.execute("INSERT INTO Role_Conduct_Permissions (role_id, conduct_id, is_all) VALUES (?, ?, 0)", 
+                             (role_id, conduct_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Lưu quyền hạnh kiểm thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/conducts')
+def get_conducts_api():
+    if 'user_id' in session:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM Conduct WHERE is_deleted = 0 ORDER BY name")
+        conducts = [{'id': row[0], 'name': row[1]} for row in cursor.fetchall()]
+        conn.close()
+        return jsonify(conducts)
+    return jsonify({'error': 'Unauthorized'}), 401
+
+# --- API routes for Group Permissions ---
+@app.route('/api/roles/<int:role_id>/group-permissions')
+def get_role_group_permissions(role_id):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_all FROM Role_Group_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
+        is_all_row = cursor.fetchone()
+        is_all = is_all_row[0] if is_all_row else False
+        
+        cursor.execute("SELECT group_id FROM Role_Group_Permissions WHERE role_id = ? AND group_id IS NOT NULL", (role_id,))
+        group_ids = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify({'is_all': is_all, 'group_ids': group_ids})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/roles/<int:role_id>/group-permissions', methods=['POST'])
+def save_role_group_permissions(role_id):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        is_all = request.json.get('is_all', False)
+        group_ids = request.json.get('group_ids', [])
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        # Delete existing permissions
+        cursor.execute("DELETE FROM Role_Group_Permissions WHERE role_id = ?", (role_id,))
+        
+        # Insert new permissions
+        if is_all:
+            cursor.execute("INSERT INTO Role_Group_Permissions (role_id, group_id, is_all) VALUES (?, NULL, 1)", (role_id,))
+        else:
+            for group_id in group_ids:
+                cursor.execute("INSERT INTO Role_Group_Permissions (role_id, group_id, is_all) VALUES (?, ?, 0)", 
+                             (role_id, group_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Lưu quyền nhóm thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/groups')
+def get_groups_api():
+    if 'user_id' in session:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 ORDER BY name")
+        groups = [{'id': row[0], 'name': row[1]} for row in cursor.fetchall()]
+        conn.close()
+        return jsonify(groups)
+    return jsonify({'error': 'Unauthorized'}), 401
+
+# --- API routes for User Permissions ---
+@app.route('/api/roles/<int:role_id>/user-permissions')
+def get_role_user_permissions(role_id):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT is_all FROM Role_User_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
+        is_all_row = cursor.fetchone()
+        is_all = is_all_row[0] if is_all_row else False
+        
+        cursor.execute("SELECT user_id FROM Role_User_Permissions WHERE role_id = ? AND user_id IS NOT NULL", (role_id,))
+        user_id = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        return jsonify({'is_all': is_all, 'user_ids': user_id})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/roles/<int:role_id>/user-permissions', methods=['POST'])
+def save_role_user_permissions(role_id):
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        is_all = request.json.get('is_all', False)
+        user_ids = request.json.get('user_ids', [])  # Match frontend key
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        # Delete existing permissions
+        cursor.execute("DELETE FROM Role_User_Permissions WHERE role_id = ?", (role_id,))
+        
+        # Insert new permissions
+        if is_all:
+            cursor.execute("INSERT INTO Role_User_Permissions (role_id, user_id, is_all) VALUES (?, NULL, 1)", (role_id,))
+        else:
+            for user_id in user_ids:
+                cursor.execute("INSERT INTO Role_User_Permissions (role_id, user_id, is_all) VALUES (?, ?, 0)", 
+                             (role_id, user_id))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({'success': True, 'message': 'Lưu quyền user thành công'})
+    return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/users-by-groups')
+def get_users_by_groups_api():
+    if 'user_id' in session:
+        group_ids = request.args.getlist('group_ids')
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        if group_ids:
+            # Get users from specific groups, exclude GVCN and Master roles
+            placeholders = ','.join(['?'] * len(group_ids))
+            cursor.execute(f"""
+                SELECT DISTINCT u.id, u.name, u.group_id, g.name as group_name
+                FROM Users u
+                LEFT JOIN Groups g ON u.group_id = g.id
+                LEFT JOIN Roles r ON u.role_id = r.id
+                WHERE u.group_id IN ({placeholders}) 
+                AND u.is_deleted = 0 
+                AND (r.name IS NULL OR r.name NOT IN ('GVCN', 'Master'))
+                ORDER BY u.name
+            """, group_ids)
+        else:
+            # No groups selected, return empty list
+            cursor.execute("SELECT 1 WHERE 0")  # Empty result
+        
+        users = [{'id': row[0], 'name': row[1], 'group_id': row[2], 'group_name': row[3]} for row in cursor.fetchall()]
+        conn.close()
+        return jsonify(users)
+    return jsonify({'error': 'Unauthorized'}), 401
+
 
 # --- API routes for Conducts ---
 @app.route('/api/conducts/<int:id>')
@@ -1443,6 +2154,51 @@ def update_conduct_api(id):
         update_record('Conduct', id, data)
         return jsonify({'success': True, 'message': 'Cập nhật thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/conducts/filtered')
+def get_filtered_conducts_api():
+    """Get conducts filtered by current user's role permissions for modals"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    conducts = get_filtered_conducts_by_role()
+    return jsonify({'conducts': conducts})
+
+@app.route('/api/users/filtered')
+def get_filtered_users_api():
+    """Get users filtered by current user's role permissions for modals"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    users = get_filtered_users_by_role()
+    return jsonify({'users': users})
+
+@app.route('/api/groups/filtered')
+def get_filtered_groups_api():
+    """Get groups filtered by current user's role permissions for modals"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    groups = get_filtered_groups_by_role()
+    return jsonify({'groups': groups})
+
+@app.route('/api/subjects/filtered')
+def get_filtered_subjects_api():
+    """Get subjects filtered by current user's role permissions for modals"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    subjects = get_filtered_subjects_by_role()
+    return jsonify({'subjects': subjects})
+
+@app.route('/api/criteria/filtered')
+def get_filtered_criteria_api():
+    """Get criteria filtered by current user's role permissions for modals"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    criteria = get_filtered_criteria_by_role()
+    return jsonify({'criteria': criteria})
 
 # --- Conduct ---
 @app.route('/conducts')
@@ -2454,68 +3210,16 @@ def user_conduct_list():
         # Special handling for user_name sorting (sort by first name)
         sort_by_first_name = (sort_by == 'user_name')
 
-        conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM Roles WHERE name = 'GVCN'")
-        role_result = cursor.fetchone()
-        gvcn_role_id = role_result[0] if role_result else None
-        cursor.execute("SELECT id FROM Roles WHERE name = 'Master'")
-        master_role_result = cursor.fetchone()
-        master_role_id = master_role_result[0] if master_role_result else None
-        cursor.execute("SELECT id FROM Groups WHERE name = 'Giáo viên'")
-        group_result = cursor.fetchone()
-        teacher_group_id = group_result[0] if group_result else None
-        conn.close()
-
-        conn = connect_db()
-        cursor = conn.cursor()
-        # Loại trừ GVCN và Master khỏi danh sách
-        excluded_roles = []
-        if gvcn_role_id is not None:
-            excluded_roles.append(gvcn_role_id)
-        if master_role_id is not None:
-            excluded_roles.append(master_role_id)
+        # Get filtered data based on role permissions
+        users = get_filtered_users_by_role()
+        groups = get_filtered_groups_by_role()
+        conducts = get_filtered_conducts_by_role()
         
-        if excluded_roles:
-            placeholders = ','.join('?' * len(excluded_roles))
-            cursor.execute(f"SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id NOT IN ({placeholders})", excluded_roles)
-        else:
-            cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
-        all_users = cursor.fetchall()
         # Sort users by first name using Vietnamese normalization
-        all_users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
-        cursor.execute("SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type, conduct_points DESC")
-        conducts = cursor.fetchall()
-        if teacher_group_id is not None:
-            cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 AND id != ?", (teacher_group_id,))
-        else:
-            cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0")
-        all_groups = cursor.fetchall()
-        conn.close()
-
-        # Filter users and groups based on permissions
-        users = filter_users_by_permission(all_users, 'conduct_management')
-        groups = filter_groups_by_permission(all_groups, 'conduct_management')
+        users.sort(key=lambda u: vietnamese_sort_key(u['username'], sort_by_first_name=True))
         
-        # Create modal_users for modal dropdowns based on permissions
-        permissions = get_user_permissions()
-        if not permissions.get('master', False):
-            permission_level = permissions.get('conduct_management', 'none')
-            if permission_level == 'group_only':
-                # For group_only, show only users from same group in modal
-                current_user = read_record_by_id('Users', session['user_id'])
-                current_group_id = current_user[5]  # group_id is at index 5
-                modal_users = [user for user in all_users if get_user_group_id(user[0]) == current_group_id]
-            elif permission_level == 'self_only':
-                # For self_only, show only current user in modal
-                modal_users = [user for user in all_users if user[0] == session['user_id']]
-            else:
-                modal_users = users
-        else:
-            modal_users = users
-        
-        # Sort modal_users by first name using Vietnamese normalization  
-        modal_users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
+        # Modal users same as filtered users for consistency
+        modal_users = users.copy()
 
         # Tính toán ngày mặc định: Thứ 2 của tuần hiện tại
         today = datetime.today()
@@ -2555,7 +3259,7 @@ def user_conduct_list():
         conn = connect_db()
         cursor = conn.cursor()
         
-        # Base query
+        # Base query with role-based filtering
         query = """
                 SELECT uc.id, u.name AS user_name, c.name AS conduct_name, uc.registered_date, uc.total_points, uc.entered_by, g.name AS group_name
                 FROM User_Conduct uc
@@ -2566,39 +3270,46 @@ def user_conduct_list():
             """
         params = []
         
-        # Add permission-based filtering
-        permissions = get_user_permissions()
-        if not permissions.get('master', False):
-            permission_level = permissions.get('conduct_management', 'none')
-            if permission_level == 'self_only':
-                query += " AND u.id = ?"
-                params.append(session['user_id'])
-            elif permission_level == 'group_only':
-                current_user = read_record_by_id('Users', session['user_id'])
-                current_group_id = current_user[5]  # group_id is at index 5
-                query += " AND u.group_id = ?"
-                params.append(current_group_id)
+        # Add role-based filtering for users
+        if users:
+            user_id = [user['id'] for user in users]
+            query += " AND uc.user_id IN ({})".format(','.join('?' * len(user_id)))
+            params.extend(user_id)
+        else:
+            # If no users allowed, return empty result
+            query += " AND 1 = 0"
         
-        # Add GVCN and Master role filtering (existing logic)
-        excluded_roles = []
-        if gvcn_role_id is not None:
-            excluded_roles.append(gvcn_role_id)
-        if master_role_id is not None:
-            excluded_roles.append(master_role_id)
+        # Add role-based filtering for conducts
+        if conducts:
+            conduct_ids = [conduct['id'] for conduct in conducts]
+            query += " AND uc.conduct_id IN ({})".format(','.join('?' * len(conduct_ids)))
+            params.extend(conduct_ids)
+        else:
+            # If no conducts allowed, return empty result
+            query += " AND 1 = 0"
         
-        if excluded_roles:
-            placeholders = ','.join('?' * len(excluded_roles))
-            query += f" AND u.role_id NOT IN ({placeholders})"
-            params.extend(excluded_roles)
+        # Add role-based filtering for groups
+        if groups:
+            group_ids = [group['id'] for group in groups]
+            query += " AND u.group_id IN ({})".format(','.join('?' * len(group_ids)))
+            params.extend(group_ids)
+        else:
+            # If no groups allowed, return empty result
+            query += " AND 1 = 0"
 
+        # Additional filtering based on search criteria
         if select_all_users:
-            all_user_ids = [user[0] for user in modal_users]  # Use modal_users for consistency
-            if all_user_ids:
-                query += " AND uc.user_id IN ({})".format(','.join('?' * len(all_user_ids)))
-                params.extend(all_user_ids)
+            # Already filtered by role permissions above, no additional filter needed
+            pass
         elif selected_users:
-            query += " AND uc.user_id IN ({})".format(','.join('?' * len(selected_users)))
-            params.extend(selected_users)
+            # Intersect with role-allowed users
+            allowed_user_id = [user['id'] for user in users]
+            filtered_selected_users = [uid for uid in selected_users if int(uid) in allowed_user_id]
+            if filtered_selected_users:
+                query += " AND uc.user_id IN ({})".format(','.join('?' * len(filtered_selected_users)))
+                params.extend(filtered_selected_users)
+            else:
+                query += " AND 1 = 0"
 
         if date_from:
             query += " AND uc.registered_date >= ?"
@@ -2608,22 +3319,30 @@ def user_conduct_list():
             params.append(date_to)
 
         if select_all_conducts:
-            all_conduct_ids = [conduct[0] for conduct in conducts]
-            if all_conduct_ids:
-                query += " AND uc.conduct_id IN ({})".format(','.join('?' * len(all_conduct_ids)))
-                params.extend(all_conduct_ids)
+            # Already filtered by role permissions above, no additional filter needed
+            pass
         elif selected_conducts:
-            query += " AND uc.conduct_id IN ({})".format(','.join('?' * len(selected_conducts)))
-            params.extend(selected_conducts)
+            # Intersect with role-allowed conducts
+            allowed_conduct_ids = [conduct['id'] for conduct in conducts]
+            filtered_selected_conducts = [cid for cid in selected_conducts if int(cid) in allowed_conduct_ids]
+            if filtered_selected_conducts:
+                query += " AND uc.conduct_id IN ({})".format(','.join('?' * len(filtered_selected_conducts)))
+                params.extend(filtered_selected_conducts)
+            else:
+                query += " AND 1 = 0"
 
         if select_all_groups:
-            all_group_ids = [group[0] for group in groups]
-            if all_group_ids:
-                query += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
-                params.extend(all_group_ids)
+            # Already filtered by role permissions above, no additional filter needed
+            pass
         elif selected_groups:
-            query += " AND u.group_id IN ({})".format(','.join('?' * len(selected_groups)))
-            params.extend(selected_groups)
+            # Intersect with role-allowed groups
+            allowed_group_ids = [group['id'] for group in groups]
+            filtered_selected_groups = [gid for gid in selected_groups if int(gid) in allowed_group_ids]
+            if filtered_selected_groups:
+                query += " AND u.group_id IN ({})".format(','.join('?' * len(filtered_selected_groups)))
+                params.extend(filtered_selected_groups)
+            else:
+                query += " AND 1 = 0"
 
         query += f" ORDER BY {sort_column} {sort_direction}"
         cursor.execute(query, params)
@@ -3057,70 +3776,17 @@ def user_subjects_list():
         # Special handling for user_name sorting (sort by first name)
         sort_by_first_name = (sort_by == 'user_name')
 
-        conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM Roles WHERE name = 'GVCN'")
-        role_result = cursor.fetchone()
-        gvcn_role_id = role_result[0] if role_result else None
-        cursor.execute("SELECT id FROM Roles WHERE name = 'Master'")
-        master_role_result = cursor.fetchone()
-        master_role_id = master_role_result[0] if master_role_result else None
-        cursor.execute("SELECT id FROM Groups WHERE name = 'Giáo viên'")
-        group_result = cursor.fetchone()
-        teacher_group_id = group_result[0] if group_result else None
-        conn.close()
-
-        conn = connect_db()
-        cursor = conn.cursor()
-        # Loại trừ GVCN và Master khỏi danh sách
-        excluded_roles = []
-        if gvcn_role_id is not None:
-            excluded_roles.append(gvcn_role_id)
-        if master_role_id is not None:
-            excluded_roles.append(master_role_id)
+        # Get filtered data based on role permissions
+        users = get_filtered_users_by_role()
+        groups = get_filtered_groups_by_role()
+        subjects = get_filtered_subjects_by_role()
+        criteria = get_filtered_criteria_by_role()
         
-        if excluded_roles:
-            placeholders = ','.join('?' * len(excluded_roles))
-            cursor.execute(f"SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id NOT IN ({placeholders})", excluded_roles)
-        else:
-            cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
-        all_users = cursor.fetchall()
         # Sort users by first name using Vietnamese normalization
-        all_users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
-        cursor.execute("SELECT id, name FROM Subjects WHERE is_deleted = 0")
-        subjects = cursor.fetchall()
-        cursor.execute("SELECT id, name FROM Criteria WHERE is_deleted = 0")
-        criteria = cursor.fetchall()
-        if teacher_group_id is not None:
-            cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 AND id != ?", (teacher_group_id,))
-        else:
-            cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0")
-        all_groups = cursor.fetchall()
-        conn.close()
-
-        # Filter users and groups based on permissions
-        users = filter_users_by_permission(all_users, 'academic_management')
-        groups = filter_groups_by_permission(all_groups, 'academic_management')
+        users.sort(key=lambda u: vietnamese_sort_key(u['username'], sort_by_first_name=True))
         
-        # Create modal_users for modal dropdowns based on permissions
-        permissions = get_user_permissions()
-        if not permissions.get('master', False):
-            permission_level = permissions.get('academic_management', 'none')
-            if permission_level == 'group_only':
-                # For group_only, show only users from same group in modal
-                current_user = read_record_by_id('Users', session['user_id'])
-                current_group_id = current_user[5]  # group_id is at index 5
-                modal_users = [user for user in all_users if get_user_group_id(user[0]) == current_group_id]
-            elif permission_level == 'self_only':
-                # For self_only, show only current user in modal
-                modal_users = [user for user in all_users if user[0] == session['user_id']]
-            else:
-                modal_users = users
-        else:
-            modal_users = users
-        
-        # Sort modal_users by last word in name using Vietnamese normalization  
-        modal_users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
+        # Modal users same as filtered users for consistency
+        modal_users = users.copy()
 
         # Tính toán ngày mặc định: Thứ 2 của tuần hiện tại
         today = datetime.today()
@@ -3160,7 +3826,7 @@ def user_subjects_list():
         conn = connect_db()
         cursor = conn.cursor()
         
-        # Base query
+        # Base query with role-based filtering
         query = """
                 SELECT us.id, u.name AS user_name, s.name AS subject_name, cr.name AS criteria_name, 
                        us.registered_date, us.total_points, us.entered_by, g.name AS group_name
@@ -3173,39 +3839,46 @@ def user_subjects_list():
             """
         params = []
         
-        # Add permission-based filtering
-        permissions = get_user_permissions()
-        if not permissions.get('master', False):
-            permission_level = permissions.get('academic_management', 'none')
-            if permission_level == 'self_only':
-                query += " AND u.id = ?"
-                params.append(session['user_id'])
-            elif permission_level == 'group_only':
-                current_user = read_record_by_id('Users', session['user_id'])
-                current_group_id = current_user[5]  # group_id is at index 5
-                query += " AND u.group_id = ?"
-                params.append(current_group_id)
+        # Add role-based filtering for users
+        if users:
+            user_id = [user['id'] for user in users]
+            query += " AND us.user_id IN ({})".format(','.join('?' * len(user_id)))
+            params.extend(user_id)
+        else:
+            # If no users allowed, return empty result
+            query += " AND 1 = 0"
         
-        # Add GVCN and Master role filtering (existing logic)
-        excluded_roles = []
-        if gvcn_role_id is not None:
-            excluded_roles.append(gvcn_role_id)
-        if master_role_id is not None:
-            excluded_roles.append(master_role_id)
+        # Add role-based filtering for subjects
+        if subjects:
+            subject_ids = [subject['id'] for subject in subjects]
+            query += " AND us.subject_id IN ({})".format(','.join('?' * len(subject_ids)))
+            params.extend(subject_ids)
+        else:
+            # If no subjects allowed, return empty result
+            query += " AND 1 = 0"
         
-        if excluded_roles:
-            placeholders = ','.join('?' * len(excluded_roles))
-            query += f" AND u.role_id NOT IN ({placeholders})"
-            params.extend(excluded_roles)
+        # Add role-based filtering for groups
+        if groups:
+            group_ids = [group['id'] for group in groups]
+            query += " AND u.group_id IN ({})".format(','.join('?' * len(group_ids)))
+            params.extend(group_ids)
+        else:
+            # If no groups allowed, return empty result
+            query += " AND 1 = 0"
 
+        # Additional filtering based on search criteria
         if select_all_users:
-            all_user_ids = [user[0] for user in modal_users]  # Use modal_users for consistency
-            if all_user_ids:
-                query += " AND us.user_id IN ({})".format(','.join('?' * len(all_user_ids)))
-                params.extend(all_user_ids)
+            # Already filtered by role permissions above, no additional filter needed
+            pass
         elif selected_users:
-            query += " AND us.user_id IN ({})".format(','.join('?' * len(selected_users)))
-            params.extend(selected_users)
+            # Intersect with role-allowed users
+            allowed_user_id = [user['id'] for user in users]
+            filtered_selected_users = [uid for uid in selected_users if int(uid) in allowed_user_id]
+            if filtered_selected_users:
+                query += " AND us.user_id IN ({})".format(','.join('?' * len(filtered_selected_users)))
+                params.extend(filtered_selected_users)
+            else:
+                query += " AND 1 = 0"
 
         if date_from:
             query += " AND us.registered_date >= ?"
@@ -3215,22 +3888,30 @@ def user_subjects_list():
             params.append(date_to)
 
         if select_all_subjects:
-            all_subject_ids = [subject[0] for subject in subjects]
-            if all_subject_ids:
-                query += " AND us.subject_id IN ({})".format(','.join('?' * len(all_subject_ids)))
-                params.extend(all_subject_ids)
+            # Already filtered by role permissions above, no additional filter needed
+            pass
         elif selected_subjects:
-            query += " AND us.subject_id IN ({})".format(','.join('?' * len(selected_subjects)))
-            params.extend(selected_subjects)
+            # Intersect with role-allowed subjects
+            allowed_subject_ids = [subject['id'] for subject in subjects]
+            filtered_selected_subjects = [sid for sid in selected_subjects if int(sid) in allowed_subject_ids]
+            if filtered_selected_subjects:
+                query += " AND us.subject_id IN ({})".format(','.join('?' * len(filtered_selected_subjects)))
+                params.extend(filtered_selected_subjects)
+            else:
+                query += " AND 1 = 0"
 
         if select_all_groups:
-            all_group_ids = [group[0] for group in groups]
-            if all_group_ids:
-                query += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
-                params.extend(all_group_ids)
+            # Already filtered by role permissions above, no additional filter needed
+            pass
         elif selected_groups:
-            query += " AND u.group_id IN ({})".format(','.join('?' * len(selected_groups)))
-            params.extend(selected_groups)
+            # Intersect with role-allowed groups
+            allowed_group_ids = [group['id'] for group in groups]
+            filtered_selected_groups = [gid for gid in selected_groups if int(gid) in allowed_group_ids]
+            if filtered_selected_groups:
+                query += " AND u.group_id IN ({})".format(','.join('?' * len(filtered_selected_groups)))
+                params.extend(filtered_selected_groups)
+            else:
+                query += " AND 1 = 0"
 
         query += f" ORDER BY {sort_column} {sort_direction}"
         cursor.execute(query, params)
@@ -3648,7 +4329,7 @@ def group_summary():
             params_uc.extend(excluded_roles)
         
         # Luôn tìm tất cả nhóm có quyền truy cập
-        all_group_ids = [group[0] for group in groups]
+        all_group_ids = [group['id'] for group in groups]
         if all_group_ids:
             query_uc += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
             params_uc.extend(all_group_ids)
@@ -3695,7 +4376,7 @@ def group_summary():
             params_us.extend(excluded_roles)
         
         # Luôn tìm tất cả nhóm có quyền truy cập
-        all_group_ids = [group[0] for group in groups]
+        all_group_ids = [group['id'] for group in groups]
         if all_group_ids:
             query_us += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
             params_us.extend(all_group_ids)
@@ -4290,15 +4971,15 @@ def user_summary():
             user_params.extend(excluded_roles)
 
         if select_all_users:
-            filtered_user_ids = [user[0] for user in filtered_users]
-            if filtered_user_ids:
-                user_query += " AND id IN ({})".format(','.join('?' * len(filtered_user_ids)))
-                user_params.extend(filtered_user_ids)
+            filtered_user_id = [user[0] for user in filtered_users]
+            if filtered_user_id:
+                user_query += " AND id IN ({})".format(','.join('?' * len(filtered_user_id)))
+                user_params.extend(filtered_user_id)
         elif selected_users:
             user_query += " AND id IN ({})".format(','.join('?' * len(selected_users)))
             user_params.extend(selected_users)
         if select_all_groups:
-            group_ids = [group[0] for group in groups]
+            group_ids = [group['id'] for group in groups]
             if group_ids:
                 user_query += " AND group_id IN ({})".format(','.join('?' * len(group_ids)))
                 user_params.extend(group_ids)
@@ -4649,18 +5330,31 @@ def login():
             
         if user:
             user_id = user[0][0]
+            user_data = user[0]  # [id, name, username, password, class_id, group_id, role_id, role_username, role_password]
             
             # Determine which login method was used and set appropriate role permissions
             # Check if it was role_username/role_password login
             role_login = read_all_records('Users', condition=f"role_username = '{username}' AND role_password = '{password}' AND id = {user_id}")
             
+            session['user_id'] = user_id
+            
             if role_login:
                 # Role login - use the user's actual role
-                session['user_id'] = user_id
                 session['login_type'] = 'role_login'
+                session['role_id'] = user_data[6]  # role_id from Users table
+                
+                # Get role name
+                if user_data[6]:
+                    role_data = read_record_by_id('Roles', user_data[6], ['id', 'name'])
+                    session['role_name'] = role_data[1] if role_data else None
+                else:
+                    session['role_name'] = None
             else:
-                # Normal login - force role ID 9 permissions
-                session['user_id'] = user_id
+                # Normal login - force role ID 9 permissions (student role)
+                session['login_type'] = 'normal_login'
+                session['force_role_id'] = 9
+                session['role_id'] = 9
+                session['role_name'] = 'Học sinh'
                 session['login_type'] = 'normal_login'
                 session['force_role_id'] = 9
             

@@ -204,7 +204,7 @@
         </button>
         <div class="collapse navbar-collapse" id="navbarNavDropdown">
             <ul class="navbar-nav mr-auto">
-                {% if permissions is defined and permissions.get('master', False) %}
+                {% if menu_permissions is defined and menu_permissions.get('master', False) %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         Master
@@ -232,27 +232,27 @@
                     </div>
                 </li>
                 {% endif %}
-                {% if permissions is defined and (permissions.get('master', False) or permissions.get('conduct_management', 'none') != 'none') %}
+                {% if menu_permissions is defined and menu_permissions.get('user_conduct', False) %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('user_conduct_list') }}">Quản lý hạnh kiểm</a>
                 </li>
                 {% endif %}
-                {% if permissions is defined and (permissions.get('master', False) or permissions.get('academic_management', 'none') != 'none') %}
+                {% if menu_permissions is defined and menu_permissions.get('user_subject', False) %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('user_subjects_list') }}">Quản lý học tập</a>
                 </li>
                 {% endif %}
-                {% if permissions is defined and (permissions.get('master', False) or permissions.get('group_statistics', 'none') != 'none') %}
+                {% if menu_permissions is defined and menu_permissions.get('group_summary', False) %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('group_summary') }}">Thống kê nhóm</a>
                 </li>
                 {% endif %}
-                {% if permissions is defined and (permissions.get('master', False) or permissions.get('student_statistics', 'none') != 'none') %}
+                {% if menu_permissions is defined and menu_permissions.get('user_summary', False) %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('user_summary') }}">Thống kê học sinh</a>
                 </li>
                 {% endif %}
-                {% if permissions is defined %}
+                {% if menu_permissions is defined and menu_permissions.get('student_report', False) %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('student_report') }}">Báo cáo kết quả</a>
                 </li>
