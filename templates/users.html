@@ -17,7 +17,12 @@
         
         <div class="row mb-3">
             <div class="col-12">
-                <button type="button" class="btn btn-success w-100 w-md-auto" onclick="openCreateModal()">Tạo mới</button>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button type="button" class="btn btn-success" onclick="openCreateModal()">Tạo mới</button>
+                    <button type="button" class="btn btn-info" onclick="openUploadModal()">
+                        <i class="fas fa-upload me-1"></i>Upload Excel
+                    </button>
+                </div>
             </div>
         </div>
         <div class="table-responsive">
@@ -165,6 +170,42 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
                     <button type="button" class="btn btn-primary" onclick="saveUser()">Lưu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Excel Modal -->
+    <div class="modal fade" id="uploadModal" tabindex="-1" aria-labelledby="uploadModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="uploadModalLabel">Upload File Excel</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <strong>Định dạng Excel yêu cầu:</strong><br>
+                        - Cột 1: STT (số thứ tự)<br>
+                        - Cột 2: Họ và tên<br>
+                        <small class="text-muted">
+                            * Tên đăng nhập sẽ được tạo từ từ cuối của họ tên<br>
+                            * Mật khẩu: STT + tên đăng nhập (vd: 1nguyen)<br>
+                            * Tất cả tài khoản sẽ có role Học sinh
+                        </small>
+                    </div>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="excelFile" class="form-label">Chọn file Excel *</label>
+                            <input type="file" class="form-control" id="excelFile" name="excel_file" accept=".xlsx,.xls" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" onclick="uploadExcel()">
+                        <i class="fas fa-upload me-1"></i>Upload
+                    </button>
                 </div>
             </div>
         </div>
@@ -412,6 +453,50 @@
                 passwordInput.type = 'password';
                 toggleIcon.className = 'fas fa-eye';
             }
+        }
+
+        function openUploadModal() {
+            document.getElementById('uploadForm').reset();
+            new bootstrap.Modal(document.getElementById('uploadModal')).show();
+        }
+
+        function uploadExcel() {
+            const form = document.getElementById('uploadForm');
+            const formData = new FormData(form);
+            const fileInput = document.getElementById('excelFile');
+            
+            if (!fileInput.files[0]) {
+                showError('Vui lòng chọn file Excel');
+                return;
+            }
+            
+            // Kiểm tra định dạng file
+            const fileName = fileInput.files[0].name;
+            if (!fileName.match(/\.(xlsx|xls)$/i)) {
+                showError('Vui lòng chọn file Excel (.xlsx hoặc .xls)');
+                return;
+            }
+            
+            fetch('/api/upload_users_excel', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('uploadModal')).hide();
+                    showSuccess(data.message + ` (${data.imported_count} học sinh đã được thêm)`);
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showError(data.error || 'Có lỗi xảy ra khi upload file');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('Có lỗi xảy ra khi upload file');
+            });
         }
     </script>
 {% endblock %}

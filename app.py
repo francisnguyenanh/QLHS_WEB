@@ -22,7 +22,10 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from flask import make_response, request, url_for
 from werkzeug.utils import secure_filename
+import random
+import logging
 
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 app.secret_key = config.SECRET_KEY
@@ -1876,6 +1879,116 @@ def update_user_api(id):
         conn.close()
         return jsonify({'success': True, 'message': 'Cập nhật thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/upload_users_excel', methods=['POST'])
+def upload_users_excel():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    if not can_access_master():
+        return jsonify({'error': 'Bạn không có quyền truy cập chức năng này'}), 403
+    
+    if 'excel_file' not in request.files:
+        return jsonify({'error': 'Không có file được chọn'}), 400
+    
+    file = request.files['excel_file']
+    if file.filename == '':
+        return jsonify({'error': 'Không có file được chọn'}), 400
+    
+    if not file.filename.lower().endswith(('.xlsx', '.xls')):
+        return jsonify({'error': 'Chỉ chấp nhận file Excel (.xlsx, .xls)'}), 400
+    
+    try:
+        import pandas as pd
+        import re
+        from unicodedata import normalize
+        
+        # Đọc file Excel
+        df = pd.read_excel(file)
+        
+        # Kiểm tra cấu trúc file
+        if len(df.columns) < 1:
+            return jsonify({'error': 'File Excel phải có cột Name'}), 400
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        imported_count = 0
+        errors = []
+        
+        for index, row in df.iterrows():
+            try:
+                # Lấy STT và Họ tên
+                ho_ten = str(row.iloc[0]).strip()
+                
+                # Bỏ qua dòng trống hoặc header
+                if pd.isna(row.iloc[0]) or ho_ten.lower() in ['Name', 'name']:
+                    continue
+                
+                # Tạo username từ từ cuối của họ tên
+                words = ho_ten.split()
+                if len(words) == 0:
+                    errors.append(f"Dòng {index + 1}: Họ tên không hợp lệ")
+                    continue
+                
+                # Lấy từ cuối và chuẩn hóa thành username
+                last_word = words[-1]
+                # Loại bỏ dấu tiếng Việt
+                firstname = normalize('NFD', last_word).encode('ascii', 'ignore').decode('ascii').lower()
+                # Loại bỏ ký tự đặc biệt, chỉ giữ chữ và số
+                firstname = re.sub(r'[^a-z0-9]', '', firstname)
+                
+                if not firstname:
+                    errors.append(f"Dòng {index + 1}: Không thể tạo username từ '{ho_ten}'")
+                    continue
+                
+                # Tạo password: STT + username
+                random_pass = random.randint(0, 99)
+                random_username = random.randint(0, 99)
+                password = f"{firstname}{random_pass:02d}"
+                username = f"{firstname}{random_username:02d}"
+                
+                # Kiểm tra username đã tồn tại
+                cursor.execute("SELECT id FROM Users WHERE username = ?", (username,))
+                if cursor.fetchone():
+                    errors.append(f"Dòng {index + 1}: Username '{username}' đã tồn tại")
+                    continue
+                
+                # Thêm user mới
+                data = {
+                    'name': ho_ten,
+                    'username': username,
+                    'password': password,
+                    'class_id': None,
+                    'group_id': None,
+                    'role_id': 9,  # Học sinh
+                    'role_username': None,
+                    'role_password': None
+                }
+                
+                
+                create_record('Users', data)
+                imported_count += 1
+                
+            except Exception as e:
+                errors.append(f"Dòng {index + 1}: Lỗi xử lý - {str(e)}")
+                continue
+        
+        conn.close()
+        
+        message = f"Upload thành công! Đã import {imported_count} học sinh."
+        if errors:
+            message += f" Có {len(errors)} lỗi."
+            
+        return jsonify({
+            'success': True, 
+            'message': message,
+            'imported_count': imported_count,
+            'errors': errors
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Lỗi xử lý file: {str(e)}'}), 500
 
 # --- Users ---
 @app.route('/users')
