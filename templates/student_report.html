@@ -501,7 +501,7 @@
                                     <div class="card-body">
                                         <div class="form-group">
                                             <label for="user_select">Học sinh:</label>
-                                            {% if permissions.get('master', False) %}
+                                            {% if role_name == 'Master' or role_name == 'GVCN'%}
                                                 <select name="user_id" id="user_select" class="form-control" required>
                                                     <option value="">Chọn học sinh</option>
                                                     {% for user in users %}

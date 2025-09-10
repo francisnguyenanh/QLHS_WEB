@@ -321,10 +321,6 @@ def generate_action_link():
         if not all([action, record_id, table]):
             return jsonify({'error': 'Missing required parameters'}), 400
         
-        # Check permissions for the action
-        if not has_permission(f'{table}_management'):
-            return jsonify({'error': 'Permission denied'}), 403
-        
         # Generate token
         token = generate_action_token(action, record_id, table, expiry_hours)
         
@@ -813,51 +809,7 @@ def get_user_by_id(user_id):
         'is_deleted': user_record[7]      # is_deleted is at index 7
     }
 
-def has_permission(permission_type, required_level=None):
-    """Check if current user has specific permission"""
-    permissions = get_user_permissions()
-    
-    # Master permission overrides all
-    if permissions.get('master', False):
-        return True
-    
-    if permission_type not in permissions:
-        return False
-    
-    if required_level is None:
-        return permissions[permission_type] != 'none'
-    
-    return permissions[permission_type] == required_level
 
-def can_create(permission_type):
-    """Check if user can create records for given permission type"""
-    permissions = get_user_permissions()
-    
-    # Master can create everything
-    if permissions.get('master', False):
-        return True
-    
-    return permissions.get(f'{permission_type}_create', False)
-
-def can_update(permission_type):
-    """Check if user can update records for given permission type"""
-    permissions = get_user_permissions()
-    
-    # Master can update everything
-    if permissions.get('master', False):
-        return True
-    
-    return permissions.get(f'{permission_type}_update', False)
-
-def can_delete(permission_type):
-    """Check if user can delete records for given permission type"""
-    permissions = get_user_permissions()
-    
-    # Master can delete everything
-    if permissions.get('master', False):
-        return True
-    
-    return permissions.get(f'{permission_type}_delete', False)
 
 def get_user_data_filters():
     """Get data filters based on user permissions"""
@@ -877,8 +829,10 @@ def get_user_data_filters():
 
 def can_access_master():
     """Check if user can access master functions"""
-    permissions = get_user_permissions()
-    return permissions.get('master', False)
+    if session.get('role_name') == 'Master' or session.get('role_name') == 'GVCN':
+        return True
+    else:
+        return False
 
 def can_access_menu(menu_name):
     """Check if user can access specific menu based on role permissions"""
@@ -902,39 +856,29 @@ def can_access_menu(menu_name):
 
 def can_access_conduct_management():
     """Check if user can access conduct management"""
-    permissions = get_user_permissions()
-    return (permissions.get('master', False) or 
-            permissions.get('conduct_management', 'none') != 'none')
+    return True
 
 def can_access_academic_management():
     """Check if user can access academic management"""
-    permissions = get_user_permissions()
-    return (permissions.get('master', False) or 
-            permissions.get('academic_management', 'none') != 'none')
+    return True
 
 def can_access_group_statistics():
     """Check if user can access group statistics"""
-    permissions = get_user_permissions()
-    return (permissions.get('master', False) or 
-            permissions.get('group_statistics', 'none') != 'none')
+    return True
 
 def can_access_student_statistics():
     """Check if user can access student statistics"""
-    permissions = get_user_permissions()
-    return (permissions.get('master', False) or 
-            permissions.get('student_statistics', 'none') != 'none')
+    return True
 
 def can_access_comment_management():
     """Check if user can access comment management"""
-    permissions = get_user_permissions()
-    return (permissions.get('master', False) or 
-            permissions.get('comment_management', 'none') != 'none')
+    return True
 
 def render_template_with_permissions(template_name, **kwargs):
     """Helper function to render template with permissions always included"""
     if 'user_id' in session:
-        permissions = get_user_permissions()
-        kwargs['permissions'] = permissions
+        # permissions = get_user_permissions()
+        # kwargs['permissions'] = permissions
         kwargs['is_gvcn'] = is_user_gvcn()
         # Thêm thông tin user hiện tại cho footer
         kwargs['current_user_info'] = get_current_user_info()
@@ -942,6 +886,8 @@ def render_template_with_permissions(template_name, **kwargs):
         kwargs['is_master'] = is_master_user(session['user_id'])
         # Thêm menu permissions
         kwargs['menu_permissions'] = get_menu_permissions()
+        
+        logging.info(f"Menu permissions: {kwargs['menu_permissions']}")
     return render_template(template_name, **kwargs)
 
 def get_menu_permissions():
@@ -1047,32 +993,33 @@ def save_uploaded_file(file, upload_folder):
 
 def filter_users_by_permission(users, permission_type):
     """Filter users based on permission level"""
-    if 'user_id' not in session:
-        return []
+    return []
+    # if 'user_id' not in session:
+    #     return []
     
-    permissions = get_user_permissions()
+    # permissions = get_user_permissions()
     
-    # If user has master permission, return all users
-    if permissions.get('master', False):
-        return users
+    # # If user has master permission, return all users
+    # if permissions.get('master', False):
+    #     return users
     
-    permission_level = permissions.get(permission_type, 'none')
+    # permission_level = permissions.get(permission_type, 'none')
     
-    if permission_level == 'none':
-        return []
-    elif permission_level == 'self_only':
-        # Only return current user
-        current_user_id = session['user_id']
-        return [user for user in users if user[0] == current_user_id]
-    elif permission_level == 'group_only':
-        # Only return users from the same group
-        current_user = read_record_by_id('Users', session['user_id'])
-        current_group_id = current_user[5]  # group_id is at index 5
-        return [user for user in users if len(user) > 2 and get_user_group_id(user[0]) == current_group_id]
-    elif permission_level == 'all':
-        return users
-    else:
-        return []
+    # if permission_level == 'none':
+    #     return []
+    # elif permission_level == 'self_only':
+    #     # Only return current user
+    #     current_user_id = session['user_id']
+    #     return [user for user in users if user[0] == current_user_id]
+    # elif permission_level == 'group_only':
+    #     # Only return users from the same group
+    #     current_user = read_record_by_id('Users', session['user_id'])
+    #     current_group_id = current_user[5]  # group_id is at index 5
+    #     return [user for user in users if len(user) > 2 and get_user_group_id(user[0]) == current_group_id]
+    # elif permission_level == 'all':
+    #     return users
+    # else:
+    #     return []
 
 def filter_groups_by_permission(groups, permission_type):
     """Filter groups based on permission level"""
@@ -1344,7 +1291,7 @@ def index():
     if 'user_id' in session:
         print(session)
         permissions = get_user_permissions()
-        return render_template('base.html', is_gvcn=is_user_gvcn(), permissions=permissions)
+        return render_template('base.html', is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
 
@@ -3292,8 +3239,7 @@ def user_conduct_list():
                                select_all_conducts=select_all_conducts,
                                select_all_groups=select_all_groups,
                                is_gvcn=is_user_gvcn(),
-                               role_name=session.get('role_name'),
-                               permissions=permissions)
+                               role_name=session.get('role_name'))
     else:
         return redirect(url_for('login'))
 
@@ -6133,7 +6079,7 @@ def student_report():
     if request.method == 'GET':
         # Get list of users for master users
         users = []
-        if permissions.get('master', False):
+        if session.get('role_name') == 'Master' or session.get('role_name') == 'GVCN':
             conn = connect_db()
             cursor = conn.cursor()
             cursor.execute("""
@@ -6148,10 +6094,10 @@ def student_report():
             # Sort users by Vietnamese first name like user_summary
             users = sorted(users, key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
         
-        return render_template('student_report.html', 
-                             permissions=permissions,
+        return render_template_with_permissions('student_report.html',
                              current_user_info=current_user,
-                             users=users)
+                             users=users,
+                             role_name=session.get('role_name'))
     
     # Handle POST request (search for report data)
     if request.method == 'POST':
