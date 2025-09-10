@@ -1977,54 +1977,6 @@ def get_conducts_api():
         return jsonify(conducts)
     return jsonify({'error': 'Unauthorized'}), 401
 
-# --- API routes for Group Permissions ---
-@app.route('/api/roles/<int:role_id>/group-permissions')
-def get_role_group_permissions(role_id):
-    if 'user_id' in session:
-        if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT is_all FROM Role_Group_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
-        is_all_row = cursor.fetchone()
-        is_all = is_all_row[0] if is_all_row else False
-        
-        cursor.execute("SELECT group_id FROM Role_Group_Permissions WHERE role_id = ? AND group_id IS NOT NULL", (role_id,))
-        group_ids = [row[0] for row in cursor.fetchall()]
-        conn.close()
-        
-        return jsonify({'is_all': is_all, 'group_ids': group_ids})
-    return jsonify({'error': 'Unauthorized'}), 401
-
-@app.route('/api/roles/<int:role_id>/group-permissions', methods=['POST'])
-def save_role_group_permissions(role_id):
-    if 'user_id' in session:
-        if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        is_all = request.json.get('is_all', False)
-        group_ids = request.json.get('group_ids', [])
-        
-        conn = connect_db()
-        cursor = conn.cursor()
-        
-        # Delete existing permissions
-        cursor.execute("DELETE FROM Role_Group_Permissions WHERE role_id = ?", (role_id,))
-        
-        # Insert new permissions
-        if is_all:
-            cursor.execute("INSERT INTO Role_Group_Permissions (role_id, group_id, is_all) VALUES (?, NULL, 1)", (role_id,))
-        else:
-            for group_id in group_ids:
-                cursor.execute("INSERT INTO Role_Group_Permissions (role_id, group_id, is_all) VALUES (?, ?, 0)", 
-                             (role_id, group_id))
-        
-        conn.commit()
-        conn.close()
-        
-        return jsonify({'success': True, 'message': 'Lưu quyền nhóm thành công'})
-    return jsonify({'error': 'Unauthorized'}), 401
 
 @app.route('/api/groups')
 def get_groups_api():
@@ -2079,7 +2031,7 @@ def save_role_user_permissions(role_id):
             for user_id in user_ids:
                 cursor.execute("INSERT INTO Role_User_Permissions (role_id, user_id, is_all) VALUES (?, ?, 0)", 
                              (role_id, user_id))
-        
+        logging.info(f"Saved user permissions for role_id {role_id}: is_all={is_all}, user_ids={user_ids}")
         conn.commit()
         conn.close()
         
