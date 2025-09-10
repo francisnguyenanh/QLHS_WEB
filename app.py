@@ -6516,6 +6516,119 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
     finally:
         conn.close()
 
+def get_all_mondays_in_year(year):
+    """Lấy tất cả ngày thứ 2 trong năm"""
+    mondays = []
+    current_date = datetime(year, 1, 1)
+    
+    # Tìm thứ 2 đầu tiên trong năm
+    while current_date.weekday() != 0:  # 0 = Monday
+        current_date += timedelta(days=1)
+    
+    # Lấy tất cả thứ 2 trong năm
+    while current_date.year == year:
+        mondays.append(current_date)
+        current_date += timedelta(weeks=1)
+    
+    return mondays
+
+@app.route('/settings/weeks')
+def settings_weeks():
+    if 'user_id' in session:
+        if not can_access_master():
+            flash('Bạn không có quyền truy cập chức năng này', 'error')
+            return redirect(url_for('index'))
+        
+        year = request.args.get('year', datetime.now().year, type=int)
+        
+        # Lấy tất cả ngày thứ 2 trong năm
+        mondays = get_all_mondays_in_year(year)
+        
+        # Lấy week settings đã lưu
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT monday_date, week_number FROM Week_Settings WHERE year = ?", (year,))
+        saved_weeks = {row[0]: row[1] for row in cursor.fetchall()}
+        conn.close()
+        
+        # Kết hợp data
+        week_data = []
+        for monday in mondays:
+            date_str = monday.strftime('%Y-%m-%d')
+            week_data.append({
+                'date': date_str,
+                'formatted_date': monday.strftime('%d/%m/%Y'),
+                'week_number': saved_weeks.get(date_str, None)
+            })
+        
+        return render_template_with_permissions('settings_weeks.html', 
+                                               week_data=week_data, 
+                                               current_year=year)
+    else:
+        return redirect(url_for('login'))
+
+@app.route('/api/settings/weeks/save', methods=['POST'])
+def save_week_settings():
+    if 'user_id' in session:
+        if not can_access_master():
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        data = request.json
+        year = data.get('year')
+        week_settings = data.get('week_settings', [])
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        try:
+            # Xóa settings cũ của năm này
+            cursor.execute("DELETE FROM Week_Settings WHERE year = ?", (year,))
+            
+            # Thêm settings mới
+            for setting in week_settings:
+                if setting['week_number']:  # Chỉ lưu khi có week_number
+                    cursor.execute("""
+                        INSERT INTO Week_Settings (year, monday_date, week_number)
+                        VALUES (?, ?, ?)
+                    """, (year, setting['date'], setting['week_number']))
+            
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Lưu cài đặt tuần thành công'})
+        except Exception as e:
+            conn.rollback()
+            return jsonify({'error': str(e)}), 500
+        finally:
+            conn.close()
+    else:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/get_week_number')
+def get_week_number_api():
+    """API lấy số tuần dựa trên ngày thứ 2"""
+    monday_date = request.args.get('monday_date')
+    if not monday_date:
+        return jsonify({'week_number': None})
+    
+    try:
+        # Parse năm từ monday_date
+        year = datetime.strptime(monday_date, '%Y-%m-%d').year
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT week_number FROM Week_Settings 
+            WHERE year = ? AND monday_date = ?
+        """, (year, monday_date))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            return jsonify({'week_number': result[0]})
+        else:
+            return jsonify({'week_number': None})
+    except Exception as e:
+        return jsonify({'week_number': None, 'error': str(e)})
+
 
 if __name__ == '__main__':
     setup_sample_data()

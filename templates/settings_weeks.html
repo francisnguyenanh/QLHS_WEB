@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    <h2>Cài đặt số tuần</h2>
+    
+    <!-- Year navigation -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <button class="btn btn-outline-secondary" onclick="changeYear({{ current_year - 1 }})">
+            <i class="fas fa-chevron-left"></i> {{ current_year - 1 }}
+        </button>
+        <h4>Năm {{ current_year }}</h4>
+        <button class="btn btn-outline-secondary" onclick="changeYear({{ current_year + 1 }})">
+            {{ current_year + 1 }} <i class="fas fa-chevron-right"></i>
+        </button>
+    </div>
+    
+    <!-- Week settings table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Ngày thứ 2</th>
+                            <th>Số tuần</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for week in week_data %}
+                        <tr>
+                            <td>{{ week.formatted_date }}</td>
+                            <td>
+                                <select class="form-control week-select" data-date="{{ week.date }}">
+                                    <option value="">Chọn tuần</option>
+                                    {% for i in range(1, 54) %}
+                                        <option value="{{ i }}" {% if week.week_number == i %}selected{% endif %}>
+                                            Tuần {{ i }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="text-center mt-3">
+                <button class="btn btn-primary" onclick="saveWeekSettings()">
+                    <i class="fas fa-save"></i> Lưu cài đặt
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function changeYear(year) {
+    window.location.href = `/settings/weeks?year=${year}`;
+}
+
+function saveWeekSettings() {
+    const weekSettings = [];
+    const selects = document.querySelectorAll('.week-select');
+    
+    selects.forEach(select => {
+        if (select.value) {
+            weekSettings.push({
+                date: select.dataset.date,
+                week_number: parseInt(select.value)
+            });
+        }
+    });
+    
+    fetch('/api/settings/weeks/save', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            year: {{ current_year }},
+            week_settings: weekSettings
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showSuccess(data.message);
+        } else {
+            showError(data.error || 'Có lỗi xảy ra');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showError('Có lỗi xảy ra khi lưu cài đặt');
+    });
+}
+</script>
+{% endblock %}

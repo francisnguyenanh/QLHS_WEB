@@ -17,6 +17,30 @@
         {% endif %}
     {% endwith %}
     
+    <!-- Navigation tabs -->
+    <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button">
+                <i class="fas fa-cog"></i> Cài đặt chung
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="background-tab" data-bs-toggle="tab" data-bs-target="#background" type="button">
+                <i class="fas fa-image"></i> Hình nền
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="weeks-tab" data-bs-toggle="tab" data-bs-target="#weeks" type="button">
+                <i class="fas fa-calendar-week"></i> Cài đặt tuần
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab content -->
+    <div class="tab-content mt-3" id="settingsTabContent">
+        <!-- General settings tab -->
+        <div class="tab-pane fade show active" id="general" role="tabpanel">
+    
     <div class="row">
         <!-- Phần quản lý thời gian hiệu lực hệ thống - chỉ master mới thấy -->
         {% if is_master %}
@@ -88,7 +112,11 @@
             </div>
         </div>
         {% endif %}
+        </div> <!-- End general tab -->
         
+        <!-- Background settings tab -->
+        <div class="tab-pane fade" id="background" role="tabpanel">
+        <div class="row">
         <div class="col-md-8">
             <div class="card">
                 <div class="card-header">
@@ -248,4 +276,13 @@ function updateCurrentDate() {
 // Update ngày hiện tại mỗi giây
 setInterval(updateCurrentDate, 1000);
 </script>
+        </div>
+        </div> <!-- End background tab -->
+        
+        <!-- Week settings tab -->
+        <div class="tab-pane fade" id="weeks" role="tabpanel">
+            <iframe src="{{ url_for('settings_weeks') }}" style="width: 100%; height: 600px; border: none;"></iframe>
+        </div>
+        
+    </div> <!-- End tab content -->
 {% endblock %}
