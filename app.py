@@ -3332,6 +3332,7 @@ def user_conduct_list():
                                select_all_conducts=select_all_conducts,
                                select_all_groups=select_all_groups,
                                is_gvcn=is_user_gvcn(),
+                               role_name=session.get('role_name'),
                                permissions=permissions)
     else:
         return redirect(url_for('login'))
@@ -3902,6 +3903,7 @@ def user_subjects_list():
                                select_all_users=select_all_users,
                                select_all_subjects=select_all_subjects,
                                select_all_groups=select_all_groups,
+                               role_name=session.get('role_name'),
                                is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
