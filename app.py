@@ -1994,76 +1994,58 @@ def get_groups_api():
 def get_role_user_permissions(role_id):
     if 'user_id' in session:
         if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
-        
+            return
+
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT is_all FROM Role_User_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
-        is_all_row = cursor.fetchone()
-        is_all = is_all_row[0] if is_all_row else False
-        
         cursor.execute("SELECT user_id FROM Role_User_Permissions WHERE role_id = ? AND user_id IS NOT NULL", (role_id,))
-        user_id = [row[0] for row in cursor.fetchall()]
+        user_ids = [row[0] for row in cursor.fetchall()]
         conn.close()
-        
-        return jsonify({'is_all': is_all, 'user_ids': user_id})
+
+        return jsonify({'user_ids': user_ids})
     return jsonify({'error': 'Unauthorized'}), 401
 
 @app.route('/api/roles/<int:role_id>/user-permissions', methods=['POST'])
 def save_role_user_permissions(role_id):
     if 'user_id' in session:
         if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
-        
-        is_all = request.json.get('is_all', False)
-        user_ids = request.json.get('user_ids', [])  # Match frontend key
-        
+            return
+
+        user_ids = request.json.get('user_ids', [])  # Chỉ nhận danh sách user
+
         conn = connect_db()
         cursor = conn.cursor()
-        
-        # Delete existing permissions
+
+        # Xóa quyền cũ
         cursor.execute("DELETE FROM Role_User_Permissions WHERE role_id = ?", (role_id,))
-        
-        # Insert new permissions
-        if is_all:
-            cursor.execute("INSERT INTO Role_User_Permissions (role_id, user_id, is_all) VALUES (?, NULL, 1)", (role_id,))
-        else:
-            for user_id in user_ids:
-                cursor.execute("INSERT INTO Role_User_Permissions (role_id, user_id, is_all) VALUES (?, ?, 0)", 
-                             (role_id, user_id))
-        logging.info(f"Saved user permissions for role_id {role_id}: is_all={is_all}, user_ids={user_ids}")
+
+        # Lưu từng user được chọn
+        for user_id in user_ids:
+            cursor.execute("INSERT INTO Role_User_Permissions (role_id, user_id, is_all) VALUES (?, ?, 0)", 
+                         (role_id, user_id))
+
+        logging.info(f"Saved user permissions for role_id {role_id}: user_ids={user_ids}")
         conn.commit()
         conn.close()
-        
-        return jsonify({'success': True, 'message': 'Lưu quyền user thành công'})
+
+        return jsonify({'success': True, 'message': 'Lưu danh sách user thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
 @app.route('/api/users-by-groups')
 def get_users_by_groups_api():
     if 'user_id' in session:
-        group_ids = request.args.getlist('group_ids')
-        
         conn = connect_db()
         cursor = conn.cursor()
-        
-        if group_ids:
-            # Get users from specific groups, exclude GVCN and Master roles
-            placeholders = ','.join(['?'] * len(group_ids))
-            cursor.execute(f"""
-                SELECT DISTINCT u.id, u.name, u.group_id, g.name as group_name
-                FROM Users u
-                LEFT JOIN Groups g ON u.group_id = g.id
-                LEFT JOIN Roles r ON u.role_id = r.id
-                WHERE u.group_id IN ({placeholders}) 
-                AND u.is_deleted = 0 
-                AND (r.name IS NULL OR r.name NOT IN ('GVCN', 'Master'))
-                ORDER BY u.name
-            """, group_ids)
-        else:
-            # No groups selected, return empty list
-            cursor.execute("SELECT 1 WHERE 0")  # Empty result
-        
-        users = [{'id': row[0], 'name': row[1], 'group_id': row[2], 'group_name': row[3]} for row in cursor.fetchall()]
+        cursor.execute("""
+            SELECT u.id, u.name, g.name
+            FROM Users u
+            LEFT JOIN Roles r ON u.role_id = r.id
+            LEFT JOIN Groups g ON u.group_id = g.id
+            WHERE u.is_deleted = 0 
+            AND (r.name IS NULL OR r.name NOT IN ('GVCN', 'Master'))
+            ORDER BY g.name, u.name
+        """)
+        users = [{'id': row[0], 'name': row[1], 'group_name': row[2] or ''} for row in cursor.fetchall()]
         conn.close()
         return jsonify(users)
     return jsonify({'error': 'Unauthorized'}), 401

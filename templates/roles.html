@@ -298,12 +298,6 @@
                     <form id="userPermissionForm">
                         <input type="hidden" id="user_role_id" name="role_id">
                         <div class="mb-3">
-                            <label><strong>Chọn nhóm:</strong></label>
-                            <div id="groupsList" class="row">
-                                <!-- Groups will be loaded here -->
-                            </div>
-                        </div>
-                        <div class="mb-3">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="all_users" onchange="toggleAllUsers()">
                                 <label class="form-check-label" for="all_users"><strong>Tất cả user</strong></label>
@@ -961,74 +955,27 @@
         function openUserPermissionModal(roleId, roleName) {
             document.getElementById('userPermissionModalLabel').textContent = `Cấu hình quyền user: ${roleName}`;
             document.getElementById('user_role_id').value = roleId;
-            
-            // Load current user permissions first
+
             fetch(`/api/roles/${roleId}/user-permissions`)
             .then(response => response.json())
             .then(permissions => {
-                // Set current permissions
-                document.getElementById('all_users').checked = permissions.is_all || false;
-                
-                // Store current user permissions to restore later
+                document.getElementById('all_users').checked = false;
                 window.currentUserPermissions = permissions;
-                
-                // Load users based on group permissions
-                loadGroupsForUserModal();
-                
+                loadUsersList();
                 const modal = new bootstrap.Modal(document.getElementById('userPermissionModal'));
                 modal.show();
-            })
-            .catch(error => {
-                console.error('Error loading user permissions:', error);
-                showError('Có lỗi xảy ra khi tải quyền user');
             });
         }
 
-        function loadGroupsForUserModal(selectedGroupIds = []) {
-            fetch('/api/groups')
-            .then(response => response.json())
-            .then(groups => {
-                const container = document.getElementById('groupsList');
-                container.innerHTML = '';
-                groups.forEach(group => {
-                    const div = document.createElement('div');
-                    div.className = 'col-md-6 mb-2';
-                    div.innerHTML = `
-                        <div class="form-check">
-                            <input class="form-check-input group-checkbox" type="checkbox" id="group_${group.id}" value="${group.id}" ${selectedGroupIds.includes(group.id) ? 'checked' : ''}>
-                            <label class="form-check-label" for="group_${group.id}">${group.name}</label>
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
-
-                // Khi chọn nhóm thì load lại user
-                document.querySelectorAll('.group-checkbox').forEach(cb => {
-                    cb.addEventListener('change', updateUsersListByGroups);
-                });
-
-                // Gọi lần đầu
-                updateUsersListByGroups();
-            });
-        }   
-
-        function updateUsersListByGroups() {
-            // Lấy các group đang được chọn
-            const selectedGroupIds = Array.from(document.querySelectorAll('.group-checkbox:checked')).map(cb => cb.value);
-            // Gọi API lấy user theo group
-            const params = selectedGroupIds.map(id => `group_ids=${id}`).join('&');
-            fetch(`/api/users-by-groups?${params}`)
+        function loadUsersList() {
+            fetch('/api/users-by-groups')
             .then(response => response.json())
             .then(users => {
                 const container = document.getElementById('usersList');
                 container.innerHTML = '';
-                if (users.length === 0) {
-                    container.innerHTML = '<div class="col-12"><p class="text-muted">Không có user nào trong các nhóm đã chọn.</p></div>';
-                    return;
-                }
                 users.forEach(user => {
                     const div = document.createElement('div');
-                    div.className = 'col-md-6 mb-2';
+                    div.className = 'col-md-4 mb-2';
                     div.innerHTML = `
                         <div class="form-check">
                             <input class="form-check-input user-checkbox" type="checkbox" id="user_${user.id}" value="${user.id}">
@@ -1039,7 +986,7 @@
                     `;
                     container.appendChild(div);
                 });
-                // Restore current user permissions if available
+                // Check lại các user đã lưu quyền
                 if (window.currentUserPermissions && window.currentUserPermissions.user_ids) {
                     window.currentUserPermissions.user_ids.forEach(userId => {
                         const checkbox = document.getElementById(`user_${userId}`);
@@ -1047,89 +994,29 @@
                     });
                 }
                 toggleAllUsers();
-            })
-            .catch(error => {
-                console.error('Error loading users:', error);
-                showError('Có lỗi xảy ra khi tải danh sách user');
             });
         }
 
-        function loadUsersForGroups(groupIds) {
-            if (groupIds.length === 0) {
-                // No groups selected, clear users list
-                const container = document.getElementById('usersList');
-                container.innerHTML = '<div class="col-12"><p class="text-muted">Chưa chọn nhóm nào. Vui lòng chọn nhóm trước.</p></div>';
-                return;
-            }
-            
-            // Load users for selected groups
-            const params = groupIds.map(id => `group_ids=${id}`).join('&');
-            fetch(`/api/users-by-groups?${params}`)
-            .then(response => response.json())
-            .then(users => {
-                const container = document.getElementById('usersList');
-                container.innerHTML = '';
-                
-                if (users.length === 0) {
-                    container.innerHTML = '<div class="col-12"><p class="text-muted">Không có user nào trong các nhóm đã chọn.</p></div>';
-                    return;
-                }
-                
-                users.forEach(user => {
-                    const div = document.createElement('div');
-                    div.className = 'col-md-6 mb-2';
-                    div.innerHTML = `
-                        <div class="form-check">
-                            <input class="form-check-input user-checkbox" type="checkbox" id="user_${user.id}" value="${user.id}">
-                            <label class="form-check-label" for="user_${user.id}">
-                                ${user.name} <small class="text-muted">(${user.group_name || 'Không có nhóm'})</small>
-                            </label>
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
-                
-                // Restore current user permissions if available
-                if (window.currentUserPermissions && window.currentUserPermissions.user_ids) {
-                    window.currentUserPermissions.user_ids.forEach(userId => {
-                        const checkbox = document.getElementById(`user_${userId}`);
-                        if (checkbox) checkbox.checked = true;
-                    });
-                }
-                
-                toggleAllUsers(); // Update UI state
-            })
-            .catch(error => {
-                console.error('Error loading users:', error);
-                showError('Có lỗi xảy ra khi tải danh sách user');
-            });
-        }
+        document.getElementById('all_users').addEventListener('change', toggleAllUsers);
 
         function toggleAllUsers() {
             const allCheckbox = document.getElementById('all_users');
             const userCheckboxes = document.querySelectorAll('.user-checkbox');
-            
             if (allCheckbox.checked) {
                 userCheckboxes.forEach(cb => {
                     cb.checked = true;
-                    cb.disabled = true;
-                });
-            } else {
-                userCheckboxes.forEach(cb => {
-                    cb.disabled = false;
                 });
             }
         }
 
         function saveUserPermissions() {
             const roleId = document.getElementById('user_role_id').value;
-            const isAll = document.getElementById('all_users').checked;
-            const userIds = isAll ? [] : Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => parseInt(cb.value));
-            
+            // Lấy tất cả user đang được check
+            const userIds = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => parseInt(cb.value));
             fetch(`/api/roles/${roleId}/user-permissions`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({is_all: isAll, user_ids: userIds})
+                body: JSON.stringify({user_ids: userIds}) // KHÔNG gửi is_all
             })
             .then(response => response.json())
             .then(result => {
