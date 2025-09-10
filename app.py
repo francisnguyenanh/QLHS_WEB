@@ -748,45 +748,46 @@ def is_user_gvcn():
 
 def get_user_permissions():
     """Get current user's permissions including CRUD capabilities"""
+    return {}
     if 'user_id' not in session:
         return {}
     
-    user = read_record_by_id('Users', session['user_id'])
-    if not user or not user[6]:  # role_id at index 6
-        return {}
+    # user = read_record_by_id('Users', session['user_id'])
+    # if not user or not user[6]:  # role_id at index 6
+    #     return {}
     
-    # Check if there's a forced role ID (for normal login with role ID 9)
-    if 'force_role_id' in session:
-        role_id = session['force_role_id']
-    else:
-        role_id = user[6]
+    # # Check if there's a forced role ID (for normal login with role ID 9)
+    # if 'force_role_id' in session:
+    #     role_id = session['force_role_id']
+    # else:
+    #     role_id = user[6]
     
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT permission_type, permission_level, can_create, can_update, can_delete
-        FROM Role_Permissions 
-        WHERE role_id = ? AND is_deleted = 0
-    """, (role_id,))
-    permissions_data = cursor.fetchall()
-    conn.close()
+    # conn = connect_db()
+    # cursor = conn.cursor()
+    # cursor.execute("""
+    #     SELECT permission_type, permission_level, can_create, can_update, can_delete
+    #     FROM Role_Permissions 
+    #     WHERE role_id = ? AND is_deleted = 0
+    # """, (role_id,))
+    # permissions_data = cursor.fetchall()
+    # conn.close()
     
-    permissions = {}
-    for perm_type, perm_level, can_create, can_update, can_delete in permissions_data:
-        if perm_type == 'master':
-            permissions[perm_type] = perm_level == 'true'
-            # Master has full CRUD on everything
-            permissions['master_create'] = True
-            permissions['master_update'] = True
-            permissions['master_delete'] = True
-        else:
-            permissions[perm_type] = perm_level
-            # Store CRUD permissions for each permission type
-            permissions[f'{perm_type}_create'] = bool(can_create)
-            permissions[f'{perm_type}_update'] = bool(can_update)
-            permissions[f'{perm_type}_delete'] = bool(can_delete)
+    # permissions = {}
+    # for perm_type, perm_level, can_create, can_update, can_delete in permissions_data:
+    #     if perm_type == 'master':
+    #         permissions[perm_type] = perm_level == 'true'
+    #         # Master has full CRUD on everything
+    #         permissions['master_create'] = True
+    #         permissions['master_update'] = True
+    #         permissions['master_delete'] = True
+    #     else:
+    #         permissions[perm_type] = perm_level
+    #         # Store CRUD permissions for each permission type
+    #         permissions[f'{perm_type}_create'] = bool(can_create)
+    #         permissions[f'{perm_type}_update'] = bool(can_update)
+    #         permissions[f'{perm_type}_delete'] = bool(can_delete)
     
-    return permissions
+    # return permissions
 
 def get_user_group_id(user_id):
     """Get group_id for a given user_id"""
@@ -1182,52 +1183,11 @@ def get_filtered_users_by_role():
     return [{'id': user[0], 'name': user[1]} for user in users]
 
 def get_filtered_groups_by_role():
-    """Get filtered groups based on current user's role permissions"""
-    if 'role_id' not in session:
-        return []
-    
-    role_id = session['role_id']
-    
-    # Master role gets all groups
-    if session.get('role_name') == 'Master':
-        conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 ORDER BY name")
-        groups = cursor.fetchall()
-        conn.close()
-        return [{'id': group[0], 'name': group[1]} for group in groups]
-    
-    # Get group permissions for this role
     conn = connect_db()
     cursor = conn.cursor()
-    
-    # Check if role has permission to all groups
-    cursor.execute("SELECT is_all FROM Role_Group_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
-    is_all_result = cursor.fetchone()
-    
-    if is_all_result and is_all_result[0]:
-        # Role has access to all groups
-        cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 ORDER BY name")
-        groups = cursor.fetchall()
-        conn.close()
-        return [{'id': group[0], 'name': group[1]} for group in groups]
-    
-    # Get specific group IDs for this role
-    cursor.execute("SELECT group_id FROM Role_Group_Permissions WHERE role_id = ?", (role_id,))
-    group_ids = [row[0] for row in cursor.fetchall()]
-    conn.close()
-    
-    if not group_ids:
-        return []
-    
-    # Get group details
-    conn = connect_db()
-    cursor = conn.cursor()
-    placeholders = ','.join('?' * len(group_ids))
-    cursor.execute(f"SELECT id, name FROM Groups WHERE id IN ({placeholders}) AND is_deleted = 0 ORDER BY name", group_ids)
+    cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 ORDER BY name")
     groups = cursor.fetchall()
     conn.close()
-    
     return [{'id': group[0], 'name': group[1]} for group in groups]
 
 def get_filtered_conducts_by_role():
@@ -4265,7 +4225,7 @@ def group_summary():
             params_uc.extend(excluded_roles)
         
         # Luôn tìm tất cả nhóm có quyền truy cập
-        all_group_ids = [group['id'] for group in groups]
+        all_group_ids = [group[0] for group in groups]
         if all_group_ids:
             query_uc += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
             params_uc.extend(all_group_ids)
@@ -4312,7 +4272,7 @@ def group_summary():
             params_us.extend(excluded_roles)
         
         # Luôn tìm tất cả nhóm có quyền truy cập
-        all_group_ids = [group['id'] for group in groups]
+        all_group_ids = [group[0] for group in groups]
         if all_group_ids:
             query_us += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
             params_us.extend(all_group_ids)

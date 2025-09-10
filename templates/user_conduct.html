@@ -214,7 +214,7 @@
                     </div>
                 </div>
                 
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-4">
                     <div class="form-group">
                         <label for="conducts">Hạnh kiểm:</label>
                         <select name="conducts" id="conducts" multiple class="form-control" size="6">
@@ -225,12 +225,12 @@
                     </div>
                 </div>
                 {% if role_name == 'GVCN' or role_name == 'Master' %}
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-2">
                     <div class="form-group">
                         <label for="groups">Nhóm:</label>
                         <select name="groups" id="groups" multiple class="form-control" size="6">
                             {% for group in groups %}
-                                <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
+                                <option value="{{ group.id }}" {% if group.id|string in selected_groups %}selected{% endif %}>{{ group.name }}</option>
                             {% endfor %}
                         </select>
                     </div>

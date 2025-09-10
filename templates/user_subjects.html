@@ -185,7 +185,7 @@
                         <label for="groups">Nhóm:</label>
                         <select name="groups" id="groups" multiple class="form-control" size="6">
                             {% for group in groups %}
-                                <option value="{{ group[0] }}" {% if group[0]|string in selected_groups %}selected{% endif %}>{{ group[1] }}</option>
+                                <option value="{{ group.id }}" {% if group.id|string in selected_groups %}selected{% endif %}>{{ group.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -282,7 +282,9 @@
                                     <label for="modal_user_id">Họ tên:</label>
                                     <select name="user_id" id="modal_user_id" class="form-control" required>
                                         <option value="">Chọn học sinh</option>
-                                        <!-- Options will be loaded dynamically -->
+                                        {% for user in all_users %}
+                                            <option value="{{ user.id }}">{{ user.name }}</option>
+                                        {% endfor %}
                                     </select>
                                 </div>
                                 <div class="form-group mt-3">
@@ -463,7 +465,7 @@
             document.getElementById('edit_criteria_section').style.display = 'none';
             
             // Load filtered data
-            loadFilteredUsersForModal();
+            //loadFilteredUsersForModal();
             loadFilteredSubjectsForModal();
             
             // Set người tạo
@@ -500,7 +502,7 @@
             document.getElementById('edit_criteria_section').style.display = 'block';
             
             // Load filtered data first
-            loadFilteredUsersForModal();
+            //loadFilteredUsersForModal();
             loadFilteredSubjectsForModal();
             
             // Fetch record data with small delay to ensure dropdowns are populated
