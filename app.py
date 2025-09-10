@@ -247,6 +247,33 @@ def verify_action_token(token, expected_action=None, expected_table=None):
         print(f"Action token verification error: {e}")
         return None
 
+def delete_record_by_key(table_name, key_name, key_value):
+    """Delete records from table_name where key_name = key_value"""
+    conn = connect_db()
+    cursor = conn.cursor()
+    query = f"DELETE FROM {table_name} WHERE {key_name} = ?"
+    cursor.execute(query, (key_value,))
+    conn.commit()
+    conn.close()
+
+def delete_all_role_permissions_except_system():
+    system_roles = [5, 9, 15]
+    tables = [
+        'Role_Permissions',
+        'Role_Menu_Permissions',
+        'Role_Subject_Permissions',
+        'Role_Criteria_Permissions',
+        'Role_User_Permissions',
+        'Role_Conduct_Permissions'
+    ]
+    conn = connect_db()
+    cursor = conn.cursor()
+    for table in tables:
+        query = f"DELETE FROM {table} WHERE role_id NOT IN ({','.join(str(r) for r in system_roles)})"
+        cursor.execute(query)
+    conn.commit()
+    conn.close()
+     
 @app.route('/secure/<action>/<table>/<token>')
 def secure_action_handler(action, table, token):
     """Generic handler for secure edit/delete operations"""
@@ -1648,6 +1675,13 @@ def role_delete(id):
         flash(f'Không thể xóa chức vụ này vì đang có {user_count} người liên kết với chức vụ', 'error')
     else:
         delete_record('Roles', id)
+        delete_record_by_key('Role_Permissions', 'role_id', id)
+        delete_record_by_key('Role_Menu_Permissions', 'role_id', id)
+        delete_record_by_key('Role_Subject_Permissions', 'role_id', id)
+        delete_record_by_key('Role_Criteria_Permissions', 'role_id', id)
+        delete_record_by_key('Role_User_Permissions', 'role_id', id)
+        delete_record_by_key('Role_Conduct_Permissions', 'role_id', id)
+
         flash('Xóa chức vụ thành công', 'success')
     
     return redirect(url_for('roles_list'))
@@ -2122,6 +2156,7 @@ def conduct_edit(id):
 @app.route('/conducts/delete/<int:id>')
 def conduct_delete(id):
     delete_record('Conduct', id)
+    delete_record_by_key('Role_Conduct_Permissions', 'conduct_id', id)
     return redirect(url_for('conducts_list'))
 
 
@@ -2221,6 +2256,8 @@ def subject_edit(id):
 @app.route('/subjects/delete/<int:id>')
 def subject_delete(id):
     delete_record('Subjects', id)
+    delete_record_by_key('Role_Subject_Permissions', 'subject_id', id)
+    
     return redirect(url_for('subjects_list'))
 
 
@@ -2343,6 +2380,7 @@ def criteria_edit(id):
 @app.route('/criteria/delete/<int:id>')
 def criteria_delete(id):
     delete_record('Criteria', id)
+    delete_record_by_key('Role_Criteria_Permissions', 'criteria_id', id)
     return redirect(url_for('criteria_list'))
 
 
@@ -2798,58 +2836,11 @@ def user_delete_secure(id, token):
         return redirect(url_for('users_list'))
     
     delete_record('Users', id)
+    delete_record_by_key('Role_User_Permissions', 'user_id', id)
+    
     flash('Xóa người dùng thành công', 'success')
     return redirect(url_for('users_list'))
-    if 'user_id' in session:
-        error_message = None  # Biến để lưu thông báo lỗi
-        if request.method == 'POST':
-            name = request.form['name']
-            username = request.form['username']
-            password = request.form['password']
-            class_id = request.form['class_id']
-            role_id = request.form['role_id']
-
-            # Kiểm tra các trường bắt buộc
-            if not all([name, username, password, class_id, role_id]):
-                error_message = 'Vui lòng điền đầy đủ tất cả các trường.'
-                user = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
-                classes = read_all_records('Classes', ['id', 'name'])
-                roles = read_all_records('Roles', ['id', 'name'])
-                return render_template('user_edit.html', user=user, classes=classes, roles=roles, error_message=error_message, is_gvcn=is_user_gvcn())
-
-            # Kiểm tra trùng username, ngoại trừ bản ghi hiện tại
-            conn = connect_db()
-            cursor = conn.cursor()
-            cursor.execute("SELECT id FROM Users WHERE username = ? AND id != ? AND is_deleted = 0", (username, id))
-            existing_user = cursor.fetchone()
-
-            if existing_user:
-                conn.close()
-                error_message = 'Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.'
-                user = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
-                classes = read_all_records('Classes', ['id', 'name'])
-                roles = read_all_records('Roles', ['id', 'name'])
-                return render_template('user_edit.html', user=user, classes=classes, roles=roles, error_message=error_message, is_gvcn=is_user_gvcn())
-
-            # Cập nhật bản ghi
-            data = {
-                'name': name,
-                'username': username,
-                'password': password,  # Nên mã hóa trước khi lưu
-                'class_id': class_id,
-                'role_id': role_id
-            }
-            update_record('Users', id, data)
-            conn.close()
-            return redirect(url_for('users_list'))
-
-        user = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
-        classes = read_all_records('Classes', ['id', 'name'])
-        roles = read_all_records('Roles', ['id', 'name'])
-        return render_template('user_edit.html', user=user, classes=classes, roles=roles, error_message=error_message, is_gvcn=is_user_gvcn())
-    else:
-        return redirect(url_for('login'))
-
+    
 
 @app.route('/users/delete/<int:id>')
 def user_delete(id):
@@ -5389,16 +5380,22 @@ def reset_table(table_name):
             
             # Xóa dữ liệu với điều kiện đặc biệt
             if table_name == 'Role_Permissions':
-                # Không xóa phân quyền của role Master, GVCN và role ID = 9
-                cursor.execute("""
-                    DELETE FROM Role_Permissions 
-                    WHERE role_id NOT IN (
-                        SELECT id FROM Roles WHERE name IN ('Master', 'GVCN') OR id = 9
-                    )
-                """)
+                system_roles = [5, 9, 15]
+                tables = [
+                    'Role_Permissions',
+                    'Role_Menu_Permissions',
+                    'Role_Subject_Permissions',
+                    'Role_Criteria_Permissions',
+                    'Role_User_Permissions',
+                    'Role_Conduct_Permissions'
+                ]
+                for table in tables:
+                    query = f"DELETE FROM {table} WHERE role_id NOT IN ({','.join(str(r) for r in system_roles)})"
+                    cursor.execute(query)
             elif table_name == 'Roles':
                 # Không xóa role Master, GVCN và role ID = 9
                 cursor.execute("DELETE FROM Roles WHERE name NOT IN ('Master', 'GVCN') AND id != 9")
+                
             elif table_name == 'Users':
                 # Không xóa user có role Master, GVCN
                 cursor.execute("""
