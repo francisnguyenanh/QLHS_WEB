@@ -1162,17 +1162,6 @@ def get_filtered_users_by_role():
     conn = connect_db()
     cursor = conn.cursor()
     
-    # Check if role has permission to all users
-    cursor.execute("SELECT is_all FROM Role_User_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
-    is_all_result = cursor.fetchone()
-    
-    if is_all_result and is_all_result[0]:
-        # Role has access to all users
-        cursor.execute("SELECT id, username, name FROM Users WHERE is_deleted = 0")
-        users = cursor.fetchall()
-        conn.close()
-        return [{'id': user[0], 'username': user[1], 'name': user[2]} for user in users]
-    
     # Get specific user IDs for this role
     cursor.execute("SELECT user_id FROM Role_User_Permissions WHERE role_id = ?", (role_id,))
     user_ids = [row[0] for row in cursor.fetchall()]
@@ -1185,11 +1174,12 @@ def get_filtered_users_by_role():
     conn = connect_db()
     cursor = conn.cursor()
     placeholders = ','.join('?' * len(user_ids))
-    cursor.execute(f"SELECT id, username, name FROM Users WHERE id IN ({placeholders}) AND is_deleted = 0 ORDER BY username", user_ids)
+    cursor.execute(f"SELECT id, name FROM Users WHERE id IN ({placeholders}) AND is_deleted = 0 ORDER BY name", user_ids)
     users = cursor.fetchall()
     conn.close()
     
-    return [{'id': user[0], 'username': user[1], 'name': user[2]} for user in users]
+    logging.info(f"Filtered users: {users}")   
+    return [{'id': user[0], 'name': user[1]} for user in users]
 
 def get_filtered_groups_by_role():
     """Get filtered groups based on current user's role permissions"""
@@ -2037,7 +2027,7 @@ def get_users_by_groups_api():
         conn = connect_db()
         cursor = conn.cursor()
         cursor.execute("""
-            SELECT u.id, u.name, g.name
+            SELECT u.id, u.name, g.id, g.name
             FROM Users u
             LEFT JOIN Roles r ON u.role_id = r.id
             LEFT JOIN Groups g ON u.group_id = g.id
@@ -2045,9 +2035,19 @@ def get_users_by_groups_api():
             AND (r.name IS NULL OR r.name NOT IN ('GVCN', 'Master'))
             ORDER BY g.name, u.name
         """)
-        users = [{'id': row[0], 'name': row[1], 'group_name': row[2] or ''} for row in cursor.fetchall()]
+        rows = cursor.fetchall()
         conn.close()
-        return jsonify(users)
+        # Group users by group
+        groups = {}
+        for user_id, user_name, group_id, group_name in rows:
+            if group_id not in groups:
+                groups[group_id] = {
+                    'group_id': group_id,
+                    'group_name': group_name or 'Chưa có nhóm',
+                    'users': []
+                }
+            groups[group_id]['users'].append({'id': user_id, 'name': user_name})
+        return jsonify(list(groups.values()))
     return jsonify({'error': 'Unauthorized'}), 401
 
 
@@ -3116,7 +3116,7 @@ def update_user_conduct_api(id):
 
 # --- User_Conduct ---
 @app.route('/user_conduct', methods=['GET', 'POST'])
-def user_conduct_list():
+def user_conduct_list():    
     if 'user_id' in session:
         if not can_access_conduct_management():
             flash('Bạn không có quyền truy cập chức năng này', 'error')
@@ -3150,7 +3150,7 @@ def user_conduct_list():
         conducts = get_filtered_conducts_by_role()
         
         # Sort users by first name using Vietnamese normalization
-        users.sort(key=lambda u: vietnamese_sort_key(u['username'], sort_by_first_name=True))
+        users.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=True))
         
         # Modal users same as filtered users for consistency
         modal_users = users.copy()
@@ -3717,7 +3717,7 @@ def user_subjects_list():
         criteria = get_filtered_criteria_by_role()
         
         # Sort users by first name using Vietnamese normalization
-        users.sort(key=lambda u: vietnamese_sort_key(u['username'], sort_by_first_name=True))
+        users.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=True))
         
         # Modal users same as filtered users for consistency
         modal_users = users.copy()

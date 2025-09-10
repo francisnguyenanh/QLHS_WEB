@@ -291,7 +291,7 @@
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="userPermissionModalLabel">Cấu hình quyền user</h5>
+                    <h5 class="modal-title" id="userPermissionModalLabel">Chọn học sinh quản lý</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -300,7 +300,7 @@
                         <div class="mb-3">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="all_users" onchange="toggleAllUsers()">
-                                <label class="form-check-label" for="all_users"><strong>Tất cả user</strong></label>
+                                <label class="form-check-label" for="all_users"><strong>Tất cả học sinh</strong></label>
                             </div>
                         </div>
                         <div id="usersList" class="row">
@@ -950,10 +950,8 @@
         }
 
         
-        
-
         function openUserPermissionModal(roleId, roleName) {
-            document.getElementById('userPermissionModalLabel').textContent = `Cấu hình quyền user: ${roleName}`;
+            document.getElementById('userPermissionModalLabel').textContent = `Chọn danh sách cho ${roleName}`;
             document.getElementById('user_role_id').value = roleId;
 
             fetch(`/api/roles/${roleId}/user-permissions`)
@@ -970,22 +968,40 @@
         function loadUsersList() {
             fetch('/api/users-by-groups')
             .then(response => response.json())
-            .then(users => {
+            .then(groups => {
                 const container = document.getElementById('usersList');
                 container.innerHTML = '';
-                users.forEach(user => {
-                    const div = document.createElement('div');
-                    div.className = 'col-md-4 mb-2';
-                    div.innerHTML = `
-                        <div class="form-check">
-                            <input class="form-check-input user-checkbox" type="checkbox" id="user_${user.id}" value="${user.id}">
-                            <label class="form-check-label" for="user_${user.id}">
-                                ${user.name} <small class="text-muted">(${user.group_name || 'Không có nhóm'})</small>
-                            </label>
-                        </div>
-                    `;
-                    container.appendChild(div);
+                groups.forEach(group => {
+                    // Tiêu đề nhóm
+                    const groupTitle = document.createElement('div');
+                    groupTitle.className = 'col-12 mb-2 fw-bold text-primary';
+                    groupTitle.textContent = group.group_name;
+                    container.appendChild(groupTitle);
+
+                    // Danh sách user trong nhóm (3 cột)
+                    let rowDiv = null;
+                    group.users.forEach((user, idx) => {
+                        if (idx % 3 === 0) {
+                            rowDiv = document.createElement('div');
+                            rowDiv.className = 'row mb-2';
+                            container.appendChild(rowDiv);
+                        }
+                        const userDiv = document.createElement('div');
+                        userDiv.className = 'col-md-4 mb-2';
+                        userDiv.innerHTML = `
+                            <div class="form-check">
+                                <input class="form-check-input user-checkbox" type="checkbox" id="user_${user.id}" value="${user.id}">
+                                <label class="form-check-label" for="user_${user.id}">
+                                    ${user.name}
+                                </label>
+                            </div>
+                        `;
+                        rowDiv.appendChild(userDiv);
+                    });
                 });
+
+                toggleAllUsers();
+                
                 // Check lại các user đã lưu quyền
                 if (window.currentUserPermissions && window.currentUserPermissions.user_ids) {
                     window.currentUserPermissions.user_ids.forEach(userId => {
@@ -993,7 +1009,7 @@
                         if (checkbox) checkbox.checked = true;
                     });
                 }
-                toggleAllUsers();
+                
             });
         }
 
@@ -1005,6 +1021,10 @@
             if (allCheckbox.checked) {
                 userCheckboxes.forEach(cb => {
                     cb.checked = true;
+                });
+            } else {
+                userCheckboxes.forEach(cb => {
+                    cb.checked = false;
                 });
             }
         }

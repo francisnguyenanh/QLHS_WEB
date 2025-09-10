@@ -164,7 +164,7 @@
                         <label for="users">Học sinh:</label>
                         <select name="users" id="users" multiple class="form-control" size="6">
                             {% for user in users %}
-                                <option value="{{ user[0] }}" {% if user[0]|string in selected_users %}selected{% endif %}>{{ user[1] }}</option>
+                                <option value="{{ user.id }}" {% if user.id|string in selected_users %}selected{% endif %}>{{ user.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -184,7 +184,7 @@
                         <label for="subjects">Môn học:</label>
                         <select name="subjects" id="subjects" multiple class="form-control" size="6">
                             {% for subject in subjects %}
-                                <option value="{{ subject[0] }}" {% if subject[0]|string in selected_subjects %}selected{% endif %}>{{ subject[1] }}</option>
+                                <option value="{{ subject.id }}" {% if subject.id|string in selected_subjects %}selected{% endif %}>{{ subject.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -523,7 +523,9 @@
                     console.error('Error fetching record:', error);
                     showError('Có lỗi xảy ra khi tải dữ liệu');
                 });
+            });
         }
+        
 
         function saveUserSubjects() {
             const userId = document.getElementById('modal_user_id').value;

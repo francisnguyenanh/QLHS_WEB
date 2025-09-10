@@ -208,7 +208,7 @@
                         <label for="users">Học sinh:</label>
                         <select name="users" id="users" multiple class="form-control" size="6">
                             {% for user in users %}
-                                <option value="{{ user[0] }}" {% if user[0]|string in selected_users %}selected{% endif %}>{{ user[1] }}</option>
+                                <option value="{{ user.id }}" {% if user.id|string in selected_users %}selected{% endif %}>{{ user.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -228,7 +228,7 @@
                         <label for="conducts">Hạnh kiểm:</label>
                         <select name="conducts" id="conducts" multiple class="form-control" size="6">
                             {% for conduct in conducts %}
-                                <option value="{{ conduct[0] }}" {% if conduct[0]|string in selected_conducts %}selected{% endif %}>{{ conduct[1] }}</option>
+                                <option value="{{ conduct.id }}" {% if conduct.id|string in selected_conducts %}selected{% endif %}>{{ conduct.name }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -320,7 +320,7 @@
                                     <select name="user_id" id="modal_user_id" class="form-control" required onchange="calculateModalTotalPoints()">
                                         <option value="">Chọn học sinh</option>
                                         {% for user in all_users %}
-                                            <option value="{{ user[0] }}">{{ user[1] }}</option>
+                                            <option value="{{ user.id }}">{{ user.name }}</option>
                                         {% endfor %}
                                     </select>
                                 </div>
