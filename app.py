@@ -6625,7 +6625,7 @@ def get_week_number_api():
         if result:
             return jsonify({'week_number': result[0]})
         else:
-            return jsonify({'week_number': None})
+            return jsonify({'week_number': 'X'})
     except Exception as e:
         return jsonify({'week_number': None, 'error': str(e)})
 

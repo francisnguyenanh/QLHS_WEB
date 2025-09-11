@@ -693,7 +693,7 @@
         }
 
         // Hàm cập nhật hiển thị thời gian
-        function updatePeriodDisplay() {
+        async function updatePeriodDisplay() {
             const periodDisplay = document.getElementById('periodDisplay');
             const dateFromInput = document.getElementById('date_from');
             const dateToInput = document.getElementById('date_to');
@@ -706,7 +706,7 @@
                 dateFromInput.value = formatDate(monday);
                 dateToInput.value = formatDate(sunday);
 
-                const weekNumber = getWeekNumber(monday);
+                const weekNumber = await getWeekNumber(monday);
                 periodDisplay.textContent = `Tuần ${weekNumber} - ${monday.getFullYear()}`;
             } else {
                 const firstDay = getFirstDayOfMonth(currentDate);
@@ -721,13 +721,23 @@
             }
         }
 
-        // Hàm lấy số tuần trong năm
-        function getWeekNumber(date) {
+        async function getWeekNumber(date) {
+            const monday = getMonday(date);
+            const mondayStr = formatDate(monday);
+            try {
+                const response = await fetch(`/api/get_week_number?monday_date=${mondayStr}`);
+                const data = await response.json();
+                return data.week_number || getDefaultWeekNumber(date);
+            } catch (error) {
+                return getDefaultWeekNumber(date);
+            }
+        }
+
+        function getDefaultWeekNumber(date) {
             const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
             const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
             return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
         }
-
         // Gộp tất cả DOMContentLoaded logic vào một function duy nhất
         document.addEventListener('DOMContentLoaded', function() {
             // Hiển thị page content sau khi DOM ready
