@@ -1,239 +1,260 @@
 {% extends "base.html" %}
-{% block content %}
-    <div class="container">
-        <h2 class="mt-4 mb-4">Reset Dữ Liệu Hệ Thống</h2>
-        
-        <div class="alert alert-danger" role="alert">
-            <strong>⚠️ Cảnh báo:</strong> Chức năng này sẽ xóa toàn bộ dữ liệu trong bảng được chọn. 
-            Hành động này không thể hoàn tác!
-        </div>
+{% block title %}Xóa Dữ Liệu{% endblock %}
 
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Danh sách các bảng dữ liệu</h5>
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Xóa Toàn Bộ Dữ Liệu Hệ Thống
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Cảnh báo:</strong> Chức năng này sẽ xóa toàn bộ dữ liệu trong hệ thống theo thứ tự sau:
                     </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover">
-                                <thead class="table-dark">
-                                    <tr>
-                                        <th>Tên Bảng</th>
-                                        <th>Mô Tả</th>
-                                        <th>Hành Động</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% set table_order = [
-                                        'User_Conduct', 
-                                        'User_Subjects', 
-                                        'Criteria', 
-                                        'Subjects', 
-                                        'Conduct', 
-                                        'Groups', 
-                                        'Role_Permissions', 
-                                        'Roles', 
-                                        'Classes', 
-                                        'Users'
-                                    ] %}
-                                    
-                                    {% for table_name in table_order %}
-                                        {% for table in tables %}
-                                            {% if table.name == table_name %}
-                                                <tr data-table="{{ table.name }}" data-order="{{ loop.index0 }}">
-                                                    <td><strong>{{ table.name }}</strong></td>
-                                                    <td>{{ table.description }}</td>
-                                                    <td>
-                                                        <button class="btn btn-danger btn-sm delete-btn" 
-                                                                data-table="{{ table.name }}"
-                                                                data-order="{{ loop.index0 }}"
-                                                                onclick="confirmDelete('{{ table.name }}', '{{ table.description }}')"
-                                                                {% if loop.index0 > 0 %}disabled{% endif %}>
-                                                            <i class="fas fa-trash"></i> Xóa Dữ Liệu
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            {% endif %}
-                                        {% endfor %}
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                    
+                    <div class="mb-4">
+                        <h5>Danh sách bảng sẽ được xóa:</h5>
+                        <ol class="list-group list-group-numbered">
+                            <li class="list-group-item">Dữ liệu hạnh kiểm học sinh</li>
+                            <li class="list-group-item">Dữ liệu học tập học sinh</li>
+                            <li class="list-group-item">Dữ liệu phân quyền chức vụ</li>
+                            <li class="list-group-item">Dữ liệu người dùng</li>
+                        </ol>
+                    </div>
+
+                    <div class="alert alert-danger">
+                        <i class="fas fa-skull-crossbones"></i>
+                        <strong>LƯU Ý QUAN TRỌNG:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Hành động này <strong>KHÔNG THỂ HOÀN TÁC</strong></li>
+                            <li>Tất cả dữ liệu sẽ bị xóa vĩnh viễn</li>
+                            <li>Chỉ tài khoản Master mới có quyền thực hiện</li>
+                            <li>Hãy đảm bảo đã sao lưu dữ liệu trước khi thực hiện</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-flex justify-content-center mt-4">
+                        <button type="button" class="btn btn-danger btn-lg" id="resetAllBtn">
+                            <i class="fas fa-trash-alt"></i>
+                            Xóa Toàn Bộ Dữ Liệu
+                        </button>
+                    </div>
+
+                    <!-- Progress indicator -->
+                    <div id="progressContainer" class="mt-4" style="display: none;">
+                        <h6>Tiến trình xóa dữ liệu:</h6>
+                        <div class="progress mb-2">
+                            <div class="progress-bar" role="progressbar" style="width: 0%" id="progressBar"></div>
+                        </div>
+                        <div id="progressText" class="small text-muted"></div>
+                        <div id="logContainer" class="mt-3">
+                            <div class="alert alert-info">
+                                <div id="logMessages"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Confirmation Modal -->
-    <div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title" id="confirmModalLabel">Xác Nhận Xóa Dữ Liệu</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-labelledby="confirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="confirmModalLabel">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Xác Nhận Xóa Dữ Liệu
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="fas fa-skull-crossbones"></i>
+                    <strong>BẠN CÓ CHẮC CHẮN MUỐN XÓA TOÀN BỘ DỮ LIỆU?</strong>
                 </div>
-                <div class="modal-body">
-                    <div class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <strong>Bạn có chắc chắn muốn xóa toàn bộ dữ liệu?</strong>
-                    </div>
-                    <p>Bảng: <strong id="tableName"></strong></p>
-                    <p>Mô tả: <span id="tableDescription"></span></p>
-                    <p class="text-danger"><strong>Hành động này không thể hoàn tác!</strong></p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
-                        <i class="fas fa-trash"></i> Xác Nhận Xóa
-                    </button>
-                </div>
+                <p>Hành động này sẽ:</p>
+                <ul>
+                    <li>Xóa tất cả dữ liệu học sinh, giáo viên</li>
+                    <li>Xóa toàn bộ điểm số, nhận xét</li>
+                    <li>Xóa cài đặt phân quyền</li>
+                    <li><strong>KHÔNG THỂ HOÀN TÁC</strong></li>
+                </ul>
+                <p class="text-danger"><strong>Vui lòng nhập "XOA TAT CA" để xác nhận:</strong></p>
+                <input type="text" class="form-control" id="confirmText" placeholder="Nhập: XOA TAT CA">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled>
+                    <i class="fas fa-trash"></i> Xác Nhận Xóa
+                </button>
             </div>
         </div>
     </div>
+</div>
 
-    <script>
-        let currentTableName = '';
-        let deletedTables = [];
-
-        // Kiểm tra và cập nhật trạng thái nút
-        function updateButtonStates() {
-            const buttons = document.querySelectorAll('.delete-btn');
-            const tableOrder = ['User_Conduct', 'User_Subjects', 'Criteria', 'Subjects', 'Conduct', 'Groups', 'Role_Permissions', 'Roles', 'Classes', 'Users'];
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const resetAllBtn = document.getElementById('resetAllBtn');
+    const confirmModal = new bootstrap.Modal(document.getElementById('confirmModal'));
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    const confirmText = document.getElementById('confirmText');
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    const logMessages = document.getElementById('logMessages');
+    
+    // Danh sách bảng cần xóa theo thứ tự
+    const tablesToDelete = [
+        'User_Conduct',
+        'User_Subjects', 
+        'Role_Permissions',
+        'Users'
+    ];
+    
+    // Show confirmation modal
+    resetAllBtn.addEventListener('click', function() {
+        confirmModal.show();
+    });
+    
+    // Enable/disable confirm button based on input
+    confirmText.addEventListener('input', function() {
+        const isValid = this.value.trim().toUpperCase() === 'XOA TAT CA';
+        confirmDeleteBtn.disabled = !isValid;
+    });
+    
+    // Reset input when modal is hidden
+    document.getElementById('confirmModal').addEventListener('hidden.bs.modal', function() {
+        confirmText.value = '';
+        confirmDeleteBtn.disabled = true;
+    });
+    
+    // Handle confirm delete
+    confirmDeleteBtn.addEventListener('click', async function() {
+        confirmModal.hide();
+        
+        // Show progress
+        progressContainer.style.display = 'block';
+        resetAllBtn.disabled = true;
+        
+        let completed = 0;
+        let total = tablesToDelete.length;
+        
+        logMessages.innerHTML = '<strong>Bắt đầu xóa dữ liệu...</strong><br>';
+        
+        for (let i = 0; i < tablesToDelete.length; i++) {
+            const tableName = tablesToDelete[i];
             
-            buttons.forEach(button => {
-                const tableName = button.getAttribute('data-table');
-                const order = parseInt(button.getAttribute('data-order'));
+            try {
+                // Update progress
+                progressText.textContent = `Đang xóa bảng: ${tableName} (${i + 1}/${total})`;
+                logMessages.innerHTML += `<span class="text-info">Đang xóa ${tableName}...</span><br>`;
                 
-                // Nút đầu tiên luôn được kích hoạt
-                if (order === 0) {
-                    button.disabled = false;
-                    return;
-                }
-                
-                // Kiểm tra xem tất cả các bảng trước đó đã được xóa chưa
-                let canEnable = true;
-                for (let i = 0; i < order; i++) {
-                    if (!deletedTables.includes(tableOrder[i])) {
-                        canEnable = false;
-                        break;
+                // Call backend
+                const response = await fetch(`/reset/table/${tableName}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
                     }
-                }
+                });
                 
-                button.disabled = !canEnable;
-                
-                // Thêm class để styling
-                if (button.disabled) {
-                    button.classList.add('btn-disabled');
-                } else {
-                    button.classList.remove('btn-disabled');
-                }
-            });
-        }
-
-        function confirmDelete(tableName, description) {
-            currentTableName = tableName;
-            document.getElementById('tableName').textContent = tableName;
-            document.getElementById('tableDescription').textContent = description;
-            
-            const modal = new bootstrap.Modal(document.getElementById('confirmModal'));
-            modal.show();
-        }
-
-        document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
-            if (currentTableName) {
-                deleteTable(currentTableName);
-            }
-        });
-
-        function deleteTable(tableName) {
-            fetch(`/reset/table/${tableName}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                const modal = bootstrap.Modal.getInstance(document.getElementById('confirmModal'));
-                modal.hide();
+                const data = await response.json();
                 
                 if (data.success) {
-                    showSuccess(`✅ ${data.message}`);
+                    completed++;
+                    const progress = (completed / total) * 100;
+                    progressBar.style.width = progress + '%';
+                    progressBar.textContent = Math.round(progress) + '%';
                     
-                    // Thêm bảng vào danh sách đã xóa
-                    if (!deletedTables.includes(tableName)) {
-                        deletedTables.push(tableName);
-                    }
-                    
-                    // Cập nhật trạng thái các nút
-                    updateButtonStates();
-                    
-                    // Disable nút vừa được sử dụng
-                    const currentButton = document.querySelector(`[data-table="${tableName}"]`);
-                    if (currentButton) {
-                        currentButton.disabled = true;
-                        currentButton.innerHTML = '<i class="fas fa-check"></i> Đã Xóa';
-                        currentButton.classList.add('btn-success');
-                        currentButton.classList.remove('btn-danger');
-                    }
+                    logMessages.innerHTML += `<span class="text-success">✅ ${data.message}</span><br>`;
                 } else {
-                    showError(`❌ Lỗi: ${data.error}`);
+                    logMessages.innerHTML += `<span class="text-danger">❌ Lỗi xóa ${tableName}: ${data.error}</span><br>`;
                 }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showError('❌ Có lỗi xảy ra khi xóa dữ liệu');
-            });
-        }
-
-        // Khởi tạo trạng thái nút khi trang load
-        document.addEventListener('DOMContentLoaded', function() {
-            updateButtonStates();
-        });
-    </script>
-
-    <style>
-        .table th {
-            border-top: none;
+                
+                // Scroll to bottom of log
+                logMessages.scrollTop = logMessages.scrollHeight;
+                
+                // Small delay between requests
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+            } catch (error) {
+                logMessages.innerHTML += `<span class="text-danger">❌ Lỗi kết nối khi xóa ${tableName}: ${error.message}</span><br>`;
+            }
         }
         
-        .card {
-            border: none;
-            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        }
+        // Complete
+        progressText.textContent = `Hoàn thành! Đã xóa ${completed}/${total} bảng.`;
+        logMessages.innerHTML += `<br><strong class="text-success">🎉 Quá trình xóa dữ liệu hoàn tất!</strong><br>`;
+        logMessages.innerHTML += `<strong>Tổng kết: ${completed}/${total} bảng đã được xóa thành công.</strong><br>`;
         
-        .btn-danger:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-        
-        .alert-danger {
-            border-left: 4px solid #dc3545;
-        }
+        resetAllBtn.disabled = false;
+    });
+    
+    // Toast notification function
+    function showToast(message, type = 'info') {
+        // You can implement toast notifications here if needed
+        console.log(`${type.toUpperCase()}: ${message}`);
+    }
+});
+</script>
 
-        .btn-disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
+<style>
+.card {
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
 
-        .delete-btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
+.list-group-item {
+    border-left: 4px solid #007bff;
+    margin-bottom: 2px;
+}
 
-        .btn-success {
-            background-color: #198754;
-            border-color: #198754;
-        }
+.progress {
+    height: 25px;
+}
 
-        .table tbody tr {
-            transition: all 0.3s ease;
-        }
+.progress-bar {
+    transition: width 0.3s ease;
+    color: white;
+    font-weight: bold;
+}
 
-        .table tbody tr:hover {
-            background-color: rgba(0, 0, 0, 0.05);
-        }
-    </style>
+#logContainer {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+#logMessages {
+    font-family: monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+.alert-danger {
+    border-left: 4px solid #dc3545;
+}
+
+.alert-warning {
+    border-left: 4px solid #ffc107;
+}
+</style>
 {% endblock %}

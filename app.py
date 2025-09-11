@@ -5372,10 +5372,14 @@ def reset_page():
 
 @app.route('/reset/table/<table_name>', methods=['POST'])
 def reset_table(table_name):
+    logging.info(f"Request to reset table: {table_name}")
+    
     if 'user_id' in session:
         if not can_access_master():
+            logging.info("Access denied for user_id: {}".format(session['user_id']))
             return jsonify({'error': 'Không có quyền truy cập'}), 403
         
+        logging.info("Access granted for user_id: {}".format(session['user_id']))
         # Danh sách table được phép xóa theo thứ tự
         allowed_tables = ['User_Conduct', 'User_Subjects', 'Criteria', 'Subjects', 'Conduct', 
                          'Groups', 'Role_Permissions', 'Roles', 'Classes', 'Users']
@@ -5401,6 +5405,8 @@ def reset_table(table_name):
                 for table in tables:
                     query = f"DELETE FROM {table} WHERE role_id NOT IN ({','.join(str(r) for r in system_roles)})"
                     cursor.execute(query)
+                
+                cursor.execute("DELETE FROM Role_User_Permissions")
             elif table_name == 'Roles':
                 # Không xóa role Master, GVCN và role ID = 9
                 cursor.execute("DELETE FROM Roles WHERE name NOT IN ('Master', 'GVCN') AND id != 9")
