@@ -65,7 +65,7 @@
                             <td class="text-nowrap">
                                 {% if role[1] not in ['GVCN', 'Master'] and role[0] != 9 %}
                                     <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ role[0] }})">Sửa</button>
-                                    <button class="btn btn-sm btn-danger" onclick="confirmDelete('Bạn có chắc chắn muốn xóa chức vụ này?', () => deleteItem('{{ url_for('role_delete', id=role[0]) }}'))">Xoá</button>
+                                    <button class="btn btn-sm btn-danger" onclick="confirmDelete('Bạn có chắc chắn muốn xóa chức vụ này?', function() { deleteItem('{{ url_for('role_delete', id=role[0]) }}'); })">Xoá</button>
                                 {% else %}
                                     <button class="btn btn-sm btn-secondary me-1" disabled title="Không thể sửa role hệ thống">Sửa</button>
                                     <button class="btn btn-sm btn-secondary" disabled title="Không thể xóa role hệ thống">Xoá</button>
@@ -1100,7 +1100,9 @@
             background: linear-gradient(45deg, #138496, #0056b3);
             color: white;
         }
+    </style>
 
+    <script>
         function deleteItem(url) {
             // Hiển thị toast thành công trước
             showSuccess('Đang xóa...');
@@ -1109,5 +1111,5 @@
                 window.location.href = url;
             }, 1000); // 1 giây để hiển thị toast "Đang xóa..."
         }
-    </style>
+    </script>
 {% endblock %}
