@@ -127,7 +127,7 @@
             <div class="row g-3">
                 <div class="col-12 col-md-3">
                     <!-- Chọn loại thời gian -->
-                    <div class="form-group mb-3">
+                    <div class="form-group mb-4">
                         <div class="btn-group w-100" role="group">
                             <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" checked>
                             <label class="btn btn-outline-primary" for="week_type">Tuần</label>
@@ -169,7 +169,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-4">
                     <div class="form-group">
                         <label for="subjects">Môn học:</label>
                         <select name="subjects" id="subjects" multiple class="form-control" size="6">
@@ -180,7 +180,7 @@
                     </div>
                 </div>
                 {% if role_name == 'GVCN' or role_name == 'Master' %}
-                <div class="col-12 col-md-3">
+                <div class="col-12 col-md-2">
                     <div class="form-group">
                         <label for="groups">Nhóm:</label>
                         <select name="groups" id="groups" multiple class="form-control" size="6">

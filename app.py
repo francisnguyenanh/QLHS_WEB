@@ -914,7 +914,6 @@ def render_template_with_permissions(template_name, **kwargs):
         # Thêm menu permissions
         kwargs['menu_permissions'] = get_menu_permissions()
         
-        logging.info(f"Menu permissions: {kwargs['menu_permissions']}")
     return render_template(template_name, **kwargs)
 
 def get_menu_permissions():
@@ -1153,7 +1152,7 @@ def get_filtered_users_by_role():
     users = cursor.fetchall()
     conn.close()
     
-    logging.info(f"Filtered users: {users}")   
+
     return [{'id': user[0], 'name': user[1]} for user in users]
 
 def get_filtered_groups_by_role():
@@ -1175,7 +1174,7 @@ def get_filtered_conducts_by_role():
     if session.get('role_name') == 'Master':
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type, conduct_points DESC")
+        cursor.execute("SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type, name DESC")
         conducts = cursor.fetchall()
         conn.close()
         return [{'id': conduct[0], 'name': conduct[1], 'conduct_type': conduct[2], 'conduct_points': conduct[3]} for conduct in conducts]
@@ -1190,7 +1189,7 @@ def get_filtered_conducts_by_role():
     
     if is_all_result and is_all_result[0]:
         # Role has access to all conducts
-        cursor.execute("SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type, conduct_points DESC")
+        cursor.execute("SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type, name DESC")
         conducts = cursor.fetchall()
         conn.close()
         return [{'id': conduct[0], 'name': conduct[1], 'conduct_type': conduct[2], 'conduct_points': conduct[3]} for conduct in conducts]
@@ -1955,7 +1954,6 @@ def save_role_user_permissions(role_id):
             cursor.execute("INSERT INTO Role_User_Permissions (role_id, user_id, is_all) VALUES (?, ?, 0)", 
                          (role_id, user_id))
 
-        logging.info(f"Saved user permissions for role_id {role_id}: user_ids={user_ids}")
         conn.commit()
         conn.close()
 
@@ -2037,6 +2035,8 @@ def get_filtered_conducts_api():
         return jsonify({'error': 'Unauthorized'}), 401
     
     conducts = get_filtered_conducts_by_role()
+    conducts.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+    
     return jsonify({'conducts': conducts})
 
 @app.route('/api/users/filtered')
@@ -2064,6 +2064,9 @@ def get_filtered_subjects_api():
         return jsonify({'error': 'Unauthorized'}), 401
     
     subjects = get_filtered_subjects_by_role()
+    subjects.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+    
+    
     return jsonify({'subjects': subjects})
 
 @app.route('/api/criteria/filtered')
@@ -2073,6 +2076,7 @@ def get_filtered_criteria_api():
         return jsonify({'error': 'Unauthorized'}), 401
     
     criteria = get_filtered_criteria_by_role()
+    criteria.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
     return jsonify({'criteria': criteria})
 
 # --- Conduct ---
@@ -3049,6 +3053,8 @@ def user_conduct_list():
         
         # Sort users by first name using Vietnamese normalization
         users.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=True))
+        conducts.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+        groups.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
         
         # Modal users same as filtered users for consistency
         modal_users = users.copy()
@@ -3616,6 +3622,9 @@ def user_subjects_list():
         
         # Sort users by first name using Vietnamese normalization
         users.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=True))
+        groups.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+        subjects.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+        criteria.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
         
         # Modal users same as filtered users for consistency
         modal_users = users.copy()
