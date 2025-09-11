@@ -19,13 +19,9 @@
     
     <!-- Navigation tabs -->
     <ul class="nav nav-tabs" id="settingsTabs" role="tablist">
+        
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button">
-                <i class="fas fa-cog"></i> Cài đặt chung
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="background-tab" data-bs-toggle="tab" data-bs-target="#background" type="button">
+            <button class="nav-link active" id="background-tab" data-bs-toggle="tab" data-bs-target="#background" type="button">
                 <i class="fas fa-image"></i> Hình nền
             </button>
         </li>
@@ -34,162 +30,169 @@
                 <i class="fas fa-calendar-week"></i> Cài đặt tuần
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link " id="general-tab" data-bs-toggle="tab" data-bs-target="#general" type="button">
+                <i class="fas fa-cog"></i> Quyền Admin
+            </button>
+        </li>
     </ul>
 
     <!-- Tab content -->
     <div class="tab-content mt-3" id="settingsTabContent">
         <!-- General settings tab -->
-        <div class="tab-pane fade show active" id="general" role="tabpanel">
+        <div class="tab-pane fade" id="general" role="tabpanel">
     
-    <div class="row">
-        <!-- Phần quản lý thời gian hiệu lực hệ thống - chỉ master mới thấy -->
-        {% if is_master %}
-        <div class="col-12 mb-4">
-            <div class="card border-warning">
-                <div class="card-header bg-warning text-dark">
-                    <h5><i class="fas fa-clock"></i> Quản Lý Thời Gian Hiệu Lực Hệ Thống</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="expiry_date" class="form-label">
-                                    <i class="fas fa-calendar-alt"></i> Ngày hết hiệu lực:
-                                </label>
-                                <input type="date" 
-                                       class="form-control" 
-                                       id="expiry_date" 
-                                       value="{{ system_expiry_date or '' }}">
-                                <div class="form-text">
-                                    {% if system_expiry_date %}
-                                        Hiệu lực đến: <strong>{{ system_expiry_date }}</strong>
-                                    {% else %}
-                                        <span class="text-success">Hệ thống không giới hạn thời gian</span>
-                                    {% endif %}
+            <div class="row">
+                <!-- Phần quản lý thời gian hiệu lực hệ thống - chỉ master mới thấy -->
+                {% if is_master %}
+                <div class="col-12 mb-4">
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5><i class="fas fa-clock"></i> Quản Lý Thời Gian Hiệu Lực Hệ Thống</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="expiry_date" class="form-label">
+                                            <i class="fas fa-calendar-alt"></i> Ngày hết hiệu lực:
+                                        </label>
+                                        <input type="date" 
+                                            class="form-control" 
+                                            id="expiry_date" 
+                                            value="{{ system_expiry_date or '' }}">
+                                        <div class="form-text">
+                                            {% if system_expiry_date %}
+                                                Hiệu lực đến: <strong>{{ system_expiry_date }}</strong>
+                                            {% else %}
+                                                <span class="text-success">Hệ thống không giới hạn thời gian</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            <i class="fas fa-magic"></i> Thiết lập nhanh:
+                                        </label>
+                                        <div class="btn-group d-block" role="group">
+                                            <button type="button" class="btn btn-outline-primary btn-sm me-2 mb-2" onclick="setExpiryDate(1)">
+                                                <i class="fas fa-calendar"></i> 1 tháng
+                                            </button>
+                                            <button type="button" class="btn btn-outline-primary btn-sm me-2 mb-2" onclick="setExpiryDate(3)">
+                                                <i class="fas fa-calendar-week"></i> 3 tháng
+                                            </button>
+                                            <button type="button" class="btn btn-outline-primary btn-sm me-2 mb-2" onclick="setExpiryDate(12)">
+                                                <i class="fas fa-calendar-year"></i> 1 năm
+                                            </button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm mb-2" onclick="clearExpiryDate()">
+                                                <i class="fas fa-infinity"></i> Không giới hạn
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="alert alert-info">
+                                        <h6><i class="fas fa-info-circle"></i> Thông tin:</h6>
+                                        <ul class="mb-0">
+                                            <li>User có role <strong>Master</strong> luôn được đăng nhập</li>
+                                            <li>User khác sẽ bị chặn sau ngày hết hiệu lực</li>
+                                            <li>Để trống = không giới hạn thời gian</li>
+                                            <li>Ngày hiện tại: <strong id="current_date">{{ current_date }}</strong></li>
+                                        </ul>
+                                    </div>
                                 </div>
                             </div>
                             
-                            <div class="mb-3">
-                                <label class="form-label">
-                                    <i class="fas fa-magic"></i> Thiết lập nhanh:
-                                </label>
-                                <div class="btn-group d-block" role="group">
-                                    <button type="button" class="btn btn-outline-primary btn-sm me-2 mb-2" onclick="setExpiryDate(1)">
-                                        <i class="fas fa-calendar"></i> 1 tháng
-                                    </button>
-                                    <button type="button" class="btn btn-outline-primary btn-sm me-2 mb-2" onclick="setExpiryDate(3)">
-                                        <i class="fas fa-calendar-week"></i> 3 tháng
-                                    </button>
-                                    <button type="button" class="btn btn-outline-primary btn-sm me-2 mb-2" onclick="setExpiryDate(12)">
-                                        <i class="fas fa-calendar-year"></i> 1 năm
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary btn-sm mb-2" onclick="clearExpiryDate()">
-                                        <i class="fas fa-infinity"></i> Không giới hạn
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="alert alert-info">
-                                <h6><i class="fas fa-info-circle"></i> Thông tin:</h6>
-                                <ul class="mb-0">
-                                    <li>User có role <strong>Master</strong> luôn được đăng nhập</li>
-                                    <li>User khác sẽ bị chặn sau ngày hết hiệu lực</li>
-                                    <li>Để trống = không giới hạn thời gian</li>
-                                    <li>Ngày hiện tại: <strong id="current_date">{{ current_date }}</strong></li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="text-center">
-                        <button type="button" class="btn btn-warning" onclick="saveSystemConfig()">
-                            <i class="fas fa-save"></i> Lưu Cấu Hình Hệ Thống
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
-        </div> <!-- End general tab -->
-        
-        <!-- Background settings tab -->
-        <div class="tab-pane fade" id="background" role="tabpanel">
-        <div class="row">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-image"></i> Thay Đổi Hình Nền Trang Chủ</h5>
-                </div>
-                <div class="card-body">
-                    {% if current_background %}
-                        <div class="mb-3">
-                            <label class="form-label">Hình nền hiện tại:</label>
-                            <div class="current-background-preview">
-                                <img src="{{ url_for('serve_background', filename=current_background) }}" 
-                                     alt="Current Background" 
-                                     style="max-width: 300px; max-height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            </div>
-                        </div>
-                    {% endif %}
-                    
-                    <form method="POST" action="{{ url_for('settings_update_background') }}" enctype="multipart/form-data">
-                        <div class="mb-3">
-                            <label for="background_image" class="form-label">Chọn hình nền mới:</label>
-                            <input type="file" 
-                                   class="form-control" 
-                                   id="background_image" 
-                                   name="background_image" 
-                                   accept=".png,.jpg,.jpeg,.gif,.webp"
-                                   required>
-                            <div class="form-text">
-                                Hỗ trợ các định dạng: PNG, JPG, JPEG, GIF, WEBP. Kích thước tối đa: 10MB.
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <div id="imagePreview" class="d-none">
-                                <label class="form-label">Xem trước:</label>
-                                <div>
-                                    <img id="previewImg" src="" alt="Preview" 
-                                         style="max-width: 300px; max-height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-upload"></i> Cập Nhật Hình Nền
-                            </button>
-                            {% if current_background %}
-                                <button class="btn btn-outline-danger"
-                                   onclick="confirmDelete('Bạn có chắc chắn muốn xóa hình nền hiện tại?', () => deleteBackground())">
-                                    <i class="fas fa-trash"></i> Xóa Hình Nền
+                            <div class="text-center">
+                                <button type="button" class="btn btn-warning" onclick="saveSystemConfig()">
+                                    <i class="fas fa-save"></i> Lưu Cấu Hình Hệ Thống
                                 </button>
-                            {% endif %}
+                            </div>
                         </div>
-                    </form>
+                    </div>
                 </div>
-            </div>
+                {% endif %}
+            </div> <!-- End general tab -->
         </div>
-        
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h6><i class="fas fa-info-circle"></i> Hướng Dẫn</h6>
+                
+                <!-- Background settings tab -->
+        <div class="tab-pane fade show active" id="background" role="tabpanel">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5><i class="fas fa-image"></i> Thay Đổi Hình Nền Trang Chủ</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if current_background %}
+                                <div class="mb-3">
+                                    <label class="form-label">Hình nền hiện tại:</label>
+                                    <div class="current-background-preview">
+                                        <img src="{{ url_for('serve_background', filename=current_background) }}" 
+                                            alt="Current Background" 
+                                            style="max-width: 300px; max-height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            <form method="POST" action="{{ url_for('settings_update_background') }}" enctype="multipart/form-data">
+                                <div class="mb-3">
+                                    <label for="background_image" class="form-label">Chọn hình nền mới:</label>
+                                    <input type="file" 
+                                        class="form-control" 
+                                        id="background_image" 
+                                        name="background_image" 
+                                        accept=".png,.jpg,.jpeg,.gif,.webp"
+                                        required>
+                                    <div class="form-text">
+                                        Hỗ trợ các định dạng: PNG, JPG, JPEG, GIF, WEBP. Kích thước tối đa: 10MB.
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div id="imagePreview" class="d-none">
+                                        <label class="form-label">Xem trước:</label>
+                                        <div>
+                                            <img id="previewImg" src="" alt="Preview" 
+                                                style="max-width: 300px; max-height: 200px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-upload"></i> Cập Nhật Hình Nền
+                                    </button>
+                                    {% if current_background %}
+                                        <button class="btn btn-outline-danger"
+                                        onclick="confirmDelete('Bạn có chắc chắn muốn xóa hình nền hiện tại?', () => deleteBackground())">
+                                            <i class="fas fa-trash"></i> Xóa Hình Nền
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
-                    <ul class="list-unstyled">
-                        <li><i class="fas fa-check text-success"></i> Chọn ảnh chất lượng cao để có kết quả tốt nhất</li>
-                        <li><i class="fas fa-check text-success"></i> Ảnh sẽ được tự động điều chỉnh kích thước</li>
-                        <li><i class="fas fa-check text-success"></i> Hỗ trợ ảnh từ điện thoại và máy tính</li>
-                        <li><i class="fas fa-check text-success"></i> Ảnh ngang hoặc dọc đều được hỗ trợ</li>
-                    </ul>
+                
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6><i class="fas fa-info-circle"></i> Hướng Dẫn</h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled">
+                                <li><i class="fas fa-check text-success"></i> Chọn ảnh chất lượng cao để có kết quả tốt nhất</li>
+                                <li><i class="fas fa-check text-success"></i> Ảnh sẽ được tự động điều chỉnh kích thước</li>
+                                <li><i class="fas fa-check text-success"></i> Hỗ trợ ảnh từ điện thoại và máy tính</li>
+                                <li><i class="fas fa-check text-success"></i> Ảnh ngang hoặc dọc đều được hỗ trợ</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </div> <!-- End row -->
         </div>
-    </div>
 </div>
 
 <script>

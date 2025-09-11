@@ -1,6 +1,27 @@
-{% extends "base.html" %}
 
-{% block content %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Cài đặt số tuần</title>
+    <!-- Thêm Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <!-- Nếu cần icon/fontawesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <!-- Thêm font tiếng Việt -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:400,500,700&display=swap&subset=vietnamese" rel="stylesheet">
+    <style>
+        body, html {
+            font-family: Arial, sans-serif;
+            font-size: 16px;
+            background-color: #f8f9fa;
+        }
+        h2, h4, th, td, label, button {
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
 <div class="container-fluid mt-3">
     <h2>Cài đặt số tuần</h2>
     
@@ -97,4 +118,6 @@ function saveWeekSettings() {
     });
 }
 </script>
-{% endblock %}
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
