@@ -55,7 +55,7 @@
                     {% for criterion in criteria %}
                         <tr>
                             <td>{{ criterion[1] }}</td>
-                            <td>{{ 'Positive' if criterion[2] else 'Negative' }}</td>
+                            <td>{{ 'điểm cộng' if criterion[2] else 'điểm trừ' }}</td>
                             <td>{{ criterion[3] }}</td>
                             <td class="text-nowrap">
                                 <button class="btn btn-sm btn-primary me-1" onclick="openEditModal({{ criterion[0] }})">Sửa</button>

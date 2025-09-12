@@ -83,9 +83,9 @@
                             <label for="modal_name" class="form-label">Tên hạnh kiểm:</label>
                             <input type="text" name="name" id="modal_name" class="form-control" required>
                         </div>
-                        <div class="mb-3">
-                            <label for="modal_conduct_type" class="form-label">Loại hạnh kiểm:</label>
-                            <input type="text" name="conduct_type" id="modal_conduct_type" class="form-control" required>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" name="conduct_type" id="modal_conduct_type" class="form-check-input">
+                            <label class="form-check-label" for="modal_conduct_type">Tuyên dương</label>
                         </div>
                         <div class="mb-3">
                             <label for="modal_conduct_points" class="form-label">Điểm hạnh kiểm:</label>
@@ -126,7 +126,7 @@
                 .then(data => {
                     document.getElementById('modal_id').value = data.id;
                     document.getElementById('modal_name').value = data.name;
-                    document.getElementById('modal_conduct_type').value = data.conduct_type;
+                    document.getElementById('modal_conduct_type').checked = (data.conduct_type === 'điểm cộng');
                     document.getElementById('modal_conduct_points').value = data.conduct_points;
                     
                     const modal = new bootstrap.Modal(document.getElementById('conductModal'));
@@ -144,7 +144,7 @@
             
             const data = {
                 name: formData.get('name'),
-                conduct_type: formData.get('conduct_type'),
+                conduct_type: document.getElementById('modal_conduct_type').checked ? 'điểm cộng' : 'điểm trừ',
                 conduct_points: formData.get('conduct_points')
             };
 

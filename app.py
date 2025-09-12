@@ -657,108 +657,7 @@ def setup_sample_data():
         conn.execute("ALTER TABLE Users ADD COLUMN role_password TEXT")
     except:
         pass  # Column already exists
-    # conn.executescript("""
-    #     CREATE TABLE IF NOT EXISTS Classes (
-    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #         name TEXT NOT NULL,
-    #         is_deleted BOOLEAN DEFAULT 0
-    #     );
-    #     INSERT OR IGNORE INTO Classes (name, is_deleted) VALUES ('Lớp 10A1', 0), ('Lớp 10A2', 0);
-    #
-    #     CREATE TABLE IF NOT EXISTS Roles (
-    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #         name TEXT NOT NULL,
-    #         is_deleted BOOLEAN DEFAULT 0
-    #     );
-    #     INSERT OR IGNORE INTO Roles (name, is_deleted) VALUES ('Học sinh', 0), ('Giáo viên', 0);
-    #
-    #     CREATE TABLE IF NOT EXISTS Groups (
-    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #         name TEXT NOT NULL,
-    #         is_deleted BOOLEAN DEFAULT 0
-    #     );
-    #     INSERT OR IGNORE INTO Groups (name, is_deleted) VALUES ('Tổ 1', 0), ('Tổ 2', 0);
-    #
-    #     CREATE TABLE IF NOT EXISTS Users (
-    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #         name TEXT NOT NULL,
-    #         username TEXT NOT NULL UNIQUE,
-    #         password TEXT NOT NULL,
-    #         class_id INTEGER,
-    #         group_id INTEGER,
-    #         role_id INTEGER,
-    #         is_deleted BOOLEAN DEFAULT 0,
-    #         FOREIGN KEY (class_id) REFERENCES Classes(id),
-    #         FOREIGN KEY (role_id) REFERENCES Roles(id),
-    #         FOREIGN KEY (group_id) REFERENCES Groups(id)
-    #     );
-    #     INSERT OR IGNORE INTO Users (name, username, password, class_id, group_id, role_id, is_deleted) VALUES
-    #     ('Nguyễn Văn A', 'nguyenvana', 'pass123', 1, 1, 1, 0),
-    #     ('Trần Thị B', 'tranthib', 'pass456', 2, 2, 1, 0);
-    #
-    #     CREATE TABLE IF NOT EXISTS Conduct (
-    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #         name TEXT NOT NULL,
-    #         conduct_type TEXT,
-    #         conduct_points INTEGER,
-    #         is_deleted BOOLEAN DEFAULT 0
-    #     );
-    #     INSERT OR IGNORE INTO Conduct (name, conduct_type, conduct_points, is_deleted) VALUES
-    #     ('Tốt', 'Positive', 90, 0),
-    #     ('Khá', 'Positive', 70, 0);
-    #
-    #     CREATE TABLE IF NOT EXISTS Subjects (
-    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #         name TEXT NOT NULL,
-    #         is_deleted BOOLEAN DEFAULT 0
-    #     );
-    #     INSERT OR IGNORE INTO Subjects (name, is_deleted) VALUES ('Toán', 0), ('Văn', 0);
-    #
-    #     CREATE TABLE IF NOT EXISTS Criteria (
-    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #         name TEXT NOT NULL,
-    #         criterion_type BOOLEAN,
-    #         criterion_points INTEGER,
-    #         is_deleted BOOLEAN DEFAULT 0
-    #     );
-    #     INSERT OR IGNORE INTO Criteria (name, criterion_type, criterion_points, is_deleted) VALUES
-    #     ('Giỏi', 1, 85, 0),
-    #     ('Trung bình', 0, 60, 0);
-    #
-    #     CREATE TABLE IF NOT EXISTS User_Conduct (
-    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #         user_id INTEGER NOT NULL,
-    #         conduct_id INTEGER NOT NULL,
-    #         registered_date TEXT,
-    #         total_points INTEGER,
-    #         entry_date TEXT DEFAULT CURRENT_TIMESTAMP,
-    #         entered_by TEXT,
-    #         is_deleted BOOLEAN DEFAULT 0,
-    #         FOREIGN KEY (user_id) REFERENCES Users(id),
-    #         FOREIGN KEY (conduct_id) REFERENCES Conduct(id)
-    #     );
-    #     INSERT OR IGNORE INTO User_Conduct (user_id, conduct_id, registered_date, total_points, entered_by, is_deleted) VALUES
-    #     (1, 1, '2025-03-25', 90, 'Lê Văn C', 0),
-    #     (2, 2, '2025-03-15', 70, 'Lê Văn C', 0);
-    #
-    #     CREATE TABLE IF NOT EXISTS User_Subjects (
-    #         id INTEGER PRIMARY KEY AUTOINCREMENT,
-    #         user_id INTEGER NOT NULL,
-    #         subject_id INTEGER NOT NULL,
-    #         criteria_id INTEGER,
-    #         registered_date TEXT,
-    #         total_points INTEGER,
-    #         entry_date TEXT DEFAULT CURRENT_TIMESTAMP,
-    #         entered_by TEXT,
-    #         is_deleted BOOLEAN DEFAULT 0,
-    #         FOREIGN KEY (user_id) REFERENCES Users(id),
-    #         FOREIGN KEY (subject_id) REFERENCES Subjects(id),
-    #         FOREIGN KEY (criteria_id) REFERENCES Criteria(id)
-    #     );
-    #     INSERT OR IGNORE INTO User_Subjects (user_id, subject_id, criteria_id, registered_date, total_points, entered_by, is_deleted) VALUES
-    #     (1, 1, 1, '2025-03-25', 85, 'Lê Văn C', 0),
-    #     (2, 2, 2, '2025-03-15', 60, 'Lê Văn C', 0);
-    # """)
+    
     conn.commit()
     conn.close()
 
@@ -771,53 +670,7 @@ def is_user_gvcn():
         return (role and role[1] == 'GVCN') # role name is at index 1
     return False
 
-def get_user_permissions():
-    """Get current user's permissions including CRUD capabilities"""
-    return {}
-    if 'user_id' not in session:
-        return {}
-    
-    # user = read_record_by_id('Users', session['user_id'])
-    # if not user or not user[6]:  # role_id at index 6
-    #     return {}
-    
-    # # Check if there's a forced role ID (for normal login with role ID 9)
-    # if 'force_role_id' in session:
-    #     role_id = session['force_role_id']
-    # else:
-    #     role_id = user[6]
-    
-    # conn = connect_db()
-    # cursor = conn.cursor()
-    # cursor.execute("""
-    #     SELECT permission_type, permission_level, can_create, can_update, can_delete
-    #     FROM Role_Permissions 
-    #     WHERE role_id = ? AND is_deleted = 0
-    # """, (role_id,))
-    # permissions_data = cursor.fetchall()
-    # conn.close()
-    
-    # permissions = {}
-    # for perm_type, perm_level, can_create, can_update, can_delete in permissions_data:
-    #     if perm_type == 'master':
-    #         permissions[perm_type] = perm_level == 'true'
-    #         # Master has full CRUD on everything
-    #         permissions['master_create'] = True
-    #         permissions['master_update'] = True
-    #         permissions['master_delete'] = True
-    #     else:
-    #         permissions[perm_type] = perm_level
-    #         # Store CRUD permissions for each permission type
-    #         permissions[f'{perm_type}_create'] = bool(can_create)
-    #         permissions[f'{perm_type}_update'] = bool(can_update)
-    #         permissions[f'{perm_type}_delete'] = bool(can_delete)
-    
-    # return permissions
 
-def get_user_group_id(user_id):
-    """Get group_id for a given user_id"""
-    user = read_record_by_id('Users', user_id)
-    return user[5] if user else None  # group_id is at index 5
 
 def get_user_by_id(user_id):
     """Get user information by user_id"""
@@ -846,7 +699,6 @@ def get_user_data_filters():
         return {}
     
     user = read_record_by_id('Users', session['user_id'])
-    permissions = get_user_permissions()
     
     filters = {
         'user_id': user[0],
@@ -1028,68 +880,7 @@ def save_uploaded_file(file, upload_folder):
         return filename
     return None
 
-def filter_users_by_permission(users, permission_type):
-    """Filter users based on permission level"""
-    return []
-    # if 'user_id' not in session:
-    #     return []
-    
-    # permissions = get_user_permissions()
-    
-    # # If user has master permission, return all users
-    # if permissions.get('master', False):
-    #     return users
-    
-    # permission_level = permissions.get(permission_type, 'none')
-    
-    # if permission_level == 'none':
-    #     return []
-    # elif permission_level == 'self_only':
-    #     # Only return current user
-    #     current_user_id = session['user_id']
-    #     return [user for user in users if user[0] == current_user_id]
-    # elif permission_level == 'group_only':
-    #     # Only return users from the same group
-    #     current_user = read_record_by_id('Users', session['user_id'])
-    #     current_group_id = current_user[5]  # group_id is at index 5
-    #     return [user for user in users if len(user) > 2 and get_user_group_id(user[0]) == current_group_id]
-    # elif permission_level == 'all':
-    #     return users
-    # else:
-    #     return []
 
-def filter_groups_by_permission(groups, permission_type):
-    """Filter groups based on permission level"""
-    if 'user_id' not in session:
-        return []
-    
-    permissions = get_user_permissions()
-    
-    # If user has master permission, return all groups
-    if permissions.get('master', False):
-        return groups
-    
-    permission_level = permissions.get(permission_type, 'none')
-    
-    if permission_level == 'none':
-        return []
-    elif permission_level in ['self_only', 'group_only']:
-        # Only return current user's group
-        current_user = read_record_by_id('Users', session['user_id'])
-        current_group_id = current_user[5]  # group_id is at index 5
-        return [group for group in groups if group[0] == current_group_id]
-    elif permission_level == 'all':
-        return groups
-    else:
-        return []
-
-def get_user_group_id(user_id):
-    """Get group_id for a specific user"""
-    try:
-        user = read_record_by_id('Users', user_id)
-        return user[5] if user else None  # group_id is at index 5
-    except:
-        return None
 
 def get_background_image():
     """Tìm ảnh background trong folder upload"""
@@ -1326,8 +1117,6 @@ def get_filtered_criteria_by_role():
 @app.route('/')
 def index():
     if 'user_id' in session:
-        print(session)
-        permissions = get_user_permissions()
         return redirect(url_for('home'))
     else:
         return redirect(url_for('login'))
@@ -1376,7 +1165,6 @@ def classes_list():
         classes = read_all_records('Classes', ['id', 'name'])
         # Kiểm tra xem đã có class nào tồn tại chưa
         has_existing_class = len(classes) > 0
-        permissions = get_user_permissions()
         return render_template_with_permissions('classes.html', classes=classes, has_existing_class=has_existing_class, 
                              is_gvcn=is_user_gvcn())
     else:
@@ -1462,7 +1250,6 @@ def groups_list():
     
     if 'user_id' in session:
         groups = read_all_records('Groups', ['id', 'name'])
-        permissions = get_user_permissions()
         return render_template_with_permissions('groups.html', groups=groups, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
@@ -2131,8 +1918,6 @@ def conducts_list():
         if sort_by == 'name':
             conducts.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=False))
         
-        
-        permissions = get_user_permissions()
         return render_template_with_permissions('conducts.html', conducts=conducts, sort_by=sort_by, sort_order=sort_order, 
                              is_gvcn=is_user_gvcn())
     else:
@@ -2253,7 +2038,6 @@ def subjects_list():
         if sort_by == 'name':
             subjects.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=False))
         
-        permissions = get_user_permissions()
         return render_template_with_permissions('subjects.html', subjects=subjects, sort_by=sort_by, sort_order=sort_order, 
                              is_gvcn=is_user_gvcn())
     else:
@@ -2380,7 +2164,6 @@ def criteria_list():
         if sort_by == 'name':
             criteria.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=False))
             
-        permissions = get_user_permissions()
         return render_template_with_permissions('criteria.html', criteria=criteria, sort_by=sort_by, sort_order=sort_order, 
                              is_gvcn=is_user_gvcn())
     else:
@@ -2764,7 +2547,6 @@ def users_list():
         groups = cursor.fetchall()
         
         conn.close()
-        permissions = get_user_permissions()
         return render_template_with_permissions('users.html', users=users, classes=classes, roles=roles, groups=groups, 
                                sort_by=sort_by, sort_order=sort_order, is_gvcn=is_user_gvcn())
     else:
@@ -3272,25 +3054,21 @@ def user_conduct_list():
             # Generate table HTML for AJAX response
             table_html = "<tbody>"
             for record in records:
-                permissions = get_user_permissions()
                 edit_button = ""
                 delete_button = ""
                 
-                if permissions.get('master', False) or permissions.get('conduct_management_update', False):
-                    edit_button = f'<button class="btn btn-sm btn-info me-1" onclick="openEditModal({record[0]})">Edit</button>'
-                
-                if permissions.get('master', False) or permissions.get('conduct_management_delete', False):
-                    delete_url = url_for('user_conduct_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, 
-                                        date_from=date_from, date_to=date_to, users=selected_users, 
-                                        conducts=selected_conducts, groups=selected_groups)
-                    delete_button = f'<button class="btn btn-sm btn-danger" data-delete-url="{delete_url}" onclick="confirmDeleteRecord(this)">Delete</button>'
+                edit_button = f'<button class="btn btn-sm btn-info me-1" onclick="openEditModal({record[0]})">Edit</button>'
+
+                delete_url = url_for('user_conduct_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, 
+                                    date_from=date_from, date_to=date_to, users=selected_users, 
+                                    conducts=selected_conducts, groups=selected_groups)
+                delete_button = f'<button class="btn btn-sm btn-danger" data-delete-url="{delete_url}" onclick="confirmDeleteRecord(this)">Delete</button>'
                 
                 table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td>{record[6]}</td><td>{record[3]}</td><td style="display: none;">{record[4]}</td><td>{record[5]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
             
             table_html += "</tbody>"
             return jsonify({'html': table_html})
 
-        permissions = get_user_permissions()
         return render_template_with_permissions('user_conduct.html',
                                records=records,
                                users=modal_users,  # Use filtered users for both filter and modal
@@ -3848,19 +3626,16 @@ def user_subjects_list():
             # Generate table HTML for AJAX response
             table_html = "<tbody>"
             for record in records:
-                permissions = get_user_permissions()
                 edit_button = ""
                 delete_button = ""
                 
-                if permissions.get('master', False) or permissions.get('academic_management_update', False):
-                    edit_button = f'<button class="btn btn-sm btn-info me-1" onclick="openEditModal({record[0]})">Sửa</button>'
-                
-                if permissions.get('master', False) or permissions.get('academic_management_delete', False):
-                    delete_url = url_for('user_subjects_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, 
-                                        date_from=date_from, date_to=date_to, users=selected_users, 
-                                        subjects=selected_subjects, groups=selected_groups)
-                    delete_button = f'<button class="btn btn-sm btn-danger" data-delete-url="{delete_url}" onclick="confirmDeleteRecord(this)">Xóa</button>'
-                
+                edit_button = f'<button class="btn btn-sm btn-info me-1" onclick="openEditModal({record[0]})">Sửa</button>'
+            
+                delete_url = url_for('user_subjects_delete', id=record[0], sort_by=sort_by, sort_order=sort_order, 
+                                    date_from=date_from, date_to=date_to, users=selected_users, 
+                                    subjects=selected_subjects, groups=selected_groups)
+                delete_button = f'<button class="btn btn-sm btn-danger" data-delete-url="{delete_url}" onclick="confirmDeleteRecord(this)">Xóa</button>'
+            
                 criteria_text = record[3] if record[3] else 'None'
                 table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td>{criteria_text}</td><td>{record[7]}</td><td style="display: none;">{record[5]}</td><td>{record[4]}</td><td>{record[6]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
             
@@ -4173,8 +3948,8 @@ def group_summary():
         conn.close()
 
         # Filter users and groups based on permissions - giống user_summary
-        filtered_users = filter_users_by_permission(all_users, 'student_statistics')
-        groups = filter_groups_by_permission(all_groups, 'student_statistics')
+        filtered_users = get_filtered_users_by_role()
+        groups = get_filtered_groups_by_role()
 
         # Tính toán ngày mặc định: Tuần hiện tại (Thứ Hai đến Chủ Nhật)
         today = datetime.today()
@@ -4230,15 +4005,6 @@ def group_summary():
             """
         params_uc = []
         
-        # Add permission-based filtering
-        permissions = get_user_permissions()
-        if not permissions.get('master', False):
-            permission_level = permissions.get('student_statistics', 'none')
-            if permission_level == 'group_only':
-                current_user = read_record_by_id('Users', session['user_id'])
-                current_group_id = current_user[5]  # group_id is at index 5
-                query_uc += " AND u.group_id = ?"
-                params_uc.append(current_group_id)
         
         # Add GVCN and Master role filtering (existing logic)
         excluded_roles = []
@@ -4276,16 +4042,7 @@ def group_summary():
                 WHERE us.is_deleted = 0
             """
         params_us = []
-        
-        # Add permission-based filtering (same as User_Conduct)
-        permissions = get_user_permissions()
-        if not permissions.get('master', False):
-            permission_level = permissions.get('student_statistics', 'none')
-            if permission_level == 'group_only':
-                current_user = read_record_by_id('Users', session['user_id'])
-                current_group_id = current_user[5]  # group_id is at index 5
-                query_us += " AND u.group_id = ?"
-                params_us.append(current_group_id)
+
         
         # Add GVCN and Master role filtering (existing logic)
         excluded_roles = []
@@ -4756,19 +4513,6 @@ def print_users():
     return response
 
 
-def get_last_monday():
-    today = datetime.date.today()
-    days_since_monday = today.weekday()
-    last_monday = today - datetime.timedelta(days=days_since_monday + 7)  # +7 to get last week's Monday
-    return last_monday.strftime('%Y-%m-%d')
-
-def get_last_friday():
-    today = datetime.date.today()
-    days_since_friday = (today.weekday() - calendar.FRIDAY) % 7
-    last_friday = today - datetime.timedelta(days=days_since_friday + 7) # +7 to get last week's friday.
-    return last_friday.strftime('%Y-%m-%d')
-
-
 @app.route('/user_summary', methods=['GET', 'POST'])
 def user_summary():
     permission_check = require_menu_permission('user_summary')
@@ -4872,19 +4616,6 @@ def user_summary():
                 WHERE is_deleted = 0
             """
         user_params = []
-        
-        # Add permission-based filtering
-        permissions = get_user_permissions()
-        if not permissions.get('master', False):
-            permission_level = permissions.get('student_statistics', 'none')
-            if permission_level == 'self_only':
-                user_query += " AND id = ?"
-                user_params.append(session['user_id'])
-            elif permission_level == 'group_only':
-                current_user = read_record_by_id('Users', session['user_id'])
-                current_group_id = current_user[5]  # group_id is at index 5
-                user_query += " AND group_id = ?"
-                user_params.append(current_group_id)
         
         # Add GVCN and Master role filtering (existing logic)
         excluded_roles = []
@@ -5218,7 +4949,6 @@ def user_summary():
                 'html': table_html
             })
 
-        permissions = get_user_permissions()
         
         
         return render_template_with_permissions('user_summary.html',
@@ -6162,8 +5892,6 @@ def student_report():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    # Get user permissions
-    permissions = get_user_permissions()
     
     # Get current user info
     current_user = get_user_by_id(session['user_id'])
@@ -6209,9 +5937,6 @@ def student_report():
             if not date_from or not date_to:
                 return jsonify({'success': False, 'error': 'Vui lòng chọn khoảng thời gian'})
             
-            # Permission check: students can only view their own data
-            if not permissions.get('master', False) and str(user_id) != str(session['user_id']):
-                return jsonify({'success': False, 'error': 'Bạn không có quyền xem báo cáo này'})
             
             # Get student info
             student = get_user_by_id(user_id)
