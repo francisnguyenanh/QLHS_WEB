@@ -5372,17 +5372,14 @@ def reset_page():
 
 @app.route('/reset/table/<table_name>', methods=['POST'])
 def reset_table(table_name):
-    logging.info(f"Request to reset table: {table_name}")
     
     if 'user_id' in session:
         if not can_access_master():
-            logging.info("Access denied for user_id: {}".format(session['user_id']))
             return jsonify({'error': 'Không có quyền truy cập'}), 403
         
-        logging.info("Access granted for user_id: {}".format(session['user_id']))
         # Danh sách table được phép xóa theo thứ tự
         allowed_tables = ['User_Conduct', 'User_Subjects', 'Criteria', 'Subjects', 'Conduct', 
-                         'Groups', 'Role_Permissions', 'Roles', 'Classes', 'Users']
+                         'Groups', 'Role_Permissions', 'Roles', 'Classes', 'Users', 'User_Comments' ]
         
         if table_name not in allowed_tables:
             return jsonify({'error': 'Table không hợp lệ'}), 400
@@ -5420,6 +5417,7 @@ def reset_table(table_name):
                     )
                 """)
             else:
+                logging.info(f'Resetting table {table_name}')
                 # Xóa toàn bộ dữ liệu các bảng khác
                 cursor.execute(f"DELETE FROM {table_name}")
             
@@ -5428,6 +5426,7 @@ def reset_table(table_name):
             
             return jsonify({'success': True, 'message': f'Đã xóa toàn bộ dữ liệu bảng {table_name}'})
         except Exception as e:
+            logging.info(f'Error resetting table {table_name}: {str(e)}')
             return jsonify({'error': f'Lỗi khi xóa dữ liệu: {str(e)}'}), 500
     else:
         return jsonify({'error': 'Chưa đăng nhập'}), 401
