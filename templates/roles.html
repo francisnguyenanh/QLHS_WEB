@@ -776,40 +776,56 @@
         function openCriteriaPermissionModal(roleId, roleName) {
             document.getElementById('criteriaPermissionModalLabel').textContent = `Cấu hình quyền tiêu chí môn học: ${roleName}`;
             document.getElementById('criteria_role_id').value = roleId;
-            
-            // Load criteria and current permissions
+
+            // Load grouped criteria and current permissions
             Promise.all([
-                fetch('/api/criteria'),
+                fetch('/api/criteria/grouped'),
                 fetch(`/api/roles/${roleId}/criteria-permissions`)
             ])
             .then(responses => Promise.all(responses.map(r => r.json())))
-            .then(([criteria, permissions]) => {
+            .then(([groupedCriteria, permissions]) => {
                 const container = document.getElementById('criteriaList');
                 container.innerHTML = '';
-                
-                criteria.forEach(criterion => {
-                    const div = document.createElement('div');
-                    div.className = 'col-md-6 mb-2';
-                    div.innerHTML = `
-                        <div class="form-check">
-                            <input class="form-check-input criteria-checkbox" type="checkbox" id="criteria_${criterion.id}" value="${criterion.id}">
-                            <label class="form-check-label" for="criteria_${criterion.id}">${criterion.name}</label>
-                        </div>
-                    `;
-                    container.appendChild(div);
+
+                // Render từng nhóm criterion_type
+                Object.entries(groupedCriteria).forEach(([type, criteria]) => {
+                    // Tiêu đề nhóm
+                    const groupTitle = document.createElement('div');
+                    groupTitle.className = 'col-12 mb-2 fw-bold text-primary';
+                    groupTitle.textContent = type;
+                    container.appendChild(groupTitle);
+
+                    // Danh sách tiêu chí trong nhóm
+                    let rowDiv = null;
+                    criteria.forEach((criterion, idx) => {
+                        if (idx % 2 === 0) {
+                            rowDiv = document.createElement('div');
+                            rowDiv.className = 'row mb-2';
+                            container.appendChild(rowDiv);
+                        }
+                        const criterionDiv = document.createElement('div');
+                        criterionDiv.className = 'col-md-6 mb-2';
+                        criterionDiv.innerHTML = `
+                            <div class="form-check">
+                                <input class="form-check-input criteria-checkbox" type="checkbox" id="criteria_${criterion.id}" value="${criterion.id}">
+                                <label class="form-check-label" for="criteria_${criterion.id}">${criterion.name}</label>
+                            </div>
+                        `;
+                        rowDiv.appendChild(criterionDiv);
+                    });
                 });
                 
+                toggleAllCriteria(); // Update UI state
+
                 // Set current permissions
                 document.getElementById('all_criteria').checked = permissions.is_all || false;
                 if (permissions.criteria_ids) {
-                    permissions.criteria_ids.forEach(criteriaId => {
-                        const checkbox = document.getElementById(`criteria_${criteriaId}`);
+                    permissions.criteria_ids.forEach(criterionId => {
+                        const checkbox = document.getElementById(`criteria_${criterionId}`);
                         if (checkbox) checkbox.checked = true;
                     });
-                }
-                
-                toggleAllCriteria(); // Update UI state
-                
+                }                
+
                 const modal = new bootstrap.Modal(document.getElementById('criteriaPermissionModal'));
                 modal.show();
             })
@@ -826,24 +842,22 @@
             if (allCheckbox.checked) {
                 criteriaCheckboxes.forEach(cb => {
                     cb.checked = true;
-                    cb.disabled = true;
                 });
             } else {
                 criteriaCheckboxes.forEach(cb => {
-                    cb.disabled = false;
+                    cb.checked = false;
                 });
             }
         }
 
         function saveCriteriaPermissions() {
             const roleId = document.getElementById('criteria_role_id').value;
-            const isAll = document.getElementById('all_criteria').checked;
-            const criteriaIds = isAll ? [] : Array.from(document.querySelectorAll('.criteria-checkbox:checked')).map(cb => parseInt(cb.value));
-            
+            // Lấy tất cả criteria đang được check
+            const criteriaIds = Array.from(document.querySelectorAll('.criteria-checkbox:checked')).map(cb => parseInt(cb.value));
             fetch(`/api/roles/${roleId}/criteria-permissions`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({is_all: isAll, criteria_ids: criteriaIds})
+                body: JSON.stringify({criteria_ids: criteriaIds}) // KHÔNG gửi is_all
             })
             .then(response => response.json())
             .then(result => {
@@ -864,40 +878,57 @@
         function openConductPermissionModal(roleId, roleName) {
             document.getElementById('conductPermissionModalLabel').textContent = `Cấu hình quyền tiêu chí hạnh kiểm: ${roleName}`;
             document.getElementById('conduct_role_id').value = roleId;
-            
-            // Load conducts and current permissions
+
+            // Load grouped conducts and current permissions
             Promise.all([
-                fetch('/api/conducts'),
+                fetch('/api/conducts/grouped'),
                 fetch(`/api/roles/${roleId}/conduct-permissions`)
             ])
             .then(responses => Promise.all(responses.map(r => r.json())))
-            .then(([conducts, permissions]) => {
+            .then(([groupedConducts, permissions]) => {
                 const container = document.getElementById('conductsList');
                 container.innerHTML = '';
-                
-                conducts.forEach(conduct => {
-                    const div = document.createElement('div');
-                    div.className = 'col-md-6 mb-2';
-                    div.innerHTML = `
-                        <div class="form-check">
-                            <input class="form-check-input conduct-checkbox" type="checkbox" id="conduct_${conduct.id}" value="${conduct.id}">
-                            <label class="form-check-label" for="conduct_${conduct.id}">${conduct.name}</label>
-                        </div>
-                    `;
-                    container.appendChild(div);
+
+                // Render từng nhóm conduct_type
+                Object.entries(groupedConducts).forEach(([type, conducts]) => {
+                    // Tiêu đề nhóm
+                    const groupTitle = document.createElement('div');
+                    groupTitle.className = 'col-12 mb-2 fw-bold text-primary';
+                    groupTitle.textContent = type === 'Positive' ? 'Tích cực' : (type === 'Negative' ? 'Tiêu cực' : type);
+                    container.appendChild(groupTitle);
+
+                    // Danh sách tiêu chí trong nhóm
+                    let rowDiv = null;
+                    conducts.forEach((conduct, idx) => {
+                        if (idx % 2 === 0) {
+                            rowDiv = document.createElement('div');
+                            rowDiv.className = 'row mb-2';
+                            container.appendChild(rowDiv);
+                        }
+                        const conductDiv = document.createElement('div');
+                        conductDiv.className = 'col-md-6 mb-2';
+                        conductDiv.innerHTML = `
+                            <div class="form-check">
+                                <input class="form-check-input conduct-checkbox" type="checkbox" id="conduct_${conduct.id}" value="${conduct.id}">
+                                <label class="form-check-label" for="conduct_${conduct.id}">${conduct.name}</label>
+                            </div>
+                        `;
+                        rowDiv.appendChild(conductDiv);
+                    });
                 });
-                
+
+                toggleAllConducts(); // Update UI state
+
                 // Set current permissions
                 document.getElementById('all_conducts').checked = permissions.is_all || false;
+                console.log(permissions.conduct_ids);
                 if (permissions.conduct_ids) {
                     permissions.conduct_ids.forEach(conductId => {
                         const checkbox = document.getElementById(`conduct_${conductId}`);
                         if (checkbox) checkbox.checked = true;
                     });
-                }
-                
-                toggleAllConducts(); // Update UI state
-                
+                }                
+
                 const modal = new bootstrap.Modal(document.getElementById('conductPermissionModal'));
                 modal.show();
             })
@@ -914,24 +945,22 @@
             if (allCheckbox.checked) {
                 conductCheckboxes.forEach(cb => {
                     cb.checked = true;
-                    cb.disabled = true;
                 });
             } else {
                 conductCheckboxes.forEach(cb => {
-                    cb.disabled = false;
+                    cb.checked = false;
                 });
             }
         }
 
         function saveConductPermissions() {
             const roleId = document.getElementById('conduct_role_id').value;
-            const isAll = document.getElementById('all_conducts').checked;
-            const conductIds = isAll ? [] : Array.from(document.querySelectorAll('.conduct-checkbox:checked')).map(cb => parseInt(cb.value));
-            
+            // Lấy tất cả conduct đang được check
+            const conductIds = Array.from(document.querySelectorAll('.conduct-checkbox:checked')).map(cb => parseInt(cb.value));
             fetch(`/api/roles/${roleId}/conduct-permissions`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({is_all: isAll, conduct_ids: conductIds})
+                body: JSON.stringify({conduct_ids: conductIds}) // KHÔNG gửi is_all
             })
             .then(response => response.json())
             .then(result => {

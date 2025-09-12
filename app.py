@@ -1726,8 +1726,6 @@ def role_delete(id):
 @app.route('/api/roles/<int:role_id>/menu-permissions')
 def get_role_menu_permissions(role_id):
     if 'user_id' in session:
-        if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
         
         conn = connect_db()
         cursor = conn.cursor()
@@ -1741,8 +1739,6 @@ def get_role_menu_permissions(role_id):
 @app.route('/api/roles/<int:role_id>/menu-permissions', methods=['POST'])
 def save_role_menu_permissions(role_id):
     if 'user_id' in session:
-        if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
         
         menus = request.json.get('menus', [])
         
@@ -1768,8 +1764,6 @@ def save_role_menu_permissions(role_id):
 @app.route('/api/roles/<int:role_id>/subject-permissions')
 def get_role_subject_permissions(role_id):
     if 'user_id' in session:
-        if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
         
         conn = connect_db()
         cursor = conn.cursor()
@@ -1787,8 +1781,6 @@ def get_role_subject_permissions(role_id):
 @app.route('/api/roles/<int:role_id>/subject-permissions', methods=['POST'])
 def save_role_subject_permissions(role_id):
     if 'user_id' in session:
-        if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
         
         is_all = request.json.get('is_all', False)
         subject_ids = request.json.get('subject_ids', [])
@@ -1828,8 +1820,6 @@ def get_subjects_api():
 @app.route('/api/roles/<int:role_id>/criteria-permissions')
 def get_role_criteria_permissions(role_id):
     if 'user_id' in session:
-        if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
         
         conn = connect_db()
         cursor = conn.cursor()
@@ -1840,15 +1830,13 @@ def get_role_criteria_permissions(role_id):
         cursor.execute("SELECT criteria_id FROM Role_Criteria_Permissions WHERE role_id = ? AND criteria_id IS NOT NULL", (role_id,))
         criteria_ids = [row[0] for row in cursor.fetchall()]
         conn.close()
-        
+                
         return jsonify({'is_all': is_all, 'criteria_ids': criteria_ids})
     return jsonify({'error': 'Unauthorized'}), 401
 
 @app.route('/api/roles/<int:role_id>/criteria-permissions', methods=['POST'])
 def save_role_criteria_permissions(role_id):
     if 'user_id' in session:
-        if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
         
         is_all = request.json.get('is_all', False)
         criteria_ids = request.json.get('criteria_ids', [])
@@ -1887,10 +1875,7 @@ def get_all_criteria_api():
 # --- API routes for Conduct Permissions ---
 @app.route('/api/roles/<int:role_id>/conduct-permissions')
 def get_role_conduct_permissions(role_id):
-    if 'user_id' in session:
-        if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
-        
+    if 'user_id' in session:       
         conn = connect_db()
         cursor = conn.cursor()
         cursor.execute("SELECT is_all FROM Role_Conduct_Permissions WHERE role_id = ? LIMIT 1", (role_id,))
@@ -1907,8 +1892,6 @@ def get_role_conduct_permissions(role_id):
 @app.route('/api/roles/<int:role_id>/conduct-permissions', methods=['POST'])
 def save_role_conduct_permissions(role_id):
     if 'user_id' in session:
-        if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
         
         is_all = request.json.get('is_all', False)
         conduct_ids = request.json.get('conduct_ids', [])
@@ -1960,9 +1943,6 @@ def get_groups_api():
 @app.route('/api/roles/<int:role_id>/user-permissions')
 def get_role_user_permissions(role_id):
     if 'user_id' in session:
-        if not can_access_master():
-            return
-
         conn = connect_db()
         cursor = conn.cursor()
         cursor.execute("SELECT user_id FROM Role_User_Permissions WHERE role_id = ? AND user_id IS NOT NULL", (role_id,))
@@ -1975,9 +1955,6 @@ def get_role_user_permissions(role_id):
 @app.route('/api/roles/<int:role_id>/user-permissions', methods=['POST'])
 def save_role_user_permissions(role_id):
     if 'user_id' in session:
-        if not can_access_master():
-            return
-
         user_ids = request.json.get('user_ids', [])  # Chỉ nhận danh sách user
 
         conn = connect_db()
@@ -5384,14 +5361,7 @@ def settings():
         return redirect(url_for('login'))
 
 @app.route('/settings/update_background', methods=['POST'])
-def settings_update_background():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    if not can_access_master():
-        flash('Bạn không có quyền thực hiện chức năng này', 'error')
-        return redirect(url_for('settings'))
-    
+def settings_update_background():    
     if 'background_image' not in request.files:
         flash('Không có file được chọn', 'error')
         return redirect(url_for('settings'))
@@ -5426,10 +5396,6 @@ def settings_remove_background():
     if 'user_id' not in session:
         return redirect(url_for('login'))
     
-    if not can_access_master():
-        flash('Bạn không có quyền thực hiện chức năng này', 'error')
-        return redirect(url_for('settings'))
-    
     try:
         # Xóa tất cả ảnh background
         clear_all_background_images()
@@ -5444,8 +5410,6 @@ def save_system_config():
     if 'user_id' not in session:
         return jsonify({'success': False, 'error': 'Not authenticated'})
     
-    if not can_access_master():
-        return jsonify({'success': False, 'error': 'Access denied'})
     
     try:
         data = request.get_json()
@@ -5494,8 +5458,6 @@ def reset_page():
 def reset_table(table_name):
     
     if 'user_id' in session:
-        if not can_access_master():
-            return jsonify({'error': 'Không có quyền truy cập'}), 403
         
         # Danh sách table được phép xóa theo thứ tự
         allowed_tables = ['User_Conduct', 'User_Subjects', 'Criteria', 'Subjects', 'Conduct', 
@@ -6708,8 +6670,6 @@ def settings_weeks():
 @app.route('/api/settings/weeks/save', methods=['POST'])
 def save_week_settings():
     if 'user_id' in session:
-        if not can_access_master():
-            return jsonify({'error': 'Unauthorized'}), 403
         
         data = request.json
         year = data.get('year')
@@ -6766,6 +6726,55 @@ def get_week_number_api():
             return jsonify({'week_number': 'X'})
     except Exception as e:
         return jsonify({'week_number': None, 'error': str(e)})
+
+@app.route('/api/conducts/grouped', methods=['GET'])
+def get_grouped_conducts_api():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, conduct_type FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type, name")
+    rows = cursor.fetchall()
+    conn.close()
+
+    grouped = {}
+    for row in rows:
+        conduct_type = row[2] or 'Khác'
+        if conduct_type not in grouped:
+            grouped[conduct_type] = []
+        grouped[conduct_type].append({'id': row[0], 'name': row[1]})
+    
+    return jsonify(grouped)
+
+@app.route('/api/criteria/grouped', methods=['GET'])
+def get_grouped_criteria_api():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name, criterion_type FROM Criteria WHERE is_deleted = 0 ORDER BY criterion_type, name")
+    rows = cursor.fetchall()
+    conn.close()
+
+    
+    grouped = {}
+    for row in rows:
+        logging.info(f"Row: {row[2]}")       
+        if row[2] is not None:
+            if row[2] == 1:
+                criterion_type = 'điểm cộng'
+            else:
+                criterion_type = 'điểm trừ'
+        else:
+            criterion_type = 'Khác'
+        if criterion_type not in grouped:
+            grouped[criterion_type] = []
+        grouped[criterion_type].append({'id': row[0], 'name': row[1]})
+    
+    
+    return jsonify(grouped)
 
 
 if __name__ == '__main__':
