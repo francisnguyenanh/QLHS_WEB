@@ -283,7 +283,7 @@ def secure_action_handler(action, table, token):
     payload = verify_action_token(token, expected_action=action, expected_table=table)
     if not payload:
         flash('Link đã hết hạn hoặc không hợp lệ', 'error')
-        return redirect(url_for('index'))
+        return redirect(url_for('login'))
     
     record_id = payload.get('id')
     
@@ -332,7 +332,7 @@ def secure_action_handler(action, table, token):
             return comment_template_delete_secure(record_id, token)
     
     flash('Thao tác không hợp lệ', 'error')
-    return redirect(url_for('index'))
+    return redirect(url_for('login'))
 
 @app.route('/generate_action_link', methods=['POST'])
 def generate_action_link():
@@ -968,6 +968,16 @@ def get_current_user_info():
         'role_name': role[1] if role else None
     }
 
+def require_menu_permission(menu_key):
+    """Kiểm tra quyền menu, nếu không có thì chuyển hướng về trang chủ"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    menu_permissions = get_menu_permissions()
+    if not menu_permissions.get(menu_key, False):
+        flash('Bạn không có quyền truy cập chức năng này', 'error')
+        return redirect(url_for('home'))
+    return None  # Có quyền, tiếp tục xử lý
+
 def get_setting(key, default_value=''):
     """Get setting value from Settings table"""
     try:
@@ -1319,7 +1329,7 @@ def index():
     if 'user_id' in session:
         print(session)
         permissions = get_user_permissions()
-        return render_template('base.html', is_gvcn=is_user_gvcn())
+        return redirect(url_for('home'))
     else:
         return redirect(url_for('login'))
 
@@ -1359,10 +1369,11 @@ def update_class_api(id):
 # --- Classes ---
 @app.route('/classes')
 def classes_list():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
-        if not can_access_master():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
         classes = read_all_records('Classes', ['id', 'name'])
         # Kiểm tra xem đã có class nào tồn tại chưa
         has_existing_class = len(classes) > 0
@@ -1374,6 +1385,10 @@ def classes_list():
 
 @app.route('/classes/create', methods=['GET', 'POST'])
 def class_create():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name'], 'is_deleted': 0}
@@ -1387,6 +1402,10 @@ def class_create():
 
 @app.route('/classes/edit/<int:id>', methods=['GET', 'POST'])
 def class_edit(id):
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name']}
@@ -1438,10 +1457,11 @@ def update_group_api(id):
 # --- Groups ---
 @app.route('/groups')
 def groups_list():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
-        if not can_access_master():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
         groups = read_all_records('Groups', ['id', 'name'])
         permissions = get_user_permissions()
         return render_template_with_permissions('groups.html', groups=groups, is_gvcn=is_user_gvcn())
@@ -1452,6 +1472,10 @@ def groups_list():
 
 @app.route('/groups/create', methods=['GET', 'POST'])
 def group_create():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name'], 'is_deleted': 0}
@@ -1465,6 +1489,10 @@ def group_create():
 
 @app.route('/groups/edit/<int:id>', methods=['GET', 'POST'])
 def group_edit(id):
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name']}
@@ -1618,10 +1646,14 @@ def save_role_permissions(role_id):
 # --- Roles ---
 @app.route('/roles')
 def roles_list():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if not can_access_master():
             flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('login'))
         roles = read_all_records('Roles', ['id', 'name'])
         permissions = get_user_permissions()
         return render_template_with_permissions('roles.html', roles=roles, is_gvcn=is_user_gvcn())
@@ -1632,6 +1664,10 @@ def roles_list():
 
 @app.route('/roles/create', methods=['GET', 'POST'])
 def role_create():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name'], 'is_deleted': 0}
@@ -1645,6 +1681,10 @@ def role_create():
 
 @app.route('/roles/edit/<int:id>', methods=['GET', 'POST'])
 def role_edit(id):
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name']}
@@ -2084,10 +2124,11 @@ def get_filtered_criteria_api():
 # --- Conduct ---
 @app.route('/conducts')
 def conducts_list():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
-        if not can_access_master():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
         # Lấy tham số sắp xếp
         sort_by = request.args.get('sort_by', 'name')
         sort_order = request.args.get('sort_order', 'asc')
@@ -2129,6 +2170,10 @@ def conducts_list():
 
 @app.route('/conducts/create', methods=['GET', 'POST'])
 def conduct_create():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if request.method == 'POST':
             data = {
@@ -2147,6 +2192,10 @@ def conduct_create():
 
 @app.route('/conducts/edit/<int:id>', methods=['GET', 'POST'])
 def conduct_edit(id):
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if request.method == 'POST':
             data = {
@@ -2197,10 +2246,11 @@ def update_subject_api(id):
 # --- Subjects ---
 @app.route('/subjects')
 def subjects_list():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
-        if not can_access_master():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
         # Lấy tham số sắp xếp
         sort_by = request.args.get('sort_by', 'name')
         sort_order = request.args.get('sort_order', 'asc')
@@ -2241,6 +2291,10 @@ def subjects_list():
 
 @app.route('/subjects/create', methods=['GET', 'POST'])
 def subject_create():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name'], 'is_deleted': 0}
@@ -2254,6 +2308,10 @@ def subject_create():
 
 @app.route('/subjects/edit/<int:id>', methods=['GET', 'POST'])
 def subject_edit(id):
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name']}
@@ -2315,10 +2373,11 @@ def update_criteria_api(id):
 # --- Criteria ---
 @app.route('/criteria')
 def criteria_list():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
-        if not can_access_master():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
         # Lấy tham số sắp xếp
         sort_by = request.args.get('sort_by', 'name')
         sort_order = request.args.get('sort_order', 'asc')
@@ -2359,6 +2418,10 @@ def criteria_list():
 
 @app.route('/criteria/create', methods=['GET', 'POST'])
 def criteria_create():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if request.method == 'POST':
             data = {
@@ -2377,6 +2440,10 @@ def criteria_create():
 
 @app.route('/criteria/edit/<int:id>', methods=['GET', 'POST'])
 def criteria_edit(id):
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if request.method == 'POST':
             data = {
@@ -2663,10 +2730,11 @@ def generate_user_credentials():
 # --- Users ---
 @app.route('/users')
 def users_list():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
-        if not can_access_master():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
         # Lấy tham số sắp xếp
         sort_by = request.args.get('sort_by', 'name')
         sort_order = request.args.get('sort_order', 'asc')
@@ -2736,6 +2804,10 @@ def users_list():
 
 @app.route('/users/create', methods=['GET', 'POST'])
 def user_create():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         error_message = None  # Biến để lưu thông báo lỗi
         if request.method == 'POST':
@@ -2797,9 +2869,9 @@ def user_edit(id):
     return redirect(url_for('secure_action_handler', action='edit', table='users', token=token))
 
 def user_edit_secure(id, token):
-    """Secure user edit function"""
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
     
     error_message = None
     if request.method == 'POST':
@@ -3050,10 +3122,11 @@ def update_user_conduct_api(id):
 # --- User_Conduct ---
 @app.route('/user_conduct', methods=['GET', 'POST'])
 def user_conduct_list():    
+    permission_check = require_menu_permission('user_conduct')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
-        if not can_access_conduct_management():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
         
         # Get sort parameters from both GET and POST requests
         sort_by = request.form.get('sort_by') or request.args.get('sort_by', 'registered_date')
@@ -3274,6 +3347,10 @@ def user_conduct_list():
 
 @app.route('/user_conduct/create', methods=['GET', 'POST'])
 def user_conduct_create():
+    permission_check = require_menu_permission('user_conduct')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         # Lấy các tham số lọc từ request.args
         sort_by = request.args.get('sort_by', 'registered_date')
@@ -3365,9 +3442,9 @@ def user_conduct_edit(id):
     return redirect(url_for('secure_action_handler', action='edit', table='user_conduct', token=token))
 
 def user_conduct_edit_secure(id, token):
-    """Secure user conduct edit function"""
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
+    permission_check = require_menu_permission('user_conduct')
+    if permission_check:
+        return permission_check
     
     # Lấy các tham số lọc từ request.args
     sort_by = request.args.get('sort_by', 'registered_date')
@@ -3617,11 +3694,11 @@ def update_user_subjects_api(id):
 # --- User_Subjects ---
 @app.route('/user_subjects', methods=['GET', 'POST'])
 def user_subjects_list():
-    if 'user_id' in session:
-        if not can_access_academic_management():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
-        
+    permission_check = require_menu_permission('user_subject')
+    if permission_check:
+        return permission_check
+    
+    if 'user_id' in session:        
         # Get sort parameters from both GET and POST requests  
         sort_by = request.form.get('sort_by') or request.args.get('sort_by', 'registered_date')
         sort_order = request.form.get('sort_order') or request.args.get('sort_order', 'asc')
@@ -3848,6 +3925,10 @@ def user_subjects_list():
 
 @app.route('/user_subjects/create', methods=['GET', 'POST'])
 def user_subjects_create():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         # Lấy các tham số lọc từ request.args
         sort_by = request.args.get('sort_by', 'registered_date')
@@ -3945,9 +4026,9 @@ def user_subjects_edit(id):
     return redirect(url_for('secure_action_handler', action='edit', table='user_subjects', token=token))
 
 def user_subjects_edit_secure(id, token):
-    """Secure user subjects edit function"""
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
+    permission_check = require_menu_permission('user_conduct')
+    if permission_check:
+        return permission_check
     
     # Lấy các tham số lọc từ request.args
     sort_by = request.args.get('sort_by', 'registered_date')
@@ -4057,10 +4138,14 @@ def user_subjects_delete_secure(id, token):
 
 @app.route('/group_summary', methods=['GET', 'POST'])
 def group_summary():
+    permission_check = require_menu_permission('group_summary')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if not can_access_group_statistics():
             flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('login'))
         # Lấy tham số sắp xếp từ query string hoặc form data
         if request.method == 'POST':
             sort_by = request.form.get('sort_by', 'group_name')
@@ -4720,10 +4805,11 @@ def get_last_friday():
 
 @app.route('/user_summary', methods=['GET', 'POST'])
 def user_summary():
+    permission_check = require_menu_permission('user_summary')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
-        if not can_access_student_statistics():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
         
         # Get sort parameters from both GET and POST
         if request.method == 'POST':
@@ -4769,8 +4855,11 @@ def user_summary():
         conn.close()
 
         # Filter users and groups based on permissions  
-        filtered_users = filter_users_by_permission(all_users, 'student_statistics')
-        groups = filter_groups_by_permission(all_groups, 'student_statistics')
+        filtered_users = get_filtered_users_by_role()
+        groups = get_filtered_groups_by_role()
+        
+        filtered_users.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=True))
+        groups.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
 
         # Tính toán ngày mặc định: Tuần hiện tại (Thứ Hai đến Chủ Nhật)
         today = datetime.today()
@@ -4994,8 +5083,11 @@ def user_summary():
 
         conn.close()
 
+        role_name=session.get('role_name', '')
+        
         # Kiểm tra xem có phải AJAX request không
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            
             # Render chỉ phần table HTML
             table_html = render_template_string("""
 <div class="table-responsive">
@@ -5025,7 +5117,9 @@ def user_summary():
                 </th>
                 <th colspan="3" class="text-center">Học Tập</th>
                 <th colspan="3" class="text-center">Hạnh Kiểm</th>
+                {% if role_name == 'GVCN' or role_name == 'Master' %}
                 <th rowspan="2">Nhận xét</th>
+                {% endif %}
             </tr>
             <tr>
                 <th class="text-center" style="width: 90px;">
@@ -5124,12 +5218,14 @@ def user_summary():
                             {% if conduct_progress > 0 %}+{% endif %}{{ conduct_progress }}
                         </span>
                     </td>
-                    <td>
+                    {% if role_name == 'GVCN' or role_name == 'Master' %}
+                    <td>                        
                         <div class="d-flex align-items-center">
                             <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" rows="2" placeholder="Nhận xét...">{{ (record[5] if record[5] else record[6]) if record|length > 5 else '' }}</textarea>
                             <span class="save-status text-muted small" id="status_{{ record[4] }}"></span>
-                        </div>
+                        </div>                        
                     </td>
+                    {% endif %}
                 </tr>
             {% endfor %}
         </tbody>
@@ -5148,6 +5244,7 @@ def user_summary():
                                        sort_order=sort_order,
                                        selected_users=selected_users,
                                        selected_groups=selected_groups,
+                                       role_name=role_name,
                                        period_type=period_type)
             
             return jsonify({
@@ -5156,6 +5253,8 @@ def user_summary():
             })
 
         permissions = get_user_permissions()
+        
+        
         return render_template_with_permissions('user_summary.html',
                                records=records,
                                all_users=filtered_users,
@@ -5169,6 +5268,7 @@ def user_summary():
                                select_all_groups=select_all_groups,
                                sort_by=sort_by,
                                sort_order=sort_order,
+                               role_name=role_name,
                                is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
@@ -5274,11 +5374,11 @@ def logout():
 # --- Settings Page ---
 @app.route('/settings')
 def settings():
-    if 'user_id' in session:
-        if not can_access_master():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
-        
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
+    if 'user_id' in session:        
         # Tự động tìm ảnh background trong folder upload
         current_background = get_background_image()
         
@@ -5378,10 +5478,14 @@ def save_system_config():
 # --- Reset Data Page ---
 @app.route('/reset')
 def reset_page():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
         if not can_access_master():
             flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('login'))
         
         # Danh sách các table và mô tả theo thứ tự xóa
         tables = [
@@ -5465,10 +5569,11 @@ def reset_table(table_name):
 # === COMMENT MANAGEMENT ROUTES ===
 @app.route('/comment_management')
 def comment_management():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
-        if not can_access_comment_management():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
         
         try:
             conn = connect_db()
@@ -5488,16 +5593,17 @@ def comment_management():
             return render_template_with_permissions('comment_management.html', templates=templates)
         except Exception as e:
             flash(f'Lỗi khi tải dữ liệu: {str(e)}', 'error')
-            return redirect(url_for('index'))
+            return redirect(url_for('login'))
     else:
         return redirect(url_for('login'))
 
 @app.route('/comment_template/create', methods=['GET', 'POST'])
 def comment_template_create():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
-        if not can_access_comment_management():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
         
         if request.method == 'POST':
             try:
@@ -5529,11 +5635,12 @@ def comment_template_create():
 
 @app.route('/comment_template/edit/<int:template_id>', methods=['GET', 'POST'])
 def comment_template_edit(template_id):
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
-        if not can_access_comment_management():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
-        
+      
         conn = connect_db()
         cursor = conn.cursor()
         
@@ -5847,7 +5954,7 @@ def user_report_old(user_id):
     return redirect(url_for('user_report_secure', token=token))
 
 @app.route('/report/<token>')
-def user_report_secure(token):
+def user_report_secure(token):   
     """Secure user report route with encrypted token"""
     # Verify token
     payload = verify_report_token(token)
@@ -6579,10 +6686,11 @@ def get_all_mondays_in_year(year):
 
 @app.route('/settings/weeks')
 def settings_weeks():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
     if 'user_id' in session:
-        if not can_access_master():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('index'))
         
         year = request.args.get('year', datetime.now().year, type=int)
         
