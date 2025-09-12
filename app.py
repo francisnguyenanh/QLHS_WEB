@@ -3882,314 +3882,192 @@ def user_subjects_delete_secure(id, token):
 
 @app.route('/group_summary', methods=['GET', 'POST'])
 def group_summary():
+    # Kiểm tra quyền truy cập
     permission_check = require_menu_permission('group_summary')
     if permission_check:
         return permission_check
     
-    if 'user_id' in session:
-        # Lấy tham số sắp xếp từ query string hoặc form data
-        if request.method == 'POST':
-            sort_by = request.form.get('sort_by', 'group_name')
-            sort_order = request.form.get('sort_order', 'asc')
-        else:
-            sort_by = request.args.get('sort_by', 'group_name')
-            sort_order = request.args.get('sort_order', 'asc')
+    if 'user_id' not in session:
+        return  # Hoặc trả về lỗi phù hợp
 
-        # Danh sách cột hợp lệ để sắp xếp
-        valid_columns = {
-            'group_name': 'group_name',
-            'prev_total': 'prev_total',
-            'prev_study': 'prev_study', 
-            'prev_conduct': 'prev_conduct',
-            'now_total': 'now_total',
-            'now_study': 'now_study',
-            'now_conduct': 'now_conduct',
-            'progress': 'progress'
-        }
-        sort_column = valid_columns.get(sort_by, 'group_name')
-        sort_direction = 'DESC' if sort_order == 'desc' else 'ASC'
+    # Tính toán ngày mặc định (Thứ Hai đến Chủ Nhật)
+    today = datetime.today()
+    days_since_monday = today.weekday()
+    monday = today - timedelta(days=days_since_monday)
+    sunday = monday + timedelta(days=6)
+    default_date_from = monday.strftime('%Y-%m-%d')
+    default_date_to = sunday.strftime('%Y-%m-%d')
 
-        # Lấy role_id của GVCN, Master và group_id của "Giáo viên" để lọc
-        conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM Roles WHERE name = 'GVCN'")
-        role_result = cursor.fetchone()
-        gvcn_role_id = role_result[0] if role_result else None
-        cursor.execute("SELECT id FROM Roles WHERE name = 'Master'")
-        master_role_result = cursor.fetchone()
-        master_role_id = master_role_result[0] if master_role_result else None
-        cursor.execute("SELECT id FROM Groups WHERE name = 'Giáo viên'")
-        group_result = cursor.fetchone()
-        teacher_group_id = group_result[0] if group_result else None
-        conn.close()
+    # Lấy tham số từ request (GET hoặc POST)
+    if request.method == 'POST':
+        sort_by = request.form.get('sort_by', 'group_name')
+        sort_order = request.form.get('sort_order', 'asc')
+        date_from = request.form.get('date_from') or default_date_from
+        date_to = request.form.get('date_to') or default_date_to
+        period_type = request.form.get('period_type', 'week')
+    else:
+        sort_by = request.args.get('sort_by', 'group_name')
+        sort_order = request.args.get('sort_order', 'asc')
+        date_from = request.args.get('date_from') or default_date_from
+        date_to = request.args.get('date_to') or default_date_to
+        period_type = request.args.get('period_type', 'week')
+    data_source = 'all'  # Luôn sử dụng tất cả nguồn dữ liệu
 
-        # Lấy danh sách groups (loại bỏ "Giáo viên")
-        conn = connect_db()
-        cursor = conn.cursor()
-        if teacher_group_id is not None:
-            cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 AND id != ?", (teacher_group_id,))
-        else:
-            cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0")
-        all_groups = cursor.fetchall()
-        
-        # Lấy danh sách users (loại bỏ GVCN và Master) - giống user_summary
-        excluded_roles = []
-        if gvcn_role_id is not None:
-            excluded_roles.append(gvcn_role_id)
-        if master_role_id is not None:
-            excluded_roles.append(master_role_id)
-        
-        if excluded_roles:
-            placeholders = ','.join('?' * len(excluded_roles))
-            cursor.execute(f"SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id NOT IN ({placeholders})", excluded_roles)
-        else:
-            cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
-        all_users = cursor.fetchall()
-        conn.close()
+    # Danh sách cột hợp lệ để sắp xếp
+    valid_columns = {
+        'group_name': 'group_name',
+        'prev_total': 'prev_total',
+        'prev_study': 'prev_study', 
+        'prev_conduct': 'prev_conduct',
+        'now_total': 'now_total',
+        'now_study': 'now_study',
+        'now_conduct': 'now_conduct',
+        'progress': 'progress'
+    }
 
-        # Filter users and groups based on permissions - giống user_summary
-        filtered_users = get_filtered_users_by_role()
-        groups = get_filtered_groups_by_role()
+    # Khởi tạo kết nối database
+    conn = connect_db()
+    cursor = conn.cursor()
 
-        # Tính toán ngày mặc định: Tuần hiện tại (Thứ Hai đến Chủ Nhật)
-        today = datetime.today()
-        # Lấy thứ Hai của tuần hiện tại
-        days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
-        monday = today - timedelta(days=days_since_monday)
-        sunday = monday + timedelta(days=6)
-        
-        default_date_from = monday.strftime('%Y-%m-%d')
-        default_date_to = sunday.strftime('%Y-%m-%d')
+    # Lấy role_id của GVCN, Master và group_id của "Giáo viên"
+    cursor.execute("SELECT id FROM Roles WHERE name = 'GVCN'")
+    result = cursor.fetchone()
+    gvcn_role_id = result[0] if result else None
+    cursor.execute("SELECT id FROM Roles WHERE name = 'Master'")
+    result = cursor.fetchone()
+    master_role_id = result[0] if result else None
+    cursor.execute("SELECT id FROM Groups WHERE name = 'Giáo viên'")
+    result = cursor.fetchone()
+    teacher_group_id = result[0] if result else None
 
-        # Khởi tạo các biến lọc - Luôn tìm tất cả nhóm và tất cả nguồn dữ liệu
-        selected_groups = []  # Empty list means all groups
-        date_from = default_date_from
-        date_to = default_date_to
-        data_source = 'all'  # Always use all data sources
-        period_type = 'week'  # Thêm period_type
-        select_all_groups = True  # Always select all groups
+    # Lấy danh sách groups (loại bỏ "Giáo viên")
+    if teacher_group_id is not None:
+        cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 AND id != ?", (teacher_group_id,))
+    else:
+        cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0")
+    
+    # Lấy danh sách users (loại bỏ GVCN và Master)
+    excluded_roles = []
+    if gvcn_role_id is not None:
+        excluded_roles.append(gvcn_role_id)
+    if master_role_id is not None:
+        excluded_roles.append(master_role_id)
+    
+    if excluded_roles:
+        placeholders = ','.join('?' * len(excluded_roles))
+        cursor.execute(f"SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id NOT IN ({placeholders})", excluded_roles)
+    else:
+        cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
 
-        # Xử lý yêu cầu POST hoặc GET - chỉ lấy thông tin về ngày
-        if request.method == 'POST':
-            # Luôn sử dụng tất cả nhóm và tất cả nguồn dữ liệu
-            select_all_groups = True
-            selected_groups = []  # Không sử dụng group filter
-            date_from = request.form.get('date_from') or default_date_from
-            date_to = request.form.get('date_to') or default_date_to
-            data_source = 'all'  # Luôn sử dụng tất cả nguồn dữ liệu
-            period_type = request.form.get('period_type', 'week')  # Lấy period_type từ form
-        else:
-            # Luôn sử dụng tất cả nhóm và tất cả nguồn dữ liệu
-            select_all_groups = True
-            selected_groups = []  # Không sử dụng group filter
-            date_from = request.args.get('date_from') or default_date_from
-            date_to = request.args.get('date_to') or default_date_to
-            data_source = 'all'  # Luôn sử dụng tất cả nguồn dữ liệu
-            period_type = request.args.get('period_type', 'week')  # Lấy period_type từ args
+    # Lấy danh sách groups dựa trên quyền
+    groups = get_filtered_groups_by_role()
+    all_group_ids = [group['id'] for group in groups]
 
-        # Kết nối database
-        conn = connect_db()
-        cursor = conn.cursor()
-
-        # Xây dựng truy vấn SQL (luôn tìm tất cả nhóm và tất cả nguồn dữ liệu)
-        queries = []
+    # Xây dựng truy vấn tổng điểm (User_Conduct và User_Subjects)
+    queries = []
+    for table, points_column in [('User_Conduct', 'conduct_points'), ('User_Subjects', 'study_points')]:
+        query = f"""
+            SELECT g.name AS group_name, SUM(t.total_points) AS {points_column}
+            FROM {table} t
+            JOIN Users u ON t.user_id = u.id
+            JOIN Groups g ON u.group_id = g.id
+            WHERE t.is_deleted = 0
+        """
         params = []
-
-        # Truy vấn cho User_Conduct (luôn được bao gồm)
-        query_uc = """
-                SELECT g.name AS group_name, SUM(uc.total_points) AS total_points
-                FROM User_Conduct uc
-                JOIN Users u ON uc.user_id = u.id
-                JOIN Groups g ON u.group_id = g.id
-                WHERE uc.is_deleted = 0
-            """
-        params_uc = []
         
-        
-        # Add GVCN and Master role filtering (existing logic)
-        excluded_roles = []
-        if gvcn_role_id is not None:
-            excluded_roles.append(gvcn_role_id)
-        if master_role_id is not None:
-            excluded_roles.append(master_role_id)
-        
+        # Thêm điều kiện lọc vai trò, nhóm, và ngày
         if excluded_roles:
             placeholders = ','.join('?' * len(excluded_roles))
-            query_uc += f" AND u.role_id NOT IN ({placeholders})"
-            params_uc.extend(excluded_roles)
+            query += f" AND u.role_id NOT IN ({placeholders})"
+            params.extend(excluded_roles)
         
-        # Luôn tìm tất cả nhóm có quyền truy cập
-        all_group_ids = [group[0] for group in groups]
         if all_group_ids:
-            query_uc += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
-            params_uc.extend(all_group_ids)
+            query += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
+            params.extend(all_group_ids)
         
         if date_from:
-            query_uc += " AND uc.registered_date >= ?"
-            params_uc.append(date_from)
+            query += " AND t.registered_date >= ?"
+            params.append(date_from)
         if date_to:
-            query_uc += " AND uc.registered_date <= ?"
-            params_uc.append(date_to)
-        query_uc += " GROUP BY g.id, g.name"
-        queries.append((query_uc, params_uc))
+            query += " AND t.registered_date <= ?"
+            params.append(date_to)
+        
+        query += " GROUP BY g.id, g.name"
+        queries.append((query, params))
 
-        # Truy vấn cho User_Subjects (luôn được bao gồm)
-        query_us = """
-                SELECT g.name AS group_name, SUM(us.total_points) AS total_points
-                FROM User_Subjects us
-                JOIN Users u ON us.user_id = u.id
+    # Thực thi truy vấn và tổng hợp kết quả
+    records = {}
+    for query, params in queries:
+        cursor.execute(query, params)
+        for group_name, total_points in cursor.fetchall():
+            records[group_name] = records.get(group_name, 0) + (total_points or 0)
+
+    # Tính ngày kỳ trước
+    date_from_dt = datetime.strptime(date_from, '%Y-%m-%d')
+    date_to_dt = datetime.strptime(date_to, '%Y-%m-%d')
+    period_days = (date_to_dt - date_from_dt).days + 1
+    prev_date_to_dt = date_from_dt - timedelta(days=1)
+    prev_date_from_dt = prev_date_to_dt - timedelta(days=period_days-1)
+    prev_date_from = prev_date_from_dt.strftime('%Y-%m-%d')
+    prev_date_to = prev_date_to_dt.strftime('%Y-%m-%d')
+
+    # Truy vấn điểm kỳ trước và kỳ này
+    points_data = {}
+    for period, start_date, end_date in [('prev', prev_date_from, prev_date_to), ('now', date_from, date_to)]:
+        points_data[period] = {'conduct': {}, 'study': {}}
+        for table, points_type in [('User_Conduct', 'conduct'), ('User_Subjects', 'study')]:
+            query = f"""
+                SELECT g.name AS group_name, SUM(t.total_points) AS {points_type}_points
+                FROM {table} t
+                JOIN Users u ON t.user_id = u.id
                 JOIN Groups g ON u.group_id = g.id
-                WHERE us.is_deleted = 0
+                WHERE t.is_deleted = 0 AND t.registered_date >= ? AND t.registered_date <= ?
             """
-        params_us = []
-
-        
-        # Add GVCN and Master role filtering (existing logic)
-        excluded_roles = []
-        if gvcn_role_id is not None:
-            excluded_roles.append(gvcn_role_id)
-        if master_role_id is not None:
-            excluded_roles.append(master_role_id)
-        
-        if excluded_roles:
-            placeholders = ','.join('?' * len(excluded_roles))
-            query_us += f" AND u.role_id NOT IN ({placeholders})"
-            params_us.extend(excluded_roles)
-        
-        # Luôn tìm tất cả nhóm có quyền truy cập
-        all_group_ids = [group[0] for group in groups]
-        if all_group_ids:
-            query_us += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
-            params_us.extend(all_group_ids)
-        
-        if date_from:
-            query_us += " AND us.registered_date >= ?"
-            params_us.append(date_from)
-        if date_to:
-            query_us += " AND us.registered_date <= ?"
-            params_us.append(date_to)
-        query_us += " GROUP BY g.id, g.name"
-        queries.append((query_us, params_us))
-
-        # Thực thi truy vấn và tổng hợp kết quả
-        records = {}
-        for query, params in queries:
-            cursor.execute(query, params)
-            results = cursor.fetchall()
-            for group_name, total_points in results:
-                if group_name in records:
-                    records[group_name] += total_points if total_points else 0
-                else:
-                    records[group_name] = total_points if total_points else 0
-
-        conn.close()
-
-        # --- TÍNH ĐIỂM KỲ TRƯỚC VÀ KỲ NÀY ---
-        # Xác định khoảng thời gian kỳ trước
-        date_from_dt = datetime.strptime(date_from, '%Y-%m-%d')
-        date_to_dt = datetime.strptime(date_to, '%Y-%m-%d')
-        period_days = (date_to_dt - date_from_dt).days + 1
-        prev_date_to_dt = date_from_dt - timedelta(days=1)
-        prev_date_from_dt = prev_date_to_dt - timedelta(days=period_days-1)
-        prev_date_from = prev_date_from_dt.strftime('%Y-%m-%d')
-        prev_date_to = prev_date_to_dt.strftime('%Y-%m-%d')
-
-        # Truy vấn tổng điểm kỳ trước cho từng nhóm
-        conn = connect_db()
-        cursor = conn.cursor()
-        
-        # Tổng điểm kỳ trước (User_Conduct - điểm hạnh kiểm)
-        query_prev_uc = '''
-            SELECT g.name AS group_name, SUM(uc.total_points) AS conduct_points
-            FROM User_Conduct uc
-            JOIN Users u ON uc.user_id = u.id
-            JOIN Groups g ON u.group_id = g.id
-            WHERE uc.is_deleted = 0 AND uc.registered_date >= ? AND uc.registered_date <= ?
-            GROUP BY g.id, g.name
-        '''
-        cursor.execute(query_prev_uc, (prev_date_from, prev_date_to))
-        prev_uc = {row[0]: row[1] or 0 for row in cursor.fetchall()}
-
-        # Tổng điểm kỳ trước (User_Subjects - điểm học tập)
-        query_prev_us = '''
-            SELECT g.name AS group_name, SUM(us.total_points) AS study_points
-            FROM User_Subjects us
-            JOIN Users u ON us.user_id = u.id
-            JOIN Groups g ON u.group_id = g.id
-            WHERE us.is_deleted = 0 AND us.registered_date >= ? AND us.registered_date <= ?
-            GROUP BY g.id, g.name
-        '''
-        cursor.execute(query_prev_us, (prev_date_from, prev_date_to))
-        prev_us = {row[0]: row[1] or 0 for row in cursor.fetchall()}
-
-        # Tổng điểm kỳ này (User_Conduct - điểm hạnh kiểm)
-        query_now_uc = '''
-            SELECT g.name AS group_name, SUM(uc.total_points) AS conduct_points
-            FROM User_Conduct uc
-            JOIN Users u ON uc.user_id = u.id
-            JOIN Groups g ON u.group_id = g.id
-            WHERE uc.is_deleted = 0 AND uc.registered_date >= ? AND uc.registered_date <= ?
-            GROUP BY g.id, g.name
-        '''
-        cursor.execute(query_now_uc, (date_from, date_to))
-        now_uc = {row[0]: row[1] or 0 for row in cursor.fetchall()}
-
-        # Tổng điểm kỳ này (User_Subjects - điểm học tập)
-        query_now_us = '''
-            SELECT g.name AS group_name, SUM(us.total_points) AS study_points
-            FROM User_Subjects us
-            JOIN Users u ON us.user_id = u.id
-            JOIN Groups g ON u.group_id = g.id
-            WHERE us.is_deleted = 0 AND us.registered_date >= ? AND us.registered_date <= ?
-            GROUP BY g.id, g.name
-        '''
-        cursor.execute(query_now_us, (date_from, date_to))
-        now_us = {row[0]: row[1] or 0 for row in cursor.fetchall()}
-
-        conn.close()
-
-        # Tạo records_list với đầy đủ thông tin cho từng nhóm
-        records_list = []
-        for group in groups:
-            name = group[1]
-            # Kỳ trước
-            prev_conduct = prev_uc.get(name, 0)    # Điểm hạnh kiểm kỳ trước
-            prev_study = prev_us.get(name, 0)      # Điểm học tập kỳ trước
-            prev_total = prev_conduct + prev_study  # Tổng điểm kỳ trước
-            # Kỳ này
-            now_conduct = now_uc.get(name, 0)      # Điểm hạnh kiểm kỳ này
-            now_study = now_us.get(name, 0)        # Điểm học tập kỳ này
-            now_total = now_conduct + now_study     # Tổng điểm kỳ này
-            progress = now_total - prev_total       # Tiến bộ (kỳ này - kỳ trước)
+            params = [start_date, end_date]
             
-            records_list.append([
-                name,           # 0: Tên nhóm
-                prev_total,     # 1: Tổng điểm kỳ trước
-                prev_study,     # 2: Điểm học tập kỳ trước  
-                prev_conduct,   # 3: Điểm hạnh kiểm kỳ trước
-                now_total,      # 4: Tổng điểm kỳ này
-                now_study,      # 5: Điểm học tập kỳ này
-                now_conduct,    # 6: Điểm hạnh kiểm kỳ này
-                progress        # 7: Tiến bộ
-            ])
+            if excluded_roles:
+                placeholders = ','.join('?' * len(excluded_roles))
+                query += f" AND u.role_id NOT IN ({placeholders})"
+                params.extend(excluded_roles)
+            
+            if all_group_ids:
+                query += " AND u.group_id IN ({})".format(','.join('?' * len(all_group_ids)))
+                params.extend(all_group_ids)
+            
+            query += " GROUP BY g.id, g.name"
+            cursor.execute(query, params)
+            points_data[period][points_type] = {row[0]: row[1] or 0 for row in cursor.fetchall()}
 
-        # Apply sorting
+    conn.close()
+
+    # Tạo danh sách kết quả
+    records_list = []
+    for group in groups:
+        name = group['name']
+        prev_conduct = points_data['prev']['conduct'].get(name, 0)
+        prev_study = points_data['prev']['study'].get(name, 0)
+        prev_total = prev_conduct + prev_study
+        now_conduct = points_data['now']['conduct'].get(name, 0)
+        now_study = points_data['now']['study'].get(name, 0)
+        now_total = now_conduct + now_study
+        progress = now_total - prev_total
+        
+        records_list.append([
+            name, prev_total, prev_study, prev_conduct,
+            now_total, now_study, now_conduct, progress
+        ])
+
+    # Sắp xếp kết quả
+    if sort_by in valid_columns:
+        index = {
+            'group_name': 0, 'prev_total': 1, 'prev_study': 2, 'prev_conduct': 3,
+            'now_total': 4, 'now_study': 5, 'now_conduct': 6, 'progress': 7
+        }[sort_by]
         if sort_by == 'group_name':
             records_list.sort(key=lambda x: vietnamese_sort_key(x[0], sort_by_first_name=False), reverse=(sort_order == 'desc'))
-        elif sort_by == 'prev_total':
-            records_list.sort(key=lambda x: x[1], reverse=(sort_order == 'desc'))
-        elif sort_by == 'prev_study':
-            records_list.sort(key=lambda x: x[2], reverse=(sort_order == 'desc'))
-        elif sort_by == 'prev_conduct':
-            records_list.sort(key=lambda x: x[3], reverse=(sort_order == 'desc'))
-        elif sort_by == 'now_total':
-            records_list.sort(key=lambda x: x[4], reverse=(sort_order == 'desc'))
-        elif sort_by == 'now_study':
-            records_list.sort(key=lambda x: x[5], reverse=(sort_order == 'desc'))
-        elif sort_by == 'now_conduct':
-            records_list.sort(key=lambda x: x[6], reverse=(sort_order == 'desc'))
-        elif sort_by == 'progress':
-            records_list.sort(key=lambda x: x[7], reverse=(sort_order == 'desc'))
+        else:
+            records_list.sort(key=lambda x: x[index], reverse=(sort_order == 'desc'))
+
 
         # Kiểm tra xem có phải AJAX request không
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
