@@ -2326,7 +2326,7 @@ def update_user_api(id):
                 conn.close()
                 return jsonify({'error': 'Role Password đã tồn tại trong hệ thống. Vui lòng chọn role password khác'}), 400
         
-        if id == 41:
+        if session.get('role_name') == 'GVCN':  # Nếu user hiện tại là GVCN
             data = {
             'name': name,
             'username': username,
