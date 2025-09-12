@@ -974,7 +974,6 @@ def require_menu_permission(menu_key):
         return redirect(url_for('login'))
     menu_permissions = get_menu_permissions()
     if not menu_permissions.get(menu_key, False):
-        flash('Bạn không có quyền truy cập chức năng này', 'error')
         return redirect(url_for('home'))
     return None  # Có quyền, tiếp tục xử lý
 
@@ -1651,11 +1650,7 @@ def roles_list():
         return permission_check
     
     if 'user_id' in session:
-        if not can_access_master():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('login'))
         roles = read_all_records('Roles', ['id', 'name'])
-        permissions = get_user_permissions()
         return render_template_with_permissions('roles.html', roles=roles, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
@@ -2599,12 +2594,9 @@ def update_user_api(id):
     return jsonify({'error': 'Unauthorized'}), 401
 
 @app.route('/api/upload_users_excel', methods=['POST'])
-def upload_users_excel():
+def upload_users_excel():    
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
-    
-    if not can_access_master():
-        return jsonify({'error': 'Bạn không có quyền truy cập chức năng này'}), 403
     
     if 'excel_file' not in request.files:
         return jsonify({'error': 'Không có file được chọn'}), 400
@@ -4143,9 +4135,6 @@ def group_summary():
         return permission_check
     
     if 'user_id' in session:
-        if not can_access_group_statistics():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('login'))
         # Lấy tham số sắp xếp từ query string hoặc form data
         if request.method == 'POST':
             sort_by = request.form.get('sort_by', 'group_name')
@@ -5482,11 +5471,7 @@ def reset_page():
     if permission_check:
         return permission_check
     
-    if 'user_id' in session:
-        if not can_access_master():
-            flash('Bạn không có quyền truy cập chức năng này', 'error')
-            return redirect(url_for('login'))
-        
+    if 'user_id' in session:        
         # Danh sách các table và mô tả theo thứ tự xóa
         tables = [
             {'name': 'User_Conduct', 'description': 'Dữ liệu hạnh kiểm học sinh'},
