@@ -4088,7 +4088,7 @@ def group_summary():
                     </a>
                 </th>
                 <th colspan="3" class="text-center">Kỳ Trước</th>
-                <th colspan="3" class="text-center">Kỳ Sau</th>
+                <th colspan="3" class="text-center">Kỳ Này</th>
                 <th rowspan="2" class="text-nowrap">
                     <a href="#" class="sort-link text-decoration-none text-dark" data-sort="progress" data-order="{{ 'desc' if sort_by == 'progress' and sort_order == 'asc' else 'asc' }}">
                         Tiến bộ↓↑
@@ -5862,8 +5862,10 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         # Determine period display
         if (to_date - from_date).days == 6:  # Weekly report
             period_text = f"Tuần từ {from_date.strftime('%d/%m/%Y')} đến {to_date.strftime('%d/%m/%Y')}"
+            period_type = 'Tuần'
         else:  # Monthly report
             period_text = f"Tháng {from_date.strftime('%m/%Y')}"
+            period_type = 'Tháng'
         
         # Get subjects data
         cursor.execute("""
@@ -6032,7 +6034,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
                             <h3 class="mb-2" style="font-size: 2rem; font-weight: bold;">{total_academic_points + total_conduct_points}</h3>
                             <p class="mb-2" style="font-size: 1.1rem;">Tổng điểm</p>
                             <small class="mt-1 d-block" style="color: rgba(255,255,255,0.9);">
-                                Kỳ trước: {prev_academic_points + prev_conduct_points} điểm
+                                {period_type} trước: {prev_academic_points + prev_conduct_points} điểm
                             </small>
                         </div>
                     </div>
