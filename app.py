@@ -8,7 +8,6 @@ import config
 import calendar
 import os
 import uuid
-import unicodedata
 import json
 import requests
 import base64
@@ -24,6 +23,9 @@ from flask import make_response, request, url_for
 from werkzeug.utils import secure_filename
 import random
 import logging
+import pandas as pd
+import re
+from unicodedata import normalize
 
 logging.basicConfig(level=logging.INFO)
 
@@ -2113,6 +2115,10 @@ def conducts_list():
         conducts = cursor.fetchall()
         conn.close()
         
+        if sort_by == 'name':
+            conducts.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=False))
+        
+        
         permissions = get_user_permissions()
         return render_template_with_permissions('conducts.html', conducts=conducts, sort_by=sort_by, sort_order=sort_order, 
                              is_gvcn=is_user_gvcn())
@@ -2222,6 +2228,9 @@ def subjects_list():
         subjects = cursor.fetchall()
         conn.close()
         
+        if sort_by == 'name':
+            subjects.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=False))
+        
         permissions = get_user_permissions()
         return render_template_with_permissions('subjects.html', subjects=subjects, sort_by=sort_by, sort_order=sort_order, 
                              is_gvcn=is_user_gvcn())
@@ -2317,7 +2326,7 @@ def criteria_list():
         # Validate sort parameters
         valid_sort_fields = ['name', 'criterion_type', 'criterion_points']
         if sort_by not in valid_sort_fields:
-            sort_by = 'name'
+            sort_by = 'criterion_type'
         if sort_order not in ['asc', 'desc']:
             sort_order = 'asc'
         
@@ -2337,6 +2346,9 @@ def criteria_list():
         criteria = cursor.fetchall()
         conn.close()
         
+        if sort_by == 'name':
+            criteria.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=False))
+            
         permissions = get_user_permissions()
         return render_template_with_permissions('criteria.html', criteria=criteria, sort_by=sort_by, sort_order=sort_order, 
                              is_gvcn=is_user_gvcn())
@@ -2537,10 +2549,7 @@ def upload_users_excel():
     if not file.filename.lower().endswith(('.xlsx', '.xls')):
         return jsonify({'error': 'Chỉ chấp nhận file Excel (.xlsx, .xls)'}), 400
     
-    try:
-        import pandas as pd
-        import re
-        from unicodedata import normalize
+    try:       
         
         # Đọc file Excel
         df = pd.read_excel(file)
@@ -2628,6 +2637,28 @@ def upload_users_excel():
         
     except Exception as e:
         return jsonify({'error': f'Lỗi xử lý file: {str(e)}'}), 500
+
+
+@app.route('/api/generate_user_credentials', methods=['POST'])
+def generate_user_credentials():
+    data = request.get_json()
+    name = data.get('name', '')
+    if not name:
+        return jsonify({'error': 'Thiếu họ tên'}), 400
+
+    words = name.strip().split()
+    if not words:
+        return jsonify({'error': 'Tên không hợp lệ'}), 400
+
+    last_word = words[-1]
+    firstname = normalize('NFD', last_word).encode('ascii', 'ignore').decode('ascii').lower()
+    firstname = re.sub(r'[^a-z0-9]', '', firstname)
+    random_pass = random.randint(0, 99)
+    random_username = random.randint(0, 99)
+    password = f"{firstname}{random_pass:02d}"
+    username = f"{firstname}{random_username:02d}"
+
+    return jsonify({'username': username, 'password': password})
 
 # --- Users ---
 @app.route('/users')

@@ -500,5 +500,28 @@
                 showError('Có lỗi xảy ra khi upload file');
             });
         }
+
+        document.getElementById('name').addEventListener('input', function() {
+            const nameValue = this.value.trim();
+            if (nameValue.length > 0) {
+                fetch('/api/generate_user_credentials', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: nameValue })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.username) {
+                        document.getElementById('username').value = data.username;
+                    }
+                    if (data.password) {
+                        document.getElementById('password').value = data.password;
+                    }
+                });
+            } else {
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
+            }
+        });
     </script>
 {% endblock %}
