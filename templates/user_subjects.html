@@ -277,7 +277,7 @@
                     <form id="userSubjectsForm">
                         <input type="hidden" id="modal_id" name="id">
                         <div class="row g-3">
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-4">
                                 <div class="form-group">
                                     <label for="modal_user_id">Họ tên:</label>
                                     <select name="user_id" id="modal_user_id" class="form-control" required>
@@ -296,7 +296,7 @@
                                     <input type="text" name="entered_by" id="modal_entered_by" class="form-control" value="{{ current_user_info.name if current_user_info else '' }}" readonly>
                                 </div>
                             </div>
-                            <div class="col-12 col-md-6">
+                            <div class="col-12 col-md-8">
                                 <!-- Create mode: Multiple subjects with checkboxes -->
                                 <div class="form-group" id="create_subjects_section">
                                     <label>Môn học & Kết quả:</label>

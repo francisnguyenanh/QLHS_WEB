@@ -263,11 +263,11 @@
                     <a class="nav-link" href="{{ url_for('user_summary') }}">Thống kê học sinh</a>
                 </li>
                 {% endif %}
-                {% if menu_permissions is defined and menu_permissions.get('student_report', False) %}
+                
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('student_report') }}">Báo cáo kết quả</a>
                 </li>
-                {% endif %}
+                
             </ul>
             <ul class="navbar-nav ml-auto">
                 {% if session.user_id %}
