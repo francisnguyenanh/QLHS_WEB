@@ -102,7 +102,8 @@ def delete_record(table_name, record_id, id_column='id'):
             #print("Connection is None, cannot delete record")
             return False
         cursor = conn.cursor()
-        sql = f"UPDATE {table_name} SET is_deleted = 1 WHERE {id_column} = ? AND is_deleted = 0"
+        sql = f"DELETE FROM {table_name} WHERE {id_column} = ?"
+        #sql = f"UPDATE {table_name} SET is_deleted = 1 WHERE {id_column} = ? AND is_deleted = 0"
         cursor.execute(sql, (record_id,))
         conn.commit()
         #print(f"Deleted {cursor.rowcount} record(s) in {table_name} with {id_column}={record_id}")
