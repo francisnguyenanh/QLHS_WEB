@@ -447,11 +447,11 @@
                         <table class="table table-hover mb-0">
                             <thead>
                                 <tr>
-                                    <th style="width: 120px;"><i class="fas fa-calendar me-2"></i>Ngày</th>
-                                    <th><i class="fas fa-book me-2"></i>Môn học</th>
-                                    <th><i class="fas fa-award me-2"></i>Tiêu chí</th>
-                                    <th><i class="fas fa-heart me-2"></i>Hạnh kiểm</th>
-                                    <th style="width: 100px;"><i class="fas fa-star me-2"></i>Điểm</th>
+                                    <th style="width: 120px;"><i></i>Ngày</th>
+                                    <th><i></i>Môn học</th>
+                                    <th><i></i>Tiêu chí</th>
+                                    <th><i></i>Hạnh kiểm</th>
+                                    <th style="width: 100px;"><i></i>Điểm</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -468,21 +468,21 @@
                                             {% endif %}
                                             <td>
                                                 {% if entry.subject_name and entry.subject_name != '-' %}
-                                                    <i class="fas fa-book-open me-2 text-primary"></i>{{ entry.subject_name }}
+                                                    <i></i>{{ entry.subject_name }}
                                                 {% else %}
                                                     <span class="text-muted">-</span>
                                                 {% endif %}
                                             </td>
                                             <td>
                                                 {% if entry.criteria_name and entry.criteria_name != '-' %}
-                                                    <i class="fas fa-medal me-2 text-warning"></i>{{ entry.criteria_name }}
+                                                    <i></i>{{ entry.criteria_name }}
                                                 {% else %}
                                                     <span class="text-muted">-</span>
                                                 {% endif %}
                                             </td>
                                             <td>
                                                 {% if entry.conduct_name and entry.conduct_name != '-' %}
-                                                    <i class="fas fa-heart me-2 text-danger"></i>{{ entry.conduct_name }}
+                                                    <i></i>{{ entry.conduct_name }}
                                                 {% else %}
                                                     <span class="text-muted">-</span>
                                                 {% endif %}

@@ -5940,7 +5940,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         
         # Get conduct data
         cursor.execute("""
-            SELECT c.name, uc.total_points, uc.registered_date
+            SELECT c.name, uc.total_points, uc.registered_date, c.conduct_type
             FROM User_Conduct uc
             JOIN Conduct c ON uc.conduct_id = c.id
             WHERE uc.user_id = ? AND uc.is_deleted = 0
@@ -5964,13 +5964,9 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         classnames = classes[0][1] if classes else "Chưa phân lớp"
         
         # Calculate statistics
-        total_subjects = len(set([row[0] for row in subjects_data]))
         total_conduct_points = sum([row[1] for row in conduct_data])
-        conduct_entries = len(conduct_data)
-        avg_conduct = round(total_conduct_points / conduct_entries, 1) if conduct_entries > 0 else 0
         
         # Additional statistics for enhanced report
-        unique_subjects = total_subjects
         total_academic_points = 0  # Will be calculated properly below
         prev_academic_points = 0
         prev_conduct_points = 0
@@ -6041,10 +6037,10 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         
         # Group conduct by week
         conduct_by_week = {}
-        for conduct, points, registered_date in conduct_data:
+        for conduct, points, registered_date, conduct_type in conduct_data:
             if registered_date not in conduct_by_week:
                 conduct_by_week[registered_date] = []
-            conduct_by_week[registered_date].append((conduct, points))
+            conduct_by_week[registered_date].append((conduct, points, conduct_type))
         
         # Generate HTML with proper CSS classes
         html = f"""
@@ -6120,16 +6116,6 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         
         # Add subjects data
         for subject, result, points, date in subjects_data:
-            result_class = ""
-            if result in ['Giỏi', 'Tốt']:
-                result_class = "text-success fw-bold"
-            elif result in ['Khá']:
-                result_class = "text-primary fw-bold"
-            elif result in ['Trung bình']:
-                result_class = "text-success fw-bold"
-            else:
-                result_class = "text-danger fw-bold"
-            
             # Format date
             try:
                 formatted_date = datetime.strptime(date, '%Y-%m-%d').strftime('%d/%m/%Y')
@@ -6151,7 +6137,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
             html += f"""
                                 <tr style="border-bottom: 1px solid #f1f2f6; background: white;">
                                     <td style="padding: 15px; font-weight: 500; color: #000000;">{subject}</td>
-                                    <td style="padding: 15px;"><span class="{result_class}">{result}</span></td>
+                                    <td style="padding: 15px;"><span class="{points_class}">{result}</span></td>
                                     <td style="padding: 15px;"><span class="{points_class}">{points_display}</span></td>
                                     <td style="padding: 15px; color: #000000; font-size: 0.95rem;">{formatted_date}</td>
                                 </tr>
@@ -6180,6 +6166,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
                             <thead style="background: linear-gradient(135deg, #000000 0%, #34495e 100%); color: white;">
                                 <tr>
                                     <th style="border: none; padding: 15px; font-weight: 500;">Tiêu chí</th>
+                                    <th style="border: none; padding: 15px; font-weight: 500;">Loại Hạnh kiểm</th>
                                     <th style="border: none; padding: 15px; font-weight: 500;">Điểm</th>
                                     <th style="border: none; padding: 15px; font-weight: 500;">Ngày</th>
                                 </tr>
@@ -6188,7 +6175,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         """
         
         # Add conduct data
-        for conduct, points, registered_date in conduct_data:
+        for conduct, points, registered_date, conduct_type in conduct_data:
             points_class = ""
             if points >= 0:
                 points_class = "text-success fw-bold"
@@ -6205,7 +6192,8 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
                 
             html += f"""
                                 <tr style="border-bottom: 1px solid #f1f2f6; background: white;">
-                                    <td style="padding: 15px; font-weight: 500; color: #000000;">{conduct}</td>
+                                    <td style="padding: 15px; font-weight: 500;"><span class="{points_class}">{conduct}</span></td>
+                                    <td style="padding: 15px;"><span class="{points_class}">{conduct_type}</span></td>
                                     <td style="padding: 15px;"><span class="{points_class}">{points_display}</span></td>
                                     <td style="padding: 15px; color: #000000; font-size: 0.95rem;">{formatted_date}</td>
                                 </tr>
