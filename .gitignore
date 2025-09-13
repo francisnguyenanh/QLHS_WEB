@@ -7,3 +7,4 @@ __pycache__/db_utils.cpython-313.pyc
 schoolX.db
 *.db
 schoolX.db
+.DS_Store

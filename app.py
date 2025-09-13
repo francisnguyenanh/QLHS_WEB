@@ -3055,9 +3055,11 @@ def user_conduct_list():
                 query += " AND 1 = 0"
 
         query += f" ORDER BY {sort_column} {sort_direction}"
+        
+        logging.info(f"Executing SQL: {query} with params: {params}")
         cursor.execute(query, params)
         records = cursor.fetchall()
-        
+
         # If sorting by user_name, apply Vietnamese first name sorting
         if sort_by_first_name:
             records = sorted(records, 
@@ -3086,6 +3088,7 @@ def user_conduct_list():
             table_html += "</tbody>"
             return jsonify({'html': table_html})
 
+        logging.info(f"Rendering template: user_conduct.html with records: {records}")
         return render_template_with_permissions('user_conduct.html',
                                records=records,
                                users=modal_users,  # Use filtered users for both filter and modal
@@ -4928,6 +4931,20 @@ def login():
                     error = 'Hệ thống đã hết hiệu lực. Vui lòng liên hệ quản trị viên.'
                     return render_template('login.html', error=error, class_name=class_name, permissions={})
             
+            # Lưu lịch sử đăng nhập (ngày giờ local)
+            login_date = datetime.now().strftime('%Y-%m-%d')
+            login_time = datetime.now().strftime('%H:%M:%S')
+            
+            # Lưu vào bảng Login_History
+            conn = connect_db()
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO Login_History (user_id, login_date, login_time)
+                VALUES (?, ?, ?)
+            """, (user_id, login_date, login_time))
+            conn.commit()
+            conn.close()
+            
             return redirect(url_for('home'))
         else:
             error = 'Invalid username or password'
@@ -6399,6 +6416,147 @@ def get_grouped_criteria_api():
     return jsonify(grouped)
 
 
+@app.route('/login_history', methods=['GET', 'POST'])
+def login_history():
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
+    
+    if 'user_id' in session:
+        
+        # Get sort parameters from both GET and POST requests
+        sort_by = request.form.get('sort_by')
+        sort_order = request.form.get('sort_order') or request.args.get('sort_order', 'asc')
+
+        valid_columns = {
+            'user_name': 'u.name',
+            'login_date': 'lh.login_date',
+            'login_time': 'lh.login_time'
+        }
+        sort_column = valid_columns.get(sort_by, 'u.name')
+        sort_direction = 'DESC' if sort_order == 'desc' else 'ASC'
+        
+        # Special handling for user_name sorting (sort by first name)
+        sort_by_first_name = (sort_by == 'user_name')
+
+        # Get filtered data based on role permissions
+        
+        conn = connect_db()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id IN (SELECT id FROM Roles WHERE is_deleted = 0 AND name NOT IN ('Master')) ORDER BY name")
+        results = cursor.fetchall()
+        users = [{'id': r[0], 'name': r[1]} for r in results]
+        conn.close()
+        
+        groups = get_filtered_groups_by_role()
+        
+        # Sort users by first name using Vietnamese normalization
+        users.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=True))
+        groups.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+        
+        # Modal users same as filtered users for consistency
+
+        # Tính toán ngày mặc định: Thứ 2 của tuần hiện tại
+        today = datetime.today()
+        days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
+        nearest_monday = today - timedelta(days=days_since_monday)
+        default_date_from = nearest_monday.strftime('%Y-%m-%d')
+        default_date_to = (nearest_monday + timedelta(days=6)).strftime('%Y-%m-%d')  # Chủ Nhật của tuần
+
+        selected_users = []
+        date_from = default_date_from
+        date_to = default_date_to
+        selected_groups = []
+        select_all_users = False
+        select_all_groups = False
+
+        if request.method == 'POST':
+            select_all_users = request.form.get('select_all_users') == 'on'
+            selected_users = request.form.getlist('users')
+            date_from = request.form.get('date_from') or default_date_from
+            date_to = request.form.get('date_to') or default_date_to
+            select_all_groups = request.form.get('select_all_groups') == 'on'
+            selected_groups = request.form.getlist('groups')
+        else:
+            select_all_users = request.args.get('select_all_users') == 'on'
+            selected_users = request.args.getlist('users')
+            date_from = request.args.get('date_from') or default_date_from
+            date_to = request.args.get('date_to') or default_date_to
+            select_all_groups = request.args.get('select_all_groups') == 'on'
+            selected_groups = request.args.getlist('groups')
+
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        base_query = """
+            FROM Login_History lh
+            JOIN Users u ON lh.user_id = u.id
+            LEFT JOIN Roles r ON u.role_id = r.id
+            WHERE lh.login_date BETWEEN ? AND ?
+            AND r.name NOT IN ('Master')
+            AND u.is_deleted = 0
+        """
+        params = [date_from, date_to]
+
+        if selected_users:
+            placeholders = ','.join(['?' for _ in selected_users])
+            base_query += f" AND u.id IN ({placeholders})"
+            params.extend(selected_users)
+
+        if selected_groups:
+            placeholders = ','.join(['?' for _ in selected_groups])
+            base_query += f" AND u.group_id IN ({placeholders})"
+            params.extend(selected_groups)
+
+        # Lấy toàn bộ record, không phân trang
+        data_query = f"""
+            SELECT u.id, u.name, lh.login_date, lh.login_time
+            {base_query}
+            ORDER BY {sort_column} {sort_direction}
+        """
+        logging.info(f"Data Query: {data_query} with params {params}")
+        cursor.execute(data_query, params)
+        records = cursor.fetchall()
+        
+        # If sorting by user_name, apply Vietnamese first name sorting
+        if sort_by_first_name:
+            records = sorted(records, 
+                           key=lambda r: vietnamese_sort_key(r[1], sort_by_first_name=True),
+                           reverse=(sort_order == 'desc'))
+        
+        conn.close()
+
+        # Check if this is an AJAX request
+        if request.form.get('ajax') == '1' or request.args.get('ajax') == '1':
+            # Generate table HTML for AJAX response
+            table_html = "<tbody>"
+            for record in records:                
+                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td>{record[3]}</td></tr>'
+            
+            table_html += "</tbody>"
+            return jsonify({'html': table_html})
+
+        logging.info(f"Records: {records}")
+        return render_template_with_permissions('login_history.html',
+                               records=records,
+                               users=users,  # Use filtered users for both filter and modal
+                               groups=groups,
+                               all_users=users,  # Use filtered users for modal
+                               sort_by=sort_by,
+                               sort_order=sort_order,
+                               date_from=date_from,
+                               date_to=date_to,
+                               selected_users=selected_users,
+                               selected_groups=selected_groups,
+                               select_all_users=select_all_users,
+                               select_all_groups=select_all_groups,
+                               is_gvcn=is_user_gvcn(),
+                               role_name=session.get('role_name'))
+    else:
+        return redirect(url_for('login'))
+    
+    
 if __name__ == '__main__':
     setup_sample_data()
     app.run(debug=True, port=5001)
