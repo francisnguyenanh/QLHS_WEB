@@ -1,518 +1,441 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Báo Cáo Rèn Luyện{% if class_name %} lớp {{ class_name }}{% endif %} - {{ user_name }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
-    <!-- Favicon cho trình duyệt -->
-<link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
-<link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
+{% extends "base.html" %}
 
-<!-- Apple touch icon cho iOS -->
-<link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+{% block extra_css %}
+<style>
+    /* Ngăn chặn FOUC - ẩn content cho đến khi JavaScript load xong */
+    .page-content {
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+    
+    .page-content.loaded {
+        opacity: 1;
+    }
 
-<!-- Android Chrome icons -->
-<link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='android-chrome-192x192.png') }}">
-<link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='android-chrome-512x512.png') }}">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
+    /* Button styling */
+    .btn-compact {
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .btn-compact:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-compact.btn-primary {
+        background: linear-gradient(135deg, #0d6efd, #6610f2);
+        border: none;
+        color: white;
+    }
+
+    .btn-compact.btn-success {
+        background: linear-gradient(135deg, #198754, #20c997);
+        border: none;
+        color: white;
+    }
+
+    .btn-compact.active {
+        background: linear-gradient(135deg, #6610f2, #0d6efd);
+        transform: scale(1.05);
+    }
+
+    /* Search form card styling */
+    .search-form-card {
+        margin-bottom: 20px;
+        border: none;
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        transition: all 0.3s ease-in-out;
+        transform-origin: top;
+    }
+
+    .search-form-card.collapsed {
+        display: none !important;
+        opacity: 0;
+        max-height: 0;
+        overflow: hidden;
+        margin-bottom: 0 !important;
+        transform: scaleY(0);
+    }
+
+    .search-form-card.collapsing {
+        transition: all 0.3s ease-in-out;
+        opacity: 0.5;
+    }
+
+    .search-form-card.expanding {
+        transition: all 0.3s ease-in-out;
+        display: block !important;
+        opacity: 1;
+    }
+
+    /* Report container styling - giống user_report */
+    .report-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        max-width: 900px;
+        margin: 20px auto;
+        display: none; /* Initially hidden */
+    }
+
+    .report-header {
+        background: #2c3e50;
+        color: white;
+        padding: 30px;
+        text-align: center;
+        position: relative;
+    }
+
+    .report-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        opacity: 0.2;
+    }
+
+    .report-header h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 15px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .student-teacher-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .student-name {
+        font-size: 1.1rem;
+        font-weight: 400;
+        flex: 1;
+        text-align: left;
+        min-width: 200px;
+    }
+
+    .period-info {
+        background: rgba(255, 255, 255, 0.15);
+        padding: 10px 20px;
+        border-radius: 25px;
+        font-size: 0.9rem;
+        text-align: center;
+        flex-shrink: 0;
+        min-width: 120px;
+    }
+
+    .teacher-name {
+        font-size: 1.1rem;
+        font-weight: 400;
+        flex: 1;
+        text-align: right;
+        min-width: 200px;
+    }
+
+    .report-body {
+        padding: 30px;
+    }
+
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+
+    .summary-card {
+        background: #ffffff;
+        color: #34495e;
+        padding: 20px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s ease;
+        border-left: 4px solid #3498db;
+    }
+
+    .summary-card:hover {
+        transform: translateY(-3px);
+    }
+
+    .summary-card.study-card {
+        border-left-color: #e67e22;
+    }
+
+    .summary-card.conduct-card {
+        border-left-color: #e74c3c;
+    }
+
+    .summary-card.total-card {
+        border-left-color: #2ecc71;
+    }
+
+    .summary-card h3 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: #2c3e50;
+    }
+
+    .summary-card p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #7f8c8d;
+    }
+
+    .summary-card small {
+        display: block;
+        margin-top: 8px;
+        font-size: 0.8rem;
+    }
+
+    .details-section {
+        background: #f9fbfc;
+        border-radius: 10px;
+        padding: 25px;
+        margin-bottom: 25px;
+    }
+
+    .details-section h3 {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .table {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        margin: 0;
+    }
+
+    .table thead th {
+        background: #34495e;
+        color: white;
+        font-weight: 500;
+        border: none;
+        padding: 12px;
+        font-size: 0.9rem;
+    }
+
+    .table tbody td {
+        padding: 12px;
+        border: none;
+        border-bottom: 1px solid #ecf0f1;
+        vertical-align: middle;
+        font-size: 0.85rem;
+    }
+
+    .table tbody tr:hover {
+        background: #f5f6f5;
+    }
+
+    .points-badge {
+        background: #2ecc71;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 15px;
+        font-weight: 500;
+        font-size: 0.8rem;
+    }
+
+    .points-badge.negative {
+        background: #e74c3c;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 50px 20px;
+        color: #7f8c8d;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        opacity: 0.4;
+    }
+
+    .print-btn {
+        background: #3498db;
+        border: none;
+        color: white;
+        padding: 10px 25px;
+        border-radius: 20px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        position: fixed;
+        top: 15px;
+        right: 15px;
+        z-index: 1000;
+        font-size: 0.9rem;
+        display: none; /* Initially hidden */
+    }
+
+    .print-btn:hover {
+        background: #2980b9;
+        transform: translateY(-1px);
+        box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
+        color: white;
+    }
+
+    .print-btn.show {
+        display: block;
+    }
+
+    @media print {
         body {
-            font-family: 'Inter', sans-serif;
-            background: #f5f6f5;
-            min-height: 100vh;
-            padding: 20px 0;
+            background: white;
+            padding: 0;
+        }
+        
+        .main-content {
+            padding: 0;
+        }
+        
+        .search-form-card, .d-flex.gap-2 {
+            display: none !important;
         }
         
         .report-container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        
-        .report-header {
-            background: #2c3e50;
-            color: white;
-            padding: 30px;
-            text-align: center;
-            position: relative;
-        }
-        
-        .report-header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-            opacity: 0.2;
-        }
-        
-        .report-header h1 {
-            font-size: 2rem;
-            font-weight: 600;
-            margin-bottom: 15px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .student-teacher-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: relative;
-            z-index: 1;
-            gap: 20px;
-        }
-        
-        .student-name {
-            font-size: 1.1rem;
-            font-weight: 400;
-            flex: 1;
-            text-align: left;
-        }
-        
-        .period-info {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-size: 0.9rem;
-            text-align: center;
-            flex-shrink: 0;
-        }
-        
-        .teacher-name {
-            font-size: 1.1rem;
-            font-weight: 400;
-            flex: 1;
-            text-align: right;
-        }
-        
-        .report-body {
-            padding: 30px;
-        }
-        
-        .summary-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        
-        .summary-card {
-            background: #ffffff;
-            color: #34495e;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            transition: transform 0.2s ease;
-            border-left: 4px solid #3498db;
-        }
-        
-        .summary-card:hover {
-            transform: translateY(-3px);
-        }
-        
-        .summary-card.total-points {
-            border-left-color: #2ecc71;
-        }
-        
-        .summary-card.subjects {
-            border-left-color: #e67e22;
-        }
-        
-        .summary-card.conduct {
-            border-left-color: #e74c3c;
-        }
-        
-        .summary-card h3 {
-            font-size: 1.8rem;
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #2c3e50;
-        }
-        
-        .summary-card p {
+            box-shadow: none;
+            border-radius: 0;
             margin: 0;
-            font-size: 0.9rem;
-            color: #7f8c8d;
-        }
-        
-        .details-section {
-            background: #f9fbfc;
-            border-radius: 10px;
-            padding: 25px;
-            margin-bottom: 25px;
-        }
-        
-        .section-title {
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .details-table {
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-        
-        .details-table table {
-            margin: 0;
-        }
-        
-        .details-table th {
-            background: #34495e;
-            color: white;
-            font-weight: 500;
-            border: none;
-            padding: 12px;
-            font-size: 0.9rem;
-        }
-        
-        .details-table td {
-            padding: 12px;
-            border: none;
-            border-bottom: 1px solid #ecf0f1;
-            vertical-align: middle;
-            font-size: 0.85rem;
-        }
-        
-        .details-table tbody tr:hover {
-            background: #f5f6f5;
-        }
-        
-        .date-group {
-            background: #e8f0fe;
-            font-weight: 500;
-            color: #2c3e50;
-        }
-        
-        .points-badge {
-            background: #2ecc71;
-            color: white;
-            padding: 4px 10px;
-            border-radius: 15px;
-            font-weight: 500;
-            font-size: 0.8rem;
-        }
-        
-        .points-badge.negative {
-            background: #e74c3c;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 50px 20px;
-            color: #7f8c8d;
-        }
-        
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            opacity: 0.4;
-        }
-        
-        .comment-content {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-            border-left: 4px solid #3498db;
-        }
-        
-        .comment-text {
-            color: #2c3e50;
-            line-height: 1.6;
-            font-size: 0.95rem;
-            white-space: pre-line;
+            max-width: none;
         }
         
         .print-btn {
-            background: #3498db;
-            border: none;
-            color: white;
-            padding: 10px 25px;
-            border-radius: 20px;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            position: fixed;
-            top: 15px;
-            right: 15px;
-            z-index: 1000;
-            font-size: 0.9rem;
+            display: none;
         }
         
-        .print-btn:hover {
-            background: #2980b9;
-            transform: translateY(-1px);
-            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
-            color: white;
+        .report-header {
+            background: #2c3e50 !important;
+            color: white !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .d-flex.gap-2 {
+            flex-wrap: wrap;
+            gap: 8px !important;
         }
         
-        @media print {
-            body {
-                background: white;
-                padding: 0;
-            }
-            
-            .report-container {
-                box-shadow: none;
-                border-radius: 0;
-            }
-            
-            .print-btn {
-                display: none;
-            }
-            
-            .report-header {
-                background: #2c3e50;
-                color: white;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
+        .btn-compact {
+            min-width: 40px;
         }
         
-        @media (max-width: 768px) {
-            .report-header {
-                padding: 20px 15px;
-            }
-            
-            .report-header h1 {
-                font-size: 1.8rem;
-            }
-            
-            .student-teacher-row {
-                flex-direction: column;
-                gap: 15px;
-            }
-            
-            .student-name, .teacher-name {
-                font-size: 1.1rem;
-                text-align: center;
-                flex: none;
-            }
-            
-            .period-info {
-                font-size: 0.85rem;
-                padding: 8px 15px;
-            }
-            
-            .report-body {
-                padding: 15px;
-            }
-            
-            .summary-cards {
-                grid-template-columns: 1fr;
-            }
-            
-            .details-section {
-                padding: 15px;
-            }
-            
-            .print-btn {
-                position: relative;
-                top: auto;
-                right: auto;
-                width: 100%;
-                margin-bottom: 15px;
-            }
-        }
-    </style>
-    <script>
-        // Function to format date from YYYY-MM-DD to DD/MM/YYYY
-        function formatDate(dateStr) {
-            if (!dateStr || dateStr === 'Không xác định' || dateStr === '-') {
-                return dateStr;
-            }
-            
-            // Check if date is already in DD/MM/YYYY format
-            if (dateStr.includes('/')) {
-                return dateStr;
-            }
-            
-            // Convert from YYYY-MM-DD to DD/MM/YYYY
-            try {
-                const parts = dateStr.split('-');
-                if (parts.length === 3) {
-                    return `${parts[2]}/${parts[1]}/${parts[0]}`;
-                }
-                return dateStr;
-            } catch (e) {
-                return dateStr;
-            }
+        .search-form-card .row {
+            flex-direction: column;
         }
         
-        // Format dates when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            // Format period dates
-            const periodInfo = document.querySelector('.period-info');
-            if (periodInfo) {
-                let text = periodInfo.innerHTML;
-                // Extract dates using regex
-                text = text.replace(/(\d{4}-\d{2}-\d{2})/g, function(match) {
-                    return formatDate(match);
-                });
-                periodInfo.innerHTML = text;
-            }
-            
-            // Format table dates
-            document.querySelectorAll('.date-group').forEach(function(cell) {
-                if (cell.textContent && cell.textContent.trim() !== '-') {
-                    cell.textContent = formatDate(cell.textContent.trim());
-                }
-            });
-        });
-    </script>
-</head>
-<body>
-    <button class="btn print-btn" onclick="window.print()">
-        <i class="fas fa-print me-2"></i>In báo cáo
-    </button>
-    
-    <div class="report-container">
-        <!-- Header -->
-        <div class="report-header">
-            <h1><i class="fas fa-graduation-cap me-3"></i>Báo Cáo Rèn Luyện{% if class_name %} lớp {{ class_name }}{% endif %}</h1>
-            <div class="student-teacher-row">
-                <div class="student-name">
-                    <i class="fas fa-user me-2"></i>Học sinh</br> <b>{{ user_name }}</b>
-                </div>
-                <div class="period-info">
-                    <i class="fas fa-calendar-alt me-2"></i>
-                    {{ date_from or 'Không xác định' }}～{{ date_to or 'Không xác định' }}
-                </div>
-                <div class="teacher-name">
-                    <i class="fas fa-chalkboard-teacher me-2"></i>Giáo viên chủ nhiệm</br> <b>{{ teacher_name }}</b>
-                </div>
+        .search-form-card .col-md-4 {
+            margin-bottom: 1rem;
+        }
+
+        .report-header {
+            padding: 20px 15px;
+        }
+        
+        .report-header h1 {
+            font-size: 1.8rem;
+        }
+
+        .student-teacher-row {
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .student-name {
+            font-size: 1rem;
+            text-align: center;
+            flex: none;
+            min-width: auto;
+            width: 100%;
+            order: 3; /* Hiển thị cuối cùng */
+        }
+
+        .teacher-name {
+            font-size: 1rem;
+            text-align: center;
+            flex: none;
+            min-width: auto;
+            width: 100%;
+            order: 2; /* Hiển thị thứ 2 */
+        }
+
+        .period-info {
+            font-size: 0.8rem;
+            padding: 6px 12px;
+            min-width: auto;
+            order: 1; /* Hiển thị đầu tiên */
+        }
+
+        .report-body {
+            padding: 15px;
+        }
+
+        .summary-cards {
+            grid-template-columns: 1fr;
+        }
+
+        .details-section {
+            padding: 15px;
+        }
+
+        .print-btn {
+            position: relative;
+            top: auto;
+            right: auto;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3 page-content">
+    <div class="row">
+        <div class="col-md-12">
+            <!-- Report Container (Initially Hidden) -->
+            <div id="reportContainer">
+                {% if report_html %}
+                    {{ report_html|safe }}
+                {% endif %}
             </div>
-        </div>
-        
-        <!-- Body -->
-        <div class="report-body">
-            <!-- Summary Cards -->
-            <div class="summary-cards">
-                <div class="summary-card total-points">
-                    <h3>{{ total_points }}</h3>
-                    <p><i class="fas fa-star me-2"></i>Tổng điểm</p>
-                </div>
-                <div class="summary-card subjects">
-                    <h3>{{ subject_entries|length }}</h3>
-                    <p><i class="fas fa-book me-2"></i>Hoạt động học tập</p>
-                </div>
-                <div class="summary-card conduct">
-                    <h3>{{ conduct_entries|length }}</h3>
-                    <p><i class="fas fa-heart me-2"></i>Hoạt động hạnh kiểm</p>
-                </div>
-            </div>
-            
-            <!-- Comments Section -->
-            {% if user_comment %}
-                <div class="details-section">
-                    <h2 class="section-title">
-                        <i class="fas fa-comment-alt"></i>
-                        Nhận xét của giáo viên
-                    </h2>
-                    
-                    <div class="comment-content">
-                        <div class="comment-text">
-                            {{ user_comment|safe }}
-                        </div>
-                    </div>
-                </div>
-            {% endif %}
-            
-            <!-- Details Section -->
-            {% if subject_entries or conduct_entries %}
-                <div class="details-section">
-                    <h2 class="section-title">
-                        <i class="fas fa-list-alt"></i>
-                        Chi tiết hoạt động
-                    </h2>
-                    
-                    <div class="details-table">
-                        <table class="table table-hover mb-0">
-                            <thead>
-                                <tr>
-                                    <th style="width: 120px;"><i></i>Ngày</th>
-                                    <th><i></i>Môn học</th>
-                                    <th><i></i>Tiêu chí</th>
-                                    <th><i></i>Hạnh kiểm</th>
-                                    <th style="width: 100px;"><i></i>Điểm</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% set ns = namespace(current_date='') %}
-                                {% for date in sorted_dates %}
-                                    {% set entries = grouped_data[date] %}
-                                    {% for entry in entries %}
-                                        <tr>
-                                            {% if ns.current_date != date %}
-                                                <td class="date-group">{{ date or '-' }}</td>
-                                                {% set ns.current_date = date %}
-                                            {% else %}
-                                                <td></td>
-                                            {% endif %}
-                                            <td>
-                                                {% if entry.subject_name and entry.subject_name != '-' %}
-                                                    <i></i>{{ entry.subject_name }}
-                                                {% else %}
-                                                    <span class="text-muted">-</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if entry.criteria_name and entry.criteria_name != '-' %}
-                                                    <i></i>{{ entry.criteria_name }}
-                                                {% else %}
-                                                    <span class="text-muted">-</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if entry.conduct_name and entry.conduct_name != '-' %}
-                                                    <i></i>{{ entry.conduct_name }}
-                                                {% else %}
-                                                    <span class="text-muted">-</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if entry.total_points > 0 %}
-                                                    <span class="points-badge">+{{ entry.total_points }}</span>
-                                                {% elif entry.total_points < 0 %}
-                                                    <span class="points-badge negative">{{ entry.total_points }}</span>
-                                                {% else %}
-                                                    <span class="text-muted">0</span>
-                                                {% endif %}
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            {% else %}
-                <div class="empty-state">
-                    <i class="fas fa-inbox"></i>
-                    <h3>Chưa có dữ liệu</h3>
-                    <p>Không có hoạt động nào được ghi nhận trong khoảng thời gian này.</p>
-                </div>
-            {% endif %}
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+</div>
+
+<script>
+
+</script>
+{% endblock %}

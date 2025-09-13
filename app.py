@@ -5563,7 +5563,7 @@ def user_report_old(user_id):
     date_to = request.args.get('date_to')
     
     # Generate secure token
-    token = generate_report_token(user_id, date_from, date_to, expiry_hours=72)  # 3 days expiry
+    token = generate_report_token(user_id, date_from, date_to, expiry_hours=168)  # 3 days expiry
     
     # Redirect to secure route
     return redirect(url_for('user_report_secure', token=token))
@@ -5571,7 +5571,6 @@ def user_report_old(user_id):
 @app.route('/report/<token>')
 def user_report_secure(token):   
     """Secure user report route with encrypted token"""
-    # Verify token
     payload = verify_report_token(token)
     if not payload:
         return "Link đã hết hạn hoặc không hợp lệ", 403
@@ -5580,157 +5579,37 @@ def user_report_secure(token):
     date_from = payload.get('date_from')
     date_to = payload.get('date_to')
     
-    conn = connect_db()
-    cursor = conn.cursor()
-    
-    # Get user name
-    cursor.execute("SELECT name FROM Users WHERE id = ? AND is_deleted = 0", (user_id,))
-    user_info = cursor.fetchone()
-    if not user_info:
-        return "Không tìm thấy học sinh", 404
-    
-    user_name = user_info[0]
-    
-    # Get first class name that is not deleted
-    class_name = None
-    cursor.execute("SELECT name FROM Classes WHERE is_deleted = 0 ORDER BY id LIMIT 1")
-    class_info = cursor.fetchone()
-    if class_info:
-        class_name = class_info[0]
-    
-    # Get teacher name (GVCN)
-    cursor.execute("""
-        SELECT u.name FROM Users u
-        INNER JOIN Roles r ON u.role_id = r.id
-        WHERE r.name = 'GVCN' AND u.is_deleted = 0
-        LIMIT 1
-    """)
-    teacher_info = cursor.fetchone()
-    teacher_name = teacher_info[0] if teacher_info else "Chưa có GVCN"
-    
-    # Get subject entries
-    us_query = """
-        SELECT us.registered_date, s.name AS subject_name, c.name AS criteria_name, us.total_points
-        FROM User_Subjects us
-        LEFT JOIN Subjects s ON us.subject_id = s.id
-        LEFT JOIN Criteria c ON us.criteria_id = c.id
-        WHERE us.user_id = ? AND us.is_deleted = 0
-    """
-    us_params = [user_id]
-    if date_from:
-        us_query += " AND us.registered_date >= ?"
-        us_params.append(date_from)
-    if date_to:
-        us_query += " AND us.registered_date <= ?"
-        us_params.append(date_to)
-    us_query += " ORDER BY us.registered_date DESC"
-    
-    cursor.execute(us_query, us_params)
-    subject_entries = cursor.fetchall()
-    
-    # Get conduct entries
-    uc_query = """
-        SELECT uc.registered_date, con.name AS conduct_name, uc.total_points
-        FROM User_Conduct uc
-        LEFT JOIN Conduct con ON uc.conduct_id = con.id
-        WHERE uc.user_id = ? AND uc.is_deleted = 0
-    """
-    uc_params = [user_id]
-    if date_from:
-        uc_query += " AND uc.registered_date >= ?"
-        uc_params.append(date_from)
-    if date_to:
-        uc_query += " AND uc.registered_date <= ?"
-        uc_params.append(date_to)
-    uc_query += " ORDER BY uc.registered_date DESC"
-    
-    cursor.execute(uc_query, uc_params)
-    conduct_entries = cursor.fetchall()
-    
-    # Get user comments for this period
-    user_comment = ""
-    if date_from and date_to:
-        # Try exact match first
-        cursor.execute('''
-            SELECT comment_text FROM User_Comments 
-            WHERE user_id = ? AND period_start = ? AND period_end = ?
-            ORDER BY updated_date DESC LIMIT 1
-        ''', (user_id, date_from, date_to))
-        comment_result = cursor.fetchone()
+    try:     
+        student = get_user_by_id(user_id)
+        if not student:
+            error_html = '<div class="alert alert-danger">Không tìm thấy thông tin học sinh</div>'
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return jsonify({'success': False, 'html': error_html})
+            return error_html
         
-        # If no exact match found, look for overlapping periods
-        if not comment_result:
-            cursor.execute('''
-                SELECT comment_text FROM User_Comments 
-                WHERE user_id = ? 
-                AND (
-                    (period_start <= ? AND period_end >= ?) OR
-                    (period_start >= ? AND period_start <= ?) OR
-                    (period_end >= ? AND period_end <= ?)
-                )
-                ORDER BY updated_date DESC LIMIT 1
-            ''', (user_id, date_from, date_from, date_from, date_to, date_from, date_to))
-            comment_result = cursor.fetchone()
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+                SELECT u.name 
+                FROM Users u 
+                JOIN Roles r ON u.role_id = r.id 
+                WHERE r.name = 'GVCN' AND u.is_deleted = 0
+                LIMIT 1
+            """)
+        teacher_info = cursor.fetchone()
+        teacher_name = teacher_info[0] if teacher_info else "Chưa phân công"
+        conn.close()
         
-        if comment_result and comment_result[0] is not None and comment_result[0] != "None":
-            user_comment = comment_result[0]
-    
-    conn.close()
-    
-    # Process data for template
-    grouped_data = {}
-    total_points = 0
-    
-    # Process subject entries
-    for entry in subject_entries:
-        reg_date = entry[0]
-        subject_name = entry[1] if entry[1] else '-'
-        criteria_name = entry[2] if entry[2] else '-'
-        points = entry[3] if entry[3] is not None else 0
-        total_points += points
+        report_html = generate_student_report_html(user_id, date_from, date_to, student, teacher_name)
         
-        if reg_date not in grouped_data:
-            grouped_data[reg_date] = []
-        grouped_data[reg_date].append({
-            'subject_name': subject_name,
-            'criteria_name': criteria_name,
-            'conduct_name': '-',
-            'total_points': points
-        })
-    
-    # Process conduct entries
-    for entry in conduct_entries:
-        reg_date = entry[0]
-        conduct_name = entry[1] if entry[1] else '-'
-        points = entry[2] if entry[2] is not None else 0
-        total_points += points
+        # Nếu là truy cập trực tiếp thì trả về HTML đầy đủ
+        return render_template('user_report.html', report_html=report_html, hide_navbar=True)
         
-        if reg_date not in grouped_data:
-            grouped_data[reg_date] = []
-        grouped_data[reg_date].append({
-            'subject_name': '-',
-            'criteria_name': '-',
-            'conduct_name': conduct_name,
-            'total_points': points
-        })
-    
-    # Sort dates
-    sorted_dates = sorted(grouped_data.keys(), reverse=True)
-
-    return render_template('user_report.html',
-                         user_name=user_name,
-                         class_name=class_name,
-                         user_id=user_id,
-                         date_from=date_from,
-                         date_to=date_to,
-                         total_points=total_points,
-                         subject_entries=subject_entries,
-                         conduct_entries=conduct_entries,
-                         grouped_data=grouped_data,
-                         sorted_dates=sorted_dates,
-                         user_comment=user_comment,
-                         teacher_name=teacher_name,
-                         token=token)  # Add token to template for regeneration if needed
+    except Exception as e:
+        error_html = f'<div class="alert alert-danger">Có lỗi xảy ra: {str(e)}</div>'
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'success': False, 'html': error_html})
+        return error_html
 
 @app.route('/generate_report_link', methods=['POST'])
 def generate_report_link():
