@@ -3056,7 +3056,6 @@ def user_conduct_list():
 
         query += f" ORDER BY {sort_column} {sort_direction}"
         
-        logging.info(f"Executing SQL: {query} with params: {params}")
         cursor.execute(query, params)
         records = cursor.fetchall()
 
@@ -3088,7 +3087,7 @@ def user_conduct_list():
             table_html += "</tbody>"
             return jsonify({'html': table_html})
 
-        logging.info(f"Rendering template: user_conduct.html with records: {records}")
+     
         return render_template_with_permissions('user_conduct.html',
                                records=records,
                                users=modal_users,  # Use filtered users for both filter and modal
@@ -4931,10 +4930,35 @@ def login():
                     error = 'Hệ thống đã hết hiệu lực. Vui lòng liên hệ quản trị viên.'
                     return render_template('login.html', error=error, class_name=class_name, permissions={})
             
-            # Lưu lịch sử đăng nhập (ngày giờ local)
-            login_date = datetime.now().strftime('%Y-%m-%d')
-            login_time = datetime.now().strftime('%H:%M:%S')
-            
+            # Lưu lịch sử đăng nhập (ngày giờ local hoặc client)
+            client_time = request.form.get('client_time')
+            if client_time:
+                try:
+                    # Tách thành ngày và giờ, chuyển về đúng format
+                    dt = client_time.strip().replace('T', ' ').replace('/', '-')
+                    # Hỗ trợ cả dạng 'YYYY-MM-DD HH:MM:SS' hoặc 'YYYY-MM-DD HH:MM'
+                    parts = dt.split(' ')
+                    if len(parts) == 2:
+                        date_part = parts[0]
+                        time_part = parts[1]
+                        # Nếu time thiếu giây, thêm ':00'
+                        if len(time_part.split(':')) == 2:
+                            time_part += ':00'
+                        # Chuyển về đúng format
+                        login_date = datetime.strptime(date_part, '%Y-%m-%d').strftime('%Y-%m-%d')
+                        login_time = datetime.strptime(time_part, '%H:%M:%S').strftime('%H:%M:%S')
+                        
+                    else:
+                        # Nếu format không đúng, dùng giờ server
+                        login_date = datetime.now().strftime('%Y-%m-%d')
+                        login_time = datetime.now().strftime('%H:%M:%S')
+                except Exception:
+                    login_date = datetime.now().strftime('%Y-%m-%d')
+                    login_time = datetime.now().strftime('%H:%M:%S')
+            else:
+                login_date = datetime.now().strftime('%Y-%m-%d')
+                login_time = datetime.now().strftime('%H:%M:%S')
+
             # Lưu vào bảng Login_History
             conn = connect_db()
             cursor = conn.cursor()
@@ -5143,7 +5167,7 @@ def reset_table(table_name):
                     )
                 """)
             else:
-                logging.info(f'Resetting table {table_name}')
+          
                 # Xóa toàn bộ dữ liệu các bảng khác
                 cursor.execute(f"DELETE FROM {table_name}")
             
@@ -5152,7 +5176,7 @@ def reset_table(table_name):
             
             return jsonify({'success': True, 'message': f'Đã xóa toàn bộ dữ liệu bảng {table_name}'})
         except Exception as e:
-            logging.info(f'Error resetting table {table_name}: {str(e)}')
+           
             return jsonify({'error': f'Lỗi khi xóa dữ liệu: {str(e)}'}), 500
     else:
         return jsonify({'error': 'Chưa đăng nhập'}), 401
@@ -6401,8 +6425,7 @@ def get_grouped_criteria_api():
 
     
     grouped = {}
-    for row in rows:
-        logging.info(f"Row: {row[2]}")       
+    for row in rows:    
         if row[2] is not None:
             if row[2] == 1:
                 criterion_type = 'điểm cộng'
@@ -6517,7 +6540,7 @@ def login_history():
             {base_query}
             ORDER BY {sort_column} {sort_direction}
         """
-        logging.info(f"Data Query: {data_query} with params {params}")
+ 
         cursor.execute(data_query, params)
         records = cursor.fetchall()
         
@@ -6539,7 +6562,7 @@ def login_history():
             table_html += "</tbody>"
             return jsonify({'html': table_html})
 
-        logging.info(f"Records: {records}")
+
         return render_template_with_permissions('login_history.html',
                                records=records,
                                users=users,  # Use filtered users for both filter and modal
