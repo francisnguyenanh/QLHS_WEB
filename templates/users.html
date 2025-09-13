@@ -501,6 +501,30 @@
             });
         }
 
+        function deleteItem(deleteUrl) {
+            fetch(deleteUrl, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess(data.message || 'Xóa user thành công');
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showError(data.error || 'Có lỗi khi xóa user');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError('Có lỗi khi xóa user');
+            });
+        }
+
         document.getElementById('name').addEventListener('input', function() {
             const nameValue = this.value.trim();
             if (nameValue.length > 0) {

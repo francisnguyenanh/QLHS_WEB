@@ -276,7 +276,7 @@ def delete_all_role_permissions_except_system():
     conn.commit()
     conn.close()
      
-@app.route('/secure/<action>/<table>/<token>')
+@app.route('/secure/<action>/<table>/<token>', methods=['GET', 'POST'])
 def secure_action_handler(action, table, token):
     """Generic handler for secure edit/delete operations"""
     # Verify token
@@ -2326,7 +2326,8 @@ def update_user_api(id):
                 conn.close()
                 return jsonify({'error': 'Role Password đã tồn tại trong hệ thống. Vui lòng chọn role password khác'}), 400
         
-        if session.get('role_name') == 'GVCN':  # Nếu user hiện tại là GVCN
+
+        if user_data is not None and user_data[6] == 5:  # Nếu user hiện tại là GVCN
             data = {
             'name': name,
             'username': username,
@@ -2679,28 +2680,44 @@ def user_edit_secure(id, token):
 def user_delete_secure(id, token):
     """Secure user delete function"""
     if 'user_id' not in session:
+        # Check if this is an AJAX request
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
+        if is_ajax:
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 401
         return redirect(url_for('login'))
+    
+    # Check if this is an AJAX request
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json or 'json' in request.headers.get('Accept', '').lower()
     
     # Kiểm tra user có role Master hoặc GVCN không
     user_data = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
     if user_data and user_data[6]:  # role_id at index 6
         role_data = read_record_by_id('Roles', user_data[6], ['id', 'name'])
         if role_data and role_data[1] in ['Master', 'GVCN']:
-            flash(f'Không thể xóa user {role_data[1]}', 'error')
+            error_msg = f'Không thể xóa user {role_data[1]}'
+            if is_ajax:
+                return jsonify({'success': False, 'error': error_msg})
+            flash(error_msg, 'error')
             return redirect(url_for('users_list'))
     
     if not user_data:
-        flash('Không tìm thấy người dùng', 'error')
+        error_msg = 'Không tìm thấy người dùng'
+        if is_ajax:
+            return jsonify({'success': False, 'error': error_msg})
+        flash(error_msg, 'error')
         return redirect(url_for('users_list'))
     
     delete_record('Users', id)
     delete_record_by_key('Role_User_Permissions', 'user_id', id)
     
-    flash('Xóa người dùng thành công', 'success')
+    success_msg = 'Xóa người dùng thành công'
+    if is_ajax:
+        return jsonify({'success': True, 'message': success_msg})
+    flash(success_msg, 'success')
     return redirect(url_for('users_list'))
     
 
-@app.route('/users/delete/<int:id>')
+@app.route('/users/delete/<int:id>', methods=['POST', 'GET'])
 def user_delete(id):
     """Old route - redirect to secure version"""
     if 'user_id' not in session:
@@ -6384,4 +6401,4 @@ def get_grouped_criteria_api():
 
 if __name__ == '__main__':
     setup_sample_data()
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
