@@ -5134,6 +5134,8 @@ def reset_table(table_name):
                 
             elif table_name == 'Users':
                 # Không xóa user có role Master, GVCN
+                cursor.execute("DELETE FROM Login_history")
+                
                 cursor.execute("""
                     DELETE FROM Users 
                     WHERE role_id NOT IN (
