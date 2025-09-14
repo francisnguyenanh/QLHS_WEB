@@ -1113,6 +1113,12 @@ def get_filtered_criteria_by_role():
     
     return [{'id': criterion[0], 'name': criterion[1], 'criterion_type': criterion[2], 'criterion_points': criterion[3]} for criterion in criteria]
 
+def format_date_ddmmyyyy(date_str):
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%d-%m-%Y")
+    except Exception:
+        return date_str  # Nếu lỗi thì trả về nguyên bản
+    
 
 # Trang chủ
 @app.route('/')
@@ -3058,16 +3064,24 @@ def user_conduct_list():
         query += f" ORDER BY {sort_column} {sort_direction}"
         
         cursor.execute(query, params)
-        records = cursor.fetchall()
+        db_rows = cursor.fetchall()
 
         # If sorting by user_name, apply Vietnamese first name sorting
         if sort_by_first_name:
-            records = sorted(records, 
+            db_rows = sorted(db_rows, 
                            key=lambda r: vietnamese_sort_key(r[1], sort_by_first_name=True),
                            reverse=(sort_order == 'desc'))
         
         conn.close()
-
+        
+        records = []
+        for row in db_rows:
+            # row[3] là trường ngày (registered_date)
+            formatted_date = format_date_ddmmyyyy(row[3])
+            # Tạo tuple mới với ngày đã format
+            record = (row[0], row[1], row[2], formatted_date, row[4], row[5], row[6])
+            records.append(record)
+    
         # Check if this is an AJAX request
         if request.form.get('ajax') == '1' or request.args.get('ajax') == '1':
             # Generate table HTML for AJAX response
@@ -3631,16 +3645,24 @@ def user_subjects_list():
 
         query += f" ORDER BY {sort_column} {sort_direction}"
         cursor.execute(query, params)
-        records = cursor.fetchall()
+        db_rows = cursor.fetchall()
         
         # If sorting by user_name, apply Vietnamese first name sorting
         if sort_by_first_name:
-            records = sorted(records, 
+            db_rows = sorted(db_rows, 
                            key=lambda r: vietnamese_sort_key(r[1], sort_by_first_name=True),
                            reverse=(sort_order == 'desc'))
         
         conn.close()
-
+        
+        records = []
+        for row in db_rows:
+            # row[3] là trường ngày (registered_date)
+            formatted_date = format_date_ddmmyyyy(row[4])
+            # Tạo tuple mới với ngày đã format
+            record = (row[0], row[1], row[2], row[3], formatted_date, row[5], row[6], row[7])
+            records.append(record)
+            
         # Check if this is an AJAX request
         if request.form.get('ajax') == '1' or request.args.get('ajax') == '1':
             # Generate table HTML for AJAX response
