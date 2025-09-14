@@ -4456,27 +4456,6 @@ def user_summary():
         teacher_group_id = group_result[0] if group_result else None
         conn.close()
 
-        conn = connect_db()
-        cursor = conn.cursor()
-        # Loại trừ GVCN và Master khỏi danh sách
-        excluded_roles = []
-        if gvcn_role_id is not None:
-            excluded_roles.append(gvcn_role_id)
-        if master_role_id is not None:
-            excluded_roles.append(master_role_id)
-        
-        if excluded_roles:
-            placeholders = ','.join('?' * len(excluded_roles))
-            cursor.execute(f"SELECT id, name FROM Users WHERE is_deleted = 0 AND role_id NOT IN ({placeholders})", excluded_roles)
-        else:
-            cursor.execute("SELECT id, name FROM Users WHERE is_deleted = 0")
-        all_users = cursor.fetchall()
-        if teacher_group_id is not None:
-            cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0 AND id != ?", (teacher_group_id,))
-        else:
-            cursor.execute("SELECT id, name FROM Groups WHERE is_deleted = 0")
-        all_groups = cursor.fetchall()
-        conn.close()
 
         # Filter users and groups based on permissions  
         filtered_users = get_filtered_users_by_role()
@@ -4567,7 +4546,6 @@ def user_summary():
         for user_id, user_name in filtered_users:
             conduct_points = 0
             academic_points = 0
-            has_data = False
 
             # Điểm rèn luyện (User_Conduct)
             uc_query = """
@@ -4586,7 +4564,6 @@ def user_summary():
             uc_points = cursor.fetchone()[0]
             if uc_points:
                 conduct_points = uc_points
-                has_data = True
 
             # Điểm học tập (User_Subjects)
             us_query = """
@@ -4605,7 +4582,6 @@ def user_summary():
             us_points = cursor.fetchone()[0]
             if us_points:
                 academic_points = us_points
-                has_data = True
 
             # Tính toán nhận xét tự động
             current_comment = ""
