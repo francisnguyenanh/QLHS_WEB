@@ -4670,8 +4670,38 @@ def user_summary():
                     
                 except:
                     pass
+            
+            
+            # Kiểm tra tiêu chuẩn
+            standard = ""
+            # Kiểm tra User_Subjects
+            cursor.execute("""
+                SELECT COUNT(*) FROM User_Subjects
+                WHERE user_id = ? AND is_deleted = 0
+                AND registered_date >= ? AND registered_date <= ?
+            """, (user_id, date_from, date_to))
+            us_count = cursor.fetchone()[0]
 
-            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, has_data, user_id, current_comment, auto_comment, prev_academic_points, prev_conduct_points))
+            # Kiểm tra User_Conduct
+            cursor.execute("""
+                SELECT COUNT(*) FROM User_Conduct
+                WHERE user_id = ? AND is_deleted = 0
+                AND registered_date >= ? AND registered_date <= ?
+            """, (user_id, date_from, date_to))
+            uc_count = cursor.fetchone()[0]
+
+            
+            if us_count == 0 and uc_count == 0:
+                standard = "HT/HK"
+            elif us_count == 0:
+                standard = "HT"
+            elif uc_count == 0:
+                standard = "HK"
+            else:
+                standard = ""
+
+            # Thêm vào tuple record
+            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, standard, user_id, current_comment, auto_comment, prev_academic_points, prev_conduct_points))
 
         if sort_by == 'user_name':
             records.sort(key=lambda x: vietnamese_sort_key(x[0], sort_by_first_name=True) if x[0] else '', reverse=(sort_order == 'desc'))
@@ -4689,8 +4719,12 @@ def user_summary():
             records.sort(key=lambda x: x[2] - x[8], reverse=(sort_order == 'desc'))  # current - previous
         elif sort_by == 'total_points':
             records.sort(key=lambda x: x[1] + x[2], reverse=(sort_order == 'desc'))
-        elif sort_by == 'in':
-            records.sort(key=lambda x: x[3], reverse=(sort_order == 'desc'))
+        elif sort_by == 'standard':
+            # Sắp xếp theo tiêu chuẩn: HT/HK > HT > HK > ''
+            def standard_sort_key(val):
+                order_map = {'HT/HK': 0, 'HT': 1, 'HK': 2, '': 3}
+                return order_map.get(val[3], 99)
+            records.sort(key=standard_sort_key, reverse=(sort_order == 'desc'))
 
         conn.close()
 
@@ -4705,11 +4739,10 @@ def user_summary():
     <table class="table table-striped table-hover">
         <thead>
             <tr>
-                <th rowspan="2" style="width: 70px;">
-                    <input type="checkbox" id="select_all_in">
-                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="in" data-order="{{ 'desc' if sort_by == 'in' and sort_order == 'asc' else 'asc' }}">
-                        Xuất
-                        {% if sort_by == 'in' %}
+                <th rowspan="2" style="width: 90px;">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="standard" data-order="{{ 'desc' if sort_by == 'standard' and sort_order == 'asc' else 'asc' }}">
+                        Đạt
+                        {% if sort_by == 'standard' %}
                             {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
                         {% else %}
                             <i class="fas fa-sort"></i>
@@ -4800,7 +4833,7 @@ def user_summary():
             {% for record in records %}
                 <tr>
                     <td>
-                        <input type="checkbox" name="in_{{ record[4] }}" value="1" {% if record[3] %}checked{% endif %}>
+                        {{ record[3] }}
                     </td>
                     <td>
                         <span class="user-name-clickable" 
