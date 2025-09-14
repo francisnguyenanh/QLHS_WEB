@@ -16,11 +16,11 @@
         }
         .card {
             width: 100%;
-            max-width: 400px;
+            max-width: 600px;
             border: none;
             border-radius: 15px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            background: linear-gradient(135deg, #4682b4, #87ceeb);
+            background: linear-gradient(135deg, #052d4e, #017f23);
             color: white;
             font-family: 'Arial', sans-serif;
         }
@@ -68,47 +68,67 @@
         #role-section {
             display: none;
         }
+        .account-value {
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: #fff;
+            letter-spacing: 1px;
+        }
+        .account-section {
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .account-section h5 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+            padding-bottom: 0.5rem;
+        }
     </style>
 </head>
 <body>
     <div class="card">
         <div class="card-header">
-            <h4 class="mb-0">Tài Khoản Quản Lý Học Sinh</h4>
-            <p>{{ name }}</p>
+            <h3 class="mb-0">Tài Khoản Quản Lý Rèn Luyện</h3>
+            <br>
+            <h4>{{ name }}</h4>
         </div>
         <div class="card-body">
-            <div class="info-item">
-                <span class="info-label">Tên đăng nhập:</span> {{ username }}
-            </div>
-            <div class="info-item">
-                <span class="info-label">Mật khẩu:</span> {{ password }}
-            </div>
-            <div id="role-section">
-                <div class="info-item mt-3">
-                    <span class="info-label">Chức vụ (<span id="role-name"></span>):</span>
+            <div class="account-section">
+                <h5>Tài Khoản Đăng Nhập của Phụ Huynh/Học Sinh</h5>
+                <div class="info-item">
+                    <span class="info-label">Tên đăng nhập:</span> <span class="account-value">{{ username }}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Tên đăng nhập:</span> <span id="role-username"></span>
+                    <span class="info-label">Mật khẩu:</span> <span class="account-value">{{ password }}</span>
+                </div>
+            </div>
+            <div id="role-section" class="account-section">
+                <h5>Tài Khoản Đăng Nhập của Chức Vụ</h5>
+                <div class="info-item">
+                    <span class="info-label">Chức vụ:</span> <span id="role-name"></span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Mật khẩu:</span> <span id="role-password"></span>
+                    <span class="info-label">Tên đăng nhập:</span> <span id="role-username" class="account-value"></span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Mật khẩu:</span> <span id="role-password" class="account-value"></span>
                 </div>
             </div>
             <div class="instructions">
                 <h6>Hướng Dẫn Đăng Nhập:</h6>
                 <ol class="mb-0">
-                    <li>Truy cập: <a href="https://quanlyhocsinh.example.com" target="_blank" style="color: #fff;">quanlyhocsinh.example.com</a></li>
+                    <li>Truy cập: <a href="https://quanlyhocsinh.pythonanywhere.com" target="_blank" style="color: #fff;">https://quanlyhocsinh.pythonanywhere.com</a></li>
                     <li>Nhập tên đăng nhập và mật khẩu.</li>
                     <li>Nhấn "Đăng Nhập".</li>
-                    <li>Liên hệ giáo viên nếu gặp vấn đề.</li>
+                    <li>Liên hệ giáo viên chủ nhiệm nếu gặp vấn đề.</li>
                 </ol>
-            </div>
-            <div class="text-center mt-3">
-                <a href="https://quanlyhocsinh.example.com" class="btn btn-custom">Đăng Nhập</a>
             </div>
         </div>
         <div class="card-footer">
-            Trường [Tên Trường] | Hỗ trợ: support@school.edu.vn
+            <p class="mb-0">© 2025 Quản Lý Rèn Luyện Học Sinh</p>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
@@ -119,7 +139,7 @@
         const rolePassword = "{{ role_password }}";
 
         // Kiểm tra nếu role_name và role_password có giá trị và khác rỗng/None
-        if (roleName && rolePassword && roleName !== 'None' && rolePassword !== 'None') {
+        if (rolePassword && rolePassword !== 'None' && rolePassword !== 'NULL') {
             document.getElementById('role-section').style.display = 'block';
             document.getElementById('role-name').textContent = roleName;
             document.getElementById('role-username').textContent = roleUsername;

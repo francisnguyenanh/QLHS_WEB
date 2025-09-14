@@ -6477,8 +6477,14 @@ def user_account_encoded(encoded_id):
     """, (user_id,))
     user = cursor.fetchone()
     conn.close()
+    
+    class_data = read_record_by_id('Classes', id, ['id', 'name'])
+    
     if not user:
         return "<h3>Không tìm thấy user!</h3>", 404
+    
+    logging.info(f"Accessed user account for user_id: {class_data}")
+    
     return render_template(
         'user_account.html',
         name=user[0],
@@ -6486,7 +6492,8 @@ def user_account_encoded(encoded_id):
         password=user[2],
         role_name=user[3],
         role_username=user[4],
-        role_password=user[5]
+        role_password=user[5],
+        class_name=class_data['name'] if class_data else "Chưa phân lớp"
     )
 
 
