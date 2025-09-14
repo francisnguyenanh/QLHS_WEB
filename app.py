@@ -26,6 +26,7 @@ import logging
 import pandas as pd
 import re
 from unicodedata import normalize
+import base64
 
 logging.basicConfig(level=logging.INFO)
 
@@ -6447,8 +6448,48 @@ def login_history():
                                role_name=session.get('role_name'))
     else:
         return redirect(url_for('login'))
+
+def encode_user_id(user_id):
+    return base64.urlsafe_b64encode(str(user_id).encode()).decode()
+
+def decode_user_id(encoded):
+    try:
+        # Thêm padding nếu thiếu
+        missing_padding = len(encoded) % 4
+        if missing_padding:
+            encoded += '=' * (4 - missing_padding)
+        return int(base64.urlsafe_b64decode(encoded.encode()).decode())
+    except Exception:
+        return None
     
-    
+@app.route('/user_account_encoded/<encoded_id>')
+def user_account_encoded(encoded_id):
+    user_id = decode_user_id(encoded_id)
+    if not user_id:
+        return "<h3>Link không hợp lệ!</h3>", 400
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT u.name, u.username, u.password, r.name as role_name, u.role_username, u.role_password
+        FROM Users u
+        LEFT JOIN Roles r ON u.role_id = r.id
+        WHERE u.id = ?
+    """, (user_id,))
+    user = cursor.fetchone()
+    conn.close()
+    if not user:
+        return "<h3>Không tìm thấy user!</h3>", 404
+    return render_template(
+        'user_account.html',
+        name=user[0],
+        username=user[1],
+        password=user[2],
+        role_name=user[3],
+        role_username=user[4],
+        role_password=user[5]
+    )
+
+
 if __name__ == '__main__':
     setup_sample_data()
     app.run(debug=True, port=5001)

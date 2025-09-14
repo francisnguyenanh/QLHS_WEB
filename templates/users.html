@@ -76,7 +76,14 @@
                         {% set last_name = ' '.join(name_parts[:-1]) if name_parts|length > 1 else '' %}
                         <tr>
                             <td>{{ loop.index }}</td> 
-                            <td>{{ first_name }}</td>
+                            <td>
+                                <span class="user-name-clickable"
+                                    data-user-id="{{ user[0] }}"
+                                    style="cursor: pointer; color: #007bff; text-decoration: underline;"
+                                    title="Click để xem thông tin tài khoản">
+                                    {{ first_name }}
+                                </span>
+                            </td>
                             <td>{{ last_name }}</td>
                             <td>{{ user[2] }}</td>
                             <td>{{ user[5] or 'None' }}</td>
@@ -527,6 +534,13 @@
             });
         }
 
+        function encodeUserId(userId) {
+            // Chuyển userId thành chuỗi
+            let str = String(userId);
+            // Encode base64 chuẩn, giữ padding
+            return btoa(str).replace(/\+/g, '-').replace(/\//g, '_');
+        }
+
         document.getElementById('name').addEventListener('input', function() {
             const nameValue = this.value.trim();
             if (nameValue.length > 0) {
@@ -548,6 +562,19 @@
                 document.getElementById('username').value = '';
                 document.getElementById('password').value = '';
             }
+        });
+
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.user-name-clickable').forEach(element => {
+                element.addEventListener('click', function() {
+                    const userId = this.getAttribute('data-user-id');
+                    // Encode userId bằng base64
+                    const encodedId = btoa(userId).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+                    const url = `/user_account_encoded/${encodedId}`;
+                    window.open(url, '_blank');
+                });
+            });
         });
     </script>
 {% endblock %}
