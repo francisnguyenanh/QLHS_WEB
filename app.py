@@ -27,6 +27,7 @@ import pandas as pd
 import re
 from unicodedata import normalize
 import base64
+import string
 
 logging.basicConfig(level=logging.INFO)
 
@@ -1119,6 +1120,9 @@ def format_date_ddmmyyyy(date_str):
     except Exception:
         return date_str  # Nếu lỗi thì trả về nguyên bản
     
+def generate_random_string(length=6):
+    chars = string.ascii_lowercase + string.digits
+    return ''.join(random.choices(chars, k=length))
 
 # Trang chủ
 @app.route('/')
@@ -2262,24 +2266,17 @@ def create_user_api():
         # Kiểm tra trùng username
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM Users WHERE username = ? AND is_deleted = 0", (username,))
+        cursor.execute("SELECT COUNT(*) FROM Users WHERE username = ? AND password = ? AND is_deleted = 0", (username, password))
         if cursor.fetchone()[0] > 0:
             conn.close()
-            return jsonify({'error': 'Tên đăng nhập đã tồn tại'}), 400
+            return jsonify({'error': 'Cặp tên đăng nhập và mật khẩu đã tồn tại'}), 400
 
-        # Kiểm tra trùng password với tất cả các password và role_password trong DB
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM Users WHERE (password = ? OR role_password = ?) AND is_deleted = 0", (password, password))
-        if cursor.fetchone()[0] > 0:
-            conn.close()
-            return jsonify({'error': 'Mật khẩu đã tồn tại trong hệ thống. Vui lòng chọn mật khẩu khác'}), 400
-
-        # Kiểm tra trùng role_password nếu có
-        if role_password:
-            cursor.execute("SELECT COUNT(*) FROM Users WHERE (password = ? OR role_password = ?) AND is_deleted = 0", (role_password, role_password))
+        # Nếu có role_username và role_password, kiểm tra trùng cặp
+        if role_username and role_password:
+            cursor.execute("SELECT COUNT(*) FROM Users WHERE role_username = ? AND role_password = ? AND is_deleted = 0", (role_username, role_password))
             if cursor.fetchone()[0] > 0:
                 conn.close()
-                return jsonify({'error': 'Role Password đã tồn tại trong hệ thống. Vui lòng chọn role password khác'}), 400
+                return jsonify({'error': 'Cặp role username và role password đã tồn tại'}), 400
 
         data = {
             'name': name,
@@ -2315,23 +2312,18 @@ def update_user_api(id):
         # Kiểm tra trùng username (trừ user hiện tại)
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM Users WHERE username = ? AND id != ? AND is_deleted = 0", (username, id))
+        # Kiểm tra trùng cặp username + password
+        cursor.execute("SELECT COUNT(*) FROM Users WHERE username = ? AND password = ? AND is_deleted = 0", (username, password))
         if cursor.fetchone()[0] > 0:
             conn.close()
-            return jsonify({'error': 'Tên đăng nhập đã tồn tại'}), 400
+            return jsonify({'error': 'Cặp tên đăng nhập và mật khẩu đã tồn tại'}), 400
 
-        # Kiểm tra trùng password với tất cả các password và role_password trong DB (trừ user hiện tại)
-        cursor.execute("SELECT COUNT(*) FROM Users WHERE (password = ? OR role_password = ?) AND id != ? AND is_deleted = 0", (password, password, id))
-        if cursor.fetchone()[0] > 0:
-            conn.close()
-            return jsonify({'error': 'Mật khẩu đã tồn tại trong hệ thống. Vui lòng chọn mật khẩu khác'}), 400
-
-        # Kiểm tra trùng role_password nếu có (trừ user hiện tại)
-        if role_password:
-            cursor.execute("SELECT COUNT(*) FROM Users WHERE (password = ? OR role_password = ?) AND id != ? AND is_deleted = 0", (role_password, role_password, id))
+        # Nếu có role_username và role_password, kiểm tra trùng cặp
+        if role_username and role_password:
+            cursor.execute("SELECT COUNT(*) FROM Users WHERE role_username = ? AND role_password = ? AND is_deleted = 0", (role_username, role_password))
             if cursor.fetchone()[0] > 0:
                 conn.close()
-                return jsonify({'error': 'Role Password đã tồn tại trong hệ thống. Vui lòng chọn role password khác'}), 400
+                return jsonify({'error': 'Cặp role username và role password đã tồn tại'}), 400
         
 
         if user_data is not None and user_data[6] == 5:  # Nếu user hiện tại là GVCN
@@ -2418,10 +2410,11 @@ def upload_users_excel():
                     continue
                 
                 # Tạo password: STT + username
-                random_pass = random.randint(0, 99)
-                random_username = random.randint(0, 99)
-                password = f"{firstname}{random_pass:02d}"
-                username = f"{firstname}{random_username:02d}"
+                random_pass = generate_random_string()
+                password = f"{random_pass}"
+                
+                random_number = random.randint(100, 999)
+                username = f"{firstname}{random_number}"
                 
                 # Kiểm tra username đã tồn tại
                 cursor.execute("SELECT id FROM Users WHERE username = ?", (username,))
@@ -2480,10 +2473,11 @@ def generate_user_credentials():
     last_word = words[-1]
     firstname = normalize('NFD', last_word).encode('ascii', 'ignore').decode('ascii').lower()
     firstname = re.sub(r'[^a-z0-9]', '', firstname)
-    random_pass = random.randint(0, 99)
-    random_username = random.randint(0, 99)
-    password = f"{firstname}{random_pass:02d}"
-    username = f"{firstname}{random_username:02d}"
+    random_pass = generate_random_string()
+    password = f"{random_pass}"
+    
+    random_number = random.randint(100, 999)
+    username = f"{firstname}{random_number}"
 
     return jsonify({'username': username, 'password': password})
 

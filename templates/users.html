@@ -264,28 +264,44 @@
             const roleCredentialsFields = document.getElementById('role_credentials_fields');
             const roleUsernameField = document.getElementById('role_username');
             const rolePasswordField = document.getElementById('role_password');
-            
+
             if (selectedRoleId) {
-                // Get role name to check if it's "Học sinh" or role ID = 9
                 const selectedOption = roleSelect.querySelector(`option[value="${selectedRoleId}"]`);
                 const roleName = selectedOption ? selectedOption.textContent : '';
-                
+
                 if (roleName === 'Học sinh' || selectedRoleId === '9') {
-                    // Hide role credentials fields for student role or role ID 9
                     roleCredentialsFields.style.display = 'none';
                     roleUsernameField.required = false;
                     rolePasswordField.required = false;
-                    // Clear the values when switching to role ID 9
                     roleUsernameField.value = '';
                     rolePasswordField.value = '';
                 } else {
-                    // Show role credentials fields for non-student roles
                     roleCredentialsFields.style.display = 'block';
                     roleUsernameField.required = true;
                     rolePasswordField.required = true;
+                    // Gọi API sinh username/password cho chức vụ
+                    const nameValue = document.getElementById('name').value.trim();
+                    if (nameValue.length > 0) {
+                        fetch('/api/generate_user_credentials', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: nameValue, role: roleName })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.username) {
+                                roleUsernameField.value = data.username;
+                            }
+                            if (data.password) {
+                                rolePasswordField.value = data.password;
+                            }
+                        });
+                    } else {
+                        roleUsernameField.value = '';
+                        rolePasswordField.value = '';
+                    }
                 }
             } else {
-                // No role selected, hide fields
                 roleCredentialsFields.style.display = 'none';
                 roleUsernameField.required = false;
                 rolePasswordField.required = false;
@@ -569,10 +585,19 @@
             document.querySelectorAll('.user-name-clickable').forEach(element => {
                 element.addEventListener('click', function() {
                     const userId = this.getAttribute('data-user-id');
-                    // Encode userId bằng base64
                     const encodedId = btoa(userId).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
                     const url = `/user_account_encoded/${encodedId}`;
-                    window.open(url, '_blank');
+                    // Copy link vào clipboard
+                    navigator.clipboard.writeText(window.location.origin + url)
+                        .then(() => {
+                            // Mở tab mới
+                            window.open(url, '_blank');
+                            // Thông báo đã copy
+                            alert('Đã copy link vào clipboard!');
+                        })
+                        .catch(() => {
+                            window.open(url, '_blank');
+                        });
                 });
             });
         });
