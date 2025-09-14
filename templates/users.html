@@ -32,6 +32,7 @@
             <table class="table table-bordered table-striped">
                 <thead>
                     <tr>
+                        <th class="text-nowrap">STT</th>
                         <th class="text-nowrap">
                             <a href="{{ url_for('users_list', sort_by='first_name', sort_order='desc' if sort_by == 'first_name' and sort_order == 'asc' else 'asc') }}">
                                 Tên
@@ -74,6 +75,7 @@
                         {% set first_name = name_parts[-1] if name_parts|length > 0 else '' %}
                         {% set last_name = ' '.join(name_parts[:-1]) if name_parts|length > 1 else '' %}
                         <tr>
+                            <td>{{ loop.index }}</td> 
                             <td>{{ first_name }}</td>
                             <td>{{ last_name }}</td>
                             <td>{{ user[2] }}</td>
