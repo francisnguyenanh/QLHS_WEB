@@ -4641,9 +4641,16 @@ def user_summary():
                     
                     academic_difference = current_academic_points - prev_academic_points
                     conduct_difference = current_conduct_points - prev_conduct_points
+                    total_point = current_academic_points + current_conduct_points
                     
-                    if academic_difference != 0 or conduct_difference != 0:
-                        auto_comment = get_auto_comment(academic_difference, conduct_difference)
+                    logging.info(f"User ID: {user_id}, Academic Diff: {current_academic_points}, Conduct Diff: {current_conduct_points}, Total: {total_point}")
+                    
+                    auto_comment = get_auto_comment(academic_difference, conduct_difference)
+                    auto_ranking = get_auto_comment_for_category(total_point, "ranking")
+                    if auto_ranking is None:
+                        auto_ranking = ""
+                    if auto_comment is None:
+                        auto_comment = ""
                     
                 except:
                     pass
@@ -4678,7 +4685,7 @@ def user_summary():
                 standard = ""
 
             # Thêm vào tuple record
-            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, standard, user_id, current_comment, auto_comment, prev_academic_points, prev_conduct_points))
+            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, standard, user_id, current_comment, auto_comment, prev_academic_points, prev_conduct_points, auto_ranking))
 
         if sort_by == 'user_name':
             records.sort(key=lambda x: vietnamese_sort_key(x[0], sort_by_first_name=True) if x[0] else '', reverse=(sort_order == 'desc'))
@@ -4739,6 +4746,7 @@ def user_summary():
                 <th colspan="3" class="text-center">Học Tập</th>
                 <th colspan="3" class="text-center">Hạnh Kiểm</th>
                 {% if role_name == 'GVCN' or role_name == 'Master' %}
+                <th rowspan="2" class="comment-col">Xếp loại</th>
                 <th rowspan="2" class="comment-col">Nhận xét</th>
                 {% endif %}
             </tr>
@@ -4840,9 +4848,14 @@ def user_summary():
                         </span>
                     </td>
                     {% if role_name == 'GVCN' or role_name == 'Master' %}
+                    <td>                        
+                        <div class="d-flex align-items-center">
+                            <span class="comment-text">{{record[9]}}</span>
+                        </div>                        
+                    </td>
                     <td class="comment-col">                        
                         <div class="d-flex align-items-center">
-                            <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" rows="2" placeholder="Nhận xét...">{{ (record[5] if record[5] else record[6]) if record|length > 5 else '' }}</textarea>
+                            <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" rows="2">{{ (record[5] if record[5] else record[6]) if record|length > 5 else '' }}</textarea>
                             <span class="save-status text-muted small" id="status_{{ record[4] }}"></span>
                         </div>                        
                     </td>
@@ -5227,7 +5240,7 @@ def comment_management():
                 ORDER BY comment_category, comment_type, score_range_min
             ''')
             templates = cursor.fetchall()
-            
+            logging.info(f"Loaded {templates} comment templates")
             conn.close()
             
             return render_template_with_permissions('comment_management.html', templates=templates)
@@ -5256,6 +5269,7 @@ def comment_template_create():
                 conn = connect_db()
                 cursor = conn.cursor()
                 
+                logging.info(f"Creating comment template: category={comment_category}, type={comment_type}, range=({score_range_min}-{score_range_max})")
                 cursor.execute('''
                     INSERT INTO Comment_Templates (comment_category, comment_type, score_range_min, score_range_max, comment_text)
                     VALUES (?, ?, ?, ?, ?)
@@ -5343,15 +5357,14 @@ def comment_template_delete(template_id):
 # API routes for Comment Templates
 @app.route('/api/comment_template/create', methods=['POST'])
 def api_comment_template_create():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Chưa đăng nhập'}), 401
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
     
-    if not can_access_comment_management():
-        return jsonify({'error': 'Không có quyền truy cập'}), 403
-    
-    try:
+    try:        
         comment_category = request.form['comment_category']
         comment_type = request.form['comment_type']
+        logging.info(f"API Received comment_type: {comment_type}")
         score_range_min = int(request.form['score_range_min'])
         score_range_max = int(request.form['score_range_max'])
         comment_text = request.form['comment_text']
@@ -5373,11 +5386,9 @@ def api_comment_template_create():
 
 @app.route('/api/comment_template/<int:template_id>', methods=['GET'])
 def api_get_comment_template(template_id):
-    if 'user_id' not in session:
-        return jsonify({'error': 'Chưa đăng nhập'}), 401
-    
-    if not can_access_comment_management():
-        return jsonify({'error': 'Không có quyền truy cập'}), 403
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
     
     try:
         conn = connect_db()
@@ -5390,9 +5401,11 @@ def api_get_comment_template(template_id):
             WHERE id = ?
         ''', (template_id,))
         
+        logging.info(f"Fetching comment template with ID: {template_id}")
         result = cursor.fetchone()
         conn.close()
         
+        logging.info(f"Fetched comment template: {result}")
         if result:
             template = {
                 'id': result[0],
@@ -5411,11 +5424,9 @@ def api_get_comment_template(template_id):
 
 @app.route('/api/comment_template/edit', methods=['POST'])
 def api_comment_template_edit():
-    if 'user_id' not in session:
-        return jsonify({'error': 'Chưa đăng nhập'}), 401
-    
-    if not can_access_comment_management():
-        return jsonify({'error': 'Không có quyền truy cập'}), 403
+    permission_check = require_menu_permission('master')
+    if permission_check:
+        return permission_check
     
     try:
         template_id = request.form['template_id']
@@ -5579,6 +5590,51 @@ def save_user_comment():
         return jsonify({'success': True, 'message': 'Đã lưu nhận xét thành công!'})
     except Exception as e:
         return jsonify({'error': f'Lỗi khi lưu nhận xét: {str(e)}'}), 500
+
+
+# @app.route('/save_user_ranking', methods=['POST'])
+# def save_user_ranking():
+#     if 'user_id' not in session:
+#         return jsonify({'error': 'Chưa đăng nhập'}), 401
+    
+#     try:
+#         data = request.get_json()
+#         user_id = data['user_id']
+#         ranking = data['ranking']
+#         period_start = data['period_start']
+#         period_end = data['period_end']
+        
+#         conn = connect_db()
+#         cursor = conn.cursor()
+        
+#         # Kiểm tra xem đã có nhận xét cho kỳ này chưa
+#         cursor.execute('''
+#             SELECT id FROM User_Comments 
+#             WHERE user_id = ? AND period_start = ? AND period_end = ?
+#         ''', (user_id, period_start, period_end))
+#         existing = cursor.fetchone()
+        
+#         if existing:
+#             # Cập nhật ranking hiện tại
+#             cursor.execute('''
+#                 UPDATE User_Comments 
+#                 SET ranking = ?, updated_date = CURRENT_TIMESTAMP
+#                 WHERE user_id = ? AND period_start = ? AND period_end = ?
+#             ''', (ranking, user_id, period_start, period_end))
+#         else:
+#             # Thêm bản ghi mới với ranking
+#             cursor.execute('''
+#                 INSERT INTO User_Comments 
+#                 (user_id, period_start, period_end, ranking, is_auto_generated)
+#                 VALUES (?, ?, ?, ?, 1)
+#             ''', (user_id, period_start, period_end, ranking))
+        
+#         conn.commit()
+#         conn.close()
+        
+#         return jsonify({'success': True, 'message': 'Đã lưu xếp loại thành công!'})
+#     except Exception as e:
+#         return jsonify({'error': f'Lỗi khi lưu xếp loại: {str(e)}'}), 500
 
 
 @app.route('/user_report/<int:user_id>')
@@ -5919,6 +5975,24 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         academic_progress = total_academic_points - prev_academic_points
         conduct_progress = total_conduct_points - prev_conduct_points
         
+        # Calculate ranking
+        total_points = total_academic_points + total_conduct_points
+        ranking = get_auto_comment_for_category(total_points, 'ranking')
+        logging.info(f"Calculated total_points: {total_points}, ranking: {ranking}")    
+        if total_points >= 80:
+            ranking_color = "#28a745"  # Green
+        elif total_points >= 65:
+            ranking_color = "#17a2b8"  # Info blue
+        elif total_points >= 50:
+            ranking_color = "#ffc107"  # Warning yellow
+        elif total_points >= 35:
+            ranking_color = "#6c757d"  # Secondary gray
+        else:
+            ranking_color = "#dc3545"  # Danger red
+        
+        if ranking is None:
+            ranking = "GVCN liên lạc sau"
+            ranking_color = "#6c757d"  # Default gray
         
         # Progress indicators
         def get_progress_class(progress):
@@ -5969,7 +6043,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
             <div class="report-body p-4">
                 <!-- Summary Cards -->
                 <div class="summary-cards row g-3 mb-4">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="summary-card study-card h-100 p-3 text-center" style="background: #7cc1ffe8; color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
                             <h3 class="mb-2" style="font-size: 2rem; font-weight: bold;">{total_academic_points}</h3>
                             <p class="mb-2" style="font-size: 1.1rem;">Điểm học tập</p>
@@ -5979,7 +6053,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
                             </small>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="summary-card conduct-card h-100 p-3 text-center" style="background: #b4b4b4; color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
                             <h3 class="mb-2" style="font-size: 2rem; font-weight: bold;">{total_conduct_points}</h3>
                             <p class="mb-2" style="font-size: 1.1rem;">Điểm rèn luyện</p>
@@ -5989,12 +6063,21 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
                             </small>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="summary-card total-card h-100 p-3 text-center" style="background: #075e6770; color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
                             <h3 class="mb-2" style="font-size: 2rem; font-weight: bold;">{total_academic_points + total_conduct_points}</h3>
                             <p class="mb-2" style="font-size: 1.1rem;">Tổng điểm</p>
                             <small class="mt-1 d-block" style="color: rgba(255,255,255,0.9);">
                                 {period_type} trước: {prev_academic_points + prev_conduct_points} điểm
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="summary-card ranking-card h-100 p-3 text-center" style="background: {ranking_color}; color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
+                            <h3 class="mb-2" style="font-size: 1.8rem; font-weight: bold;">{ranking}</h3>
+                            <p class="mb-2" style="font-size: 1.1rem;">Xếp loại</p>
+                            <small class="mt-1 d-block" style="color: rgba(255,255,255,0.9);">
+                                Dựa trên tổng {total_points} điểm
                             </small>
                         </div>
                     </div>

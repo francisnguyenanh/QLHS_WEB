@@ -25,7 +25,14 @@
                         <i class="fas fa-heart text-danger"></i> Hạnh kiểm
                     </button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ranking-tab" data-bs-toggle="tab" data-bs-target="#ranking" type="button" role="tab">
+                        <i class="fas fa-trophy text-warning"></i> Xếp loại
+                    </button>
+                </li>
             </ul>
+
+            
 
             <div class="tab-content mt-3" id="commentTabsContent">
                 <!-- Tab Học tập -->
@@ -213,6 +220,98 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Tab ranking -->
+                <div class="tab-pane fade" id="ranking" role="tabpanel">
+                    <ul class="nav nav-pills mb-3" id="conductTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="ranking-encouragement-tab" data-bs-toggle="pill" data-bs-target="#ranking-encouragement" type="button" role="tab">
+                                <i class="fas fa-thumbs-up"></i> Khích lệ
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="ranking-reminder-tab" data-bs-toggle="pill" data-bs-target="#ranking-reminder" type="button" role="tab">
+                                <i class="fas fa-exclamation-triangle text-warning"></i> Nhắc nhở
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tab-content" id="rankingTabContent">
+                        <!-- ranking Encouragement -->
+                        <div class="tab-pane fade show active" id="ranking-encouragement" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-success">
+                                        <tr>
+                                            <th>Khoảng điểm</th>
+                                            <th>Nội dung nhận xét</th>
+                                            <th>Ngày tạo</th>
+                                            <th width="150">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for template in templates %}
+                                            {% if template[1] == 'ranking' and template[2] == 'encouragement' %}
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-success">{{ template[3] }} - {{ template[4] }} điểm</span>
+                                                </td>
+                                                <td>{{ template[5] }}</td>
+                                                <td>{{ template[6] }}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-warning me-2 edit-template" data-id="{{ template[0] }}">
+                                                        <i class="fas fa-edit"></i> Sửa
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger delete-template" data-id="{{ template[0] }}">
+                                                        <i class="fas fa-trash"></i> Xóa
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- ranking Reminder -->
+                        <div class="tab-pane fade" id="ranking-reminder" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead class="table-warning">
+                                        <tr>
+                                            <th>Khoảng điểm</th>
+                                            <th>Nội dung nhận xét</th>
+                                            <th>Ngày tạo</th>
+                                            <th width="150">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for template in templates %}
+                                            {% if template[1] == 'ranking' and template[2] == 'reminder' %}
+                                            <tr>
+                                                <td>
+                                                    <span class="badge bg-warning">{{ template[3] }} - {{ template[4] }} điểm</span>
+                                                </td>
+                                                <td>{{ template[5] }}</td>
+                                                <td>{{ template[6] }}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-warning me-2 edit-template" data-id="{{ template[0] }}">
+                                                        <i class="fas fa-edit"></i> Sửa
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger delete-template" data-id="{{ template[0] }}">
+                                                        <i class="fas fa-trash"></i> Xóa
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
         </div>
     </div>
 </div>
@@ -235,6 +334,7 @@
                             <option value="">-- Chọn danh mục --</option>
                             <option value="academic">Học tập</option>
                             <option value="conduct">Hạnh kiểm</option>
+                            <option value="ranking">Xếp loại</option>
                         </select>
                     </div>
 
@@ -251,13 +351,13 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="scoreRangeMin" class="form-label">Điểm tối thiểu <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="scoreRangeMin" name="score_range_min" min="1" required>
+                                <input type="number" class="form-control" id="scoreRangeMin" name="score_range_min" min="0" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label for="scoreRangeMax" class="form-label">Điểm tối đa <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="scoreRangeMax" name="score_range_max" min="1" required>
+                                <input type="number" class="form-control" id="scoreRangeMax" name="score_range_max" min="0" required>
                             </div>
                         </div>
                     </div>
@@ -271,10 +371,10 @@
                         <i class="fas fa-info-circle"></i>
                         <strong>Hướng dẫn:</strong>
                         <ul class="mb-0 mt-2">
-                            <li><strong>Danh mục:</strong> Chọn "Học tập" cho nhận xét về điểm học tập, "Hạnh kiểm" cho nhận xét về điểm rèn luyện</li>
-                            <li><strong>Khích lệ:</strong> Sử dụng khi điểm số tăng so với kỳ trước</li>
-                            <li><strong>Nhắc nhở:</strong> Sử dụng khi điểm số giảm so với kỳ trước</li>
-                            <li><strong>Khoảng điểm:</strong> Chênh lệch điểm số giữa 2 kỳ (ví dụ: 2-5 điểm)</li>
+                            <li><strong>Danh mục:</strong> Chọn "Học tập" cho nhận xét về điểm học tập, "Hạnh kiểm" cho nhận xét về điểm rèn luyện, "Xếp loại" cho nhận xét về điểm tổng điểm</li>
+                            <li><strong>Khích lệ:</strong> Sử dụng khi điểm số lớn hơn hoặc bằng 0</li>
+                            <li><strong>Nhắc nhở:</strong> Sử dụng khi điểm số nhỏ hơn 0</li>
+                            <li><strong>Khoảng điểm:</strong> Là khoảng điểm Học tập/Hạnh kiểm/Tổng điểm</li>
                         </ul>
                     </div>
                 </div>
@@ -305,6 +405,7 @@
                             <option value="">-- Chọn danh mục --</option>
                             <option value="academic">Học tập</option>
                             <option value="conduct">Hạnh kiểm</option>
+                            <option value="ranking">Xếp loại</option>
                         </select>
                     </div>
 
@@ -556,6 +657,8 @@ function refreshCommentGrid() {
         if (mainTabTarget === '#academic') {
             activeSubTab = document.querySelector('#academicTabs .nav-link.active');
         } else if (mainTabTarget === '#conduct') {
+            activeSubTab = document.querySelector('#conductTabs .nav-link.active');
+        } else if (mainTabTarget === '#ranking') {
             activeSubTab = document.querySelector('#conductTabs .nav-link.active');
         }
     }

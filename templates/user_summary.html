@@ -282,150 +282,7 @@
             <div class="card">
                 <div class="card-body">
                     <div id="gridContainer">
-                        <div class="table-responsive">
-                            <!--
-                            <table class="table table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th rowspan="2" style="width: 70px;">
-                                            <input type="checkbox" id="select_all_in">
-                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="in" data-order="{{ 'desc' if sort_by == 'in' and sort_order == 'asc' else 'asc' }}">
-                                                Xuất
-                                                {% if sort_by == 'in' %}
-                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                                {% else %}
-                                                    <i class="fas fa-sort"></i>
-                                                {% endif %}
-                                            </a>
-                                        </th>
-                                        <th rowspan="2" style="width: 220px;">
-                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="user_name" data-order="{{ 'desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc' }}">
-                                                Họ Tên
-                                                {% if sort_by == 'user_name' %}
-                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                                {% else %}
-                                                    <i class="fas fa-sort"></i>
-                                                {% endif %}
-                                            </a>
-                                        </th>
-                                        <th colspan="3" class="text-center">Học Tập</th>
-                                        <th colspan="3" class="text-center">Hạnh Kiểm</th>
-                                        {% if role_name == 'GVCN' or role_name == 'Master' %}
-                                        <th rowspan="2">Nhận xét</th>
-                                        {% endif %}
-                                       
-                                    </tr>
-                                    <tr>
-                                        <th class="text-center" style="width: 90px;">
-                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_academic_points" data-order="{{ 'desc' if sort_by == 'prev_academic_points' and sort_order == 'asc' else 'asc' }}">
-                                                Trước
-                                                {% if sort_by == 'prev_academic_points' %}
-                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                                {% else %}
-                                                    <i class="fas fa-sort"></i>
-                                                {% endif %}
-                                            </a>
-                                        </th>
-                                        <th class="text-center" style="width: 90px;">
-                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="academic_points" data-order="{{ 'desc' if sort_by == 'academic_points' and sort_order == 'asc' else 'asc' }}">
-                                                Sau
-                                                {% if sort_by == 'academic_points' %}
-                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                                {% else %}
-                                                    <i class="fas fa-sort"></i>
-                                                {% endif %}
-                                            </a>
-                                        </th>
-                                        <th class="text-center" style="width: 90px;">
-                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="academic_progress" data-order="{{ 'desc' if sort_by == 'academic_progress' and sort_order == 'asc' else 'asc' }}">
-                                                ↑↓
-                                                {% if sort_by == 'academic_progress' %}
-                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                                {% else %}
-                                                    <i class="fas fa-sort"></i>
-                                                {% endif %}
-                                            </a>
-                                        </th>
-                                        <th class="text-center" style="width: 90px;">
-                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="prev_conduct_points" data-order="{{ 'desc' if sort_by == 'prev_conduct_points' and sort_order == 'asc' else 'asc' }}">
-                                                Trước
-                                                {% if sort_by == 'prev_conduct_points' %}
-                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                                {% else %}
-                                                    <i class="fas fa-sort"></i>
-                                                {% endif %}
-                                            </a>
-                                        </th>
-                                        <th class="text-center" style="width: 90px;">
-                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="conduct_points" data-order="{{ 'desc' if sort_by == 'conduct_points' and sort_order == 'asc' else 'asc' }}">
-                                                Sau
-                                                {% if sort_by == 'conduct_points' %}
-                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                                {% else %}
-                                                    <i class="fas fa-sort"></i>
-                                                {% endif %}
-                                            </a>
-                                        </th>
-                                        <th class="text-center" style="width: 90px;">
-                                            <a href="#" class="sort-link text-decoration-none text-dark" data-sort="conduct_progress" data-order="{{ 'desc' if sort_by == 'conduct_progress' and sort_order == 'asc' else 'asc' }}">
-                                                ↑↓
-                                                {% if sort_by == 'conduct_progress' %}
-                                                    {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
-                                                {% else %}
-                                                    <i class="fas fa-sort"></i>
-                                                {% endif %}
-                                            </a>
-                                        </th>
-                                        
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for record in records %}
-                                        <tr>
-                                            <td>
-                                                <input type="checkbox" name="in_{{ record[4] }}" value="1" {% if record[3] %}checked{% endif %}>
-                                            </td>
-                                            <td>
-                                                <span class="user-name-clickable" 
-                                                      data-user-id="{{ record[4] }}" 
-                                                      data-date-from="{{ date_from or '' }}" 
-                                                      data-date-to="{{ date_to or '' }}"
-                                                      style="cursor: pointer; color: #007bff; text-decoration: underline;"
-                                                      title="Click để copy link báo cáo">
-                                                    {{ record[0] }}
-                                                    <i class="fas fa-external-link-alt ms-1"></i>
-                                                </span>
-                                            </td>
-                                            <td class="text-center">{{ record[7] if record|length > 7 else 0 }}</td>
-                                            <td class="text-center">{{ record[1] }}</td>
-                                            <td class="text-center">
-                                                {% set academic_progress = (record[1] - (record[7] if record|length > 7 else 0)) %}
-                                                <span class="{% if academic_progress > 0 %}text-success{% elif academic_progress < 0 %}text-danger{% else %}text-muted{% endif %}">
-                                                    {% if academic_progress > 0 %}+{% endif %}{{ academic_progress }}
-                                                </span>
-                                            </td>
-                                            <td class="text-center">{{ record[8] if record|length > 8 else 0 }}</td>
-                                            <td class="text-center">{{ record[2] }}</td>
-                                            <td class="text-center">
-                                                {% set conduct_progress = (record[2] - (record[8] if record|length > 8 else 0)) %}
-                                                <span class="{% if conduct_progress > 0 %}text-success{% elif conduct_progress < 0 %}text-danger{% else %}text-muted{% endif %}">
-                                                    {% if conduct_progress > 0 %}+{% endif %}{{ conduct_progress }}
-                                                </span>
-                                            </td>
-                                            {% if role_name == 'GVCN' or role_name == 'Master' %}
-                                            <td>                                                
-                                                <div class="d-flex align-items-center">
-                                                    <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" rows="2" placeholder="Nhận xét...">{{ (record[5] if record[5] else record[6]) if record|length > 5 else '' }}</textarea>
-                                                    <span class="save-status text-muted small" id="status_{{ record[4] }}"></span>
-                                                </div>                                                
-                                            </td>
-                                            {% endif %}
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        -->
+                        
                         {% if not records %}
                             <div class="alert alert-info text-center">
                                 <i class="fas fa-info-circle"></i> Không có dữ liệu phù hợp với điều kiện tìm kiếm.
@@ -877,8 +734,49 @@
             });
         }
 
+        // Hàm lưu xếp loại
+        function saveRanking(userId, ranking) {
+            const dateFrom = document.getElementById('date_from').value;
+            const dateTo = document.getElementById('date_to').value;
+            
+            fetch('/save_user_ranking', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    ranking: ranking,
+                    period_start: dateFrom,
+                    period_end: dateTo
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    console.error('Lỗi lưu xếp loại:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Lỗi kết nối khi lưu xếp loại:', error);
+            });
+        }
+
         // Auto-save functionality for comments
         function initAutoSave() {
+            // Auto-save ranking on page load
+            /*
+            document.querySelectorAll('.auto-save-ranking').forEach(input => {
+                const userId = input.dataset.userId;
+                const ranking = input.value;
+                
+                // Auto-save ranking
+                setTimeout(() => {
+                    saveRanking(userId, ranking);
+                }, 1000);
+            });
+            */
+            
             // Auto-save suggested comments on page load for non-empty suggestions
             document.querySelectorAll('.auto-save-comment').forEach(textarea => {
                 const userId = textarea.dataset.userId;
