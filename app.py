@@ -5459,7 +5459,7 @@ def get_auto_comment_for_category(score_difference, category):
         cursor = conn.cursor()
         
         abs_diff = abs(score_difference)
-        comment_type = 'encouragement' if score_difference > 0 else 'reminder'
+        comment_type = 'encouragement' if score_difference >= 0 else 'reminder'
         
         cursor.execute('''
             SELECT comment_text FROM Comment_Templates 
@@ -5469,6 +5469,7 @@ def get_auto_comment_for_category(score_difference, category):
             ORDER BY score_range_min LIMIT 1
         ''', (category, comment_type, abs_diff))
         
+        logging.info(f"Fetching auto comment for category={category}, type={comment_type}, abs_diff={abs_diff}")    
         result = cursor.fetchone()
         conn.close()
         
@@ -5979,16 +5980,22 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         total_points = total_academic_points + total_conduct_points
         ranking = get_auto_comment_for_category(total_points, 'ranking')
         logging.info(f"Calculated total_points: {total_points}, ranking: {ranking}")    
-        if total_points >= 80:
-            ranking_color = "#28a745"  # Green
-        elif total_points >= 65:
-            ranking_color = "#17a2b8"  # Info blue
-        elif total_points >= 50:
-            ranking_color = "#ffc107"  # Warning yellow
-        elif total_points >= 35:
-            ranking_color = "#6c757d"  # Secondary gray
+        if total_points >= 60:
+            ranking_color = "#f09c2b"  # Green
+        elif total_points >= 40:
+            ranking_color = "#b5a80a"  # Info blue
+        elif total_points >= 20:
+            ranking_color = "#2e800b"  # Warning yellow
+        elif total_points >= 0:
+            ranking_color = "#4078a9"  # Secondary gray
+        elif total_points >= -20:
+            ranking_color = "#f62a2a"  # Secondary gray
+        elif total_points >= -20:
+            ranking_color = "#a11f1f"  # Secondary gray
+        elif total_points >= -40:
+            ranking_color = "#621010"  # Secondary gray            
         else:
-            ranking_color = "#dc3545"  # Danger red
+            ranking_color = "#4d0404"  # Danger red
         
         if ranking is None:
             ranking = "GVCN liên lạc sau"
@@ -6042,17 +6049,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
             
             <div class="report-body p-4">
                 <!-- Summary Cards -->
-                <div class="summary-cards row g-3 mb-4">
-                    <div class="col-md-3">
-                        <div class="summary-card study-card h-100 p-3 text-center" style="background: #7cc1ffe8; color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
-                            <h3 class="mb-2" style="font-size: 2rem; font-weight: bold;">{total_academic_points}</h3>
-                            <p class="mb-2" style="font-size: 1.1rem;">Điểm học tập</p>
-                            <small class="mt-1 d-block">
-                                <i class="fas {academic_icon} {academic_class}"></i>
-                                <span class="{academic_class}">{academic_text} điểm</span>
-                            </small>
-                        </div>
-                    </div>
+                <div class="summary-cards row g-3 mb-4">                    
                     <div class="col-md-3">
                         <div class="summary-card conduct-card h-100 p-3 text-center" style="background: #b4b4b4; color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
                             <h3 class="mb-2" style="font-size: 2rem; font-weight: bold;">{total_conduct_points}</h3>
@@ -6060,6 +6057,16 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
                             <small class="mt-1 d-block">
                                 <i class="fas {conduct_icon} {conduct_class}"></i>
                                 <span class="{conduct_class}">{conduct_text} điểm</span>
+                            </small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="summary-card study-card h-100 p-3 text-center" style="background: #7cc1ffe8; color: white; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
+                            <h3 class="mb-2" style="font-size: 2rem; font-weight: bold;">{total_academic_points}</h3>
+                            <p class="mb-2" style="font-size: 1.1rem;">Điểm học tập</p>
+                            <small class="mt-1 d-block">
+                                <i class="fas {academic_icon} {academic_class}"></i>
+                                <span class="{academic_class}">{academic_text} điểm</span>
                             </small>
                         </div>
                     </div>

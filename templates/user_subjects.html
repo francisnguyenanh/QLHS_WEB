@@ -1150,6 +1150,7 @@
     </style>
 
     <script>
+        let highlightRowId = null; // Biến toàn cục để lưu ID của row cần highlight
         // Function để xóa item - đặt ngoài DOMContentLoaded để có thể truy cập global
         function deleteItem(url) {
             // Hiển thị toast thành công trước
