@@ -367,13 +367,33 @@
                         <textarea class="form-control" id="commentText" name="comment_text" rows="4" required placeholder="Nhập nội dung nhận xét..."></textarea>
                     </div>
 
+                    <div class="mb-3">
+                        <label for="colorPicker" class="form-label">Màu xếp loại <span class="text-danger">*</span></label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="color" class="form-control form-control-color" id="colorPicker" name="color" value="#2e800b" title="Chọn màu cho xếp loại">
+                            <div class="color-presets d-flex gap-1">
+                                <button type="button" class="btn btn-sm color-preset" style="background-color: #2e800b; width: 30px; height: 30px;" data-color="#2e800b" title="Xanh lá"></button>
+                                <button type="button" class="btn btn-sm color-preset" style="background-color: #28a745; width: 30px; height: 30px;" data-color="#28a745" title="Xanh lá sáng"></button>
+                                <button type="button" class="btn btn-sm color-preset" style="background-color: #17a2b8; width: 30px; height: 30px;" data-color="#17a2b8" title="Xanh dương"></button>
+                                <button type="button" class="btn btn-sm color-preset" style="background-color: #6f42c1; width: 30px; height: 30px;" data-color="#6f42c1" title="Tím"></button>
+                                <button type="button" class="btn btn-sm color-preset" style="background-color: #e83e8c; width: 30px; height: 30px;" data-color="#e83e8c" title="Hồng"></button>
+                                <button type="button" class="btn btn-sm color-preset" style="background-color: #fd7e14; width: 30px; height: 30px;" data-color="#fd7e14" title="Cam"></button>
+                                <button type="button" class="btn btn-sm color-preset" style="background-color: #ffc107; width: 30px; height: 30px;" data-color="#ffc107" title="Vàng"></button>
+                                <button type="button" class="btn btn-sm color-preset" style="background-color: #dc3545; width: 30px; height: 30px;" data-color="#dc3545" title="Đỏ"></button>
+                                <button type="button" class="btn btn-sm color-preset" style="background-color: #6c757d; width: 30px; height: 30px;" data-color="#6c757d" title="Xám"></button>
+                                <button type="button" class="btn btn-sm color-preset" style="background-color: #343a40; width: 30px; height: 30px;" data-color="#343a40" title="Đen"></button>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Màu này sẽ được sử dụng để hiển thị xếp loại trong báo cáo học sinh</small>
+                    </div>
+
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i>
                         <strong>Hướng dẫn:</strong>
                         <ul class="mb-0 mt-2">
                             <li><strong>Danh mục:</strong> Chọn "Học tập" cho nhận xét về điểm học tập, "Hạnh kiểm" cho nhận xét về điểm rèn luyện, "Xếp loại" cho nhận xét về điểm tổng điểm</li>
-                            <li><strong>Khích lệ:</strong> Dựa trên độ chênh lệch điểm kỳ này và kỳ trước</li>
-                            <li><strong>Nhắc nhở:</strong> Dựa trên độ chênh lệch điểm kỳ này và kỳ trước</li>
+                            <li><strong>Khích lệ:</strong> Đối với điểm từ 0 trở lên</li>
+                            <li><strong>Nhắc nhở:</strong> Đối với điểm nhỏ hơn 0</li>
                             <li><strong>Khoảng điểm:</strong> Là khoảng điểm Học tập/Hạnh kiểm/Tổng điểm</li>
                         </ul>
                     </div>
@@ -439,6 +459,26 @@
                     </div>
 
                     <div class="mb-3">
+                        <label for="editColorPicker" class="form-label">Màu xếp loại <span class="text-danger">*</span></label>
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="color" class="form-control form-control-color" id="editColorPicker" name="color" value="#2e800b" title="Chọn màu cho xếp loại">
+                            <div class="color-presets d-flex gap-1">
+                                <button type="button" class="btn btn-sm color-preset-edit" style="background-color: #2e800b; width: 30px; height: 30px;" data-color="#2e800b" title="Xanh lá"></button>
+                                <button type="button" class="btn btn-sm color-preset-edit" style="background-color: #28a745; width: 30px; height: 30px;" data-color="#28a745" title="Xanh lá sáng"></button>
+                                <button type="button" class="btn btn-sm color-preset-edit" style="background-color: #17a2b8; width: 30px; height: 30px;" data-color="#17a2b8" title="Xanh dương"></button>
+                                <button type="button" class="btn btn-sm color-preset-edit" style="background-color: #6f42c1; width: 30px; height: 30px;" data-color="#6f42c1" title="Tím"></button>
+                                <button type="button" class="btn btn-sm color-preset-edit" style="background-color: #e83e8c; width: 30px; height: 30px;" data-color="#e83e8c" title="Hồng"></button>
+                                <button type="button" class="btn btn-sm color-preset-edit" style="background-color: #fd7e14; width: 30px; height: 30px;" data-color="#fd7e14" title="Cam"></button>
+                                <button type="button" class="btn btn-sm color-preset-edit" style="background-color: #ffc107; width: 30px; height: 30px;" data-color="#ffc107" title="Vàng"></button>
+                                <button type="button" class="btn btn-sm color-preset-edit" style="background-color: #dc3545; width: 30px; height: 30px;" data-color="#dc3545" title="Đỏ"></button>
+                                <button type="button" class="btn btn-sm color-preset-edit" style="background-color: #6c757d; width: 30px; height: 30px;" data-color="#6c757d" title="Xám"></button>
+                                <button type="button" class="btn btn-sm color-preset-edit" style="background-color: #343a40; width: 30px; height: 30px;" data-color="#343a40" title="Đen"></button>
+                            </div>
+                        </div>
+                        <small class="form-text text-muted">Màu này sẽ được sử dụng để hiển thị xếp loại trong báo cáo học sinh</small>
+                    </div>
+
+                    <div class="mb-3">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="editIsActive" name="is_active" checked>
                             <label class="form-check-label" for="editIsActive">Kích hoạt</label>
@@ -456,6 +496,27 @@
 
 <script>
 let isEditMode = false;
+
+function toggleEditColorPicker() {
+    const category = document.getElementById('editCommentCategory');
+    const colorArea = document.getElementById('editColorPicker').closest('.mb-3');
+    if (category.value === 'ranking') {
+        colorArea.style.display = '';
+    } else {
+        colorArea.style.display = 'none';
+    }
+}
+
+// Tương tự cho modal tạo mới
+function toggleCreateColorPicker() {
+    const category = document.getElementById('commentCategory');
+    const colorArea = document.getElementById('colorPicker').closest('.mb-3');
+    if (category.value === 'ranking') {
+        colorArea.style.display = '';
+    } else {
+        colorArea.style.display = 'none';
+    }
+}
 
 // Mở modal tạo mới
 function openCreateModal() {
@@ -615,8 +676,12 @@ function editTemplate(templateId) {
             document.getElementById('editScoreRangeMin').value = template.score_range_min;
             document.getElementById('editScoreRangeMax').value = template.score_range_max;
             document.getElementById('editCommentText').value = template.comment_text;
+            console.log('Màu được đặt trong edit modal:', template.color); // Debug log
+            document.getElementById('editColorPicker').value = template.color || '#2e800b';
             document.getElementById('editIsActive').checked = template.is_active;
             
+            toggleEditColorPicker();
+
             // Đảm bảo không có modal nào khác đang mở
             const existingModals = document.querySelectorAll('.modal.show');
             existingModals.forEach(modal => {
@@ -731,6 +796,22 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Xử lý color picker presets
+    document.querySelectorAll('.color-preset').forEach(button => {
+        button.addEventListener('click', function() {
+            const color = this.getAttribute('data-color');
+            document.getElementById('colorPicker').value = color;
+        });
+    });
+    
+    // Xử lý color picker presets cho edit modal
+    document.querySelectorAll('.color-preset-edit').forEach(button => {
+        button.addEventListener('click', function() {
+            const color = this.getAttribute('data-color');
+            document.getElementById('editColorPicker').value = color;
+        });
+    });
+    
     // Xử lý sự kiện đóng modal để đảm bảo backdrop được xóa
     const commentModal = document.getElementById('commentModal');
     const editTemplateModal = document.getElementById('editTemplateModal');
@@ -747,5 +828,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 });
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('editCommentCategory').addEventListener('change', toggleEditColorPicker);
+    toggleEditColorPicker();
+
+    document.getElementById('commentCategory').addEventListener('change', toggleCreateColorPicker);
+    toggleCreateColorPicker();
+});
+
 </script>
 {% endblock %}

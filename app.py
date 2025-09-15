@@ -660,6 +660,12 @@ def setup_sample_data():
     except:
         pass  # Column already exists
     
+    # Thêm cột color cho Comment_Templates table nếu chưa tồn tại
+    try:
+        conn.execute("ALTER TABLE Comment_Templates ADD COLUMN color TEXT DEFAULT '#2e800b'")
+    except:
+        pass  # Column already exists
+    
     conn.commit()
     conn.close()
 
@@ -5265,15 +5271,16 @@ def comment_template_create():
                 score_range_min = int(request.form['score_range_min'])
                 score_range_max = int(request.form['score_range_max'])
                 comment_text = request.form['comment_text']
+                color = request.form.get('color', '#2e800b')  # Màu mặc định
                 
                 conn = connect_db()
                 cursor = conn.cursor()
                 
-                logging.info(f"Creating comment template: category={comment_category}, type={comment_type}, range=({score_range_min}-{score_range_max})")
+                logging.info(f"Creating comment template: category={comment_category}, type={comment_type}, range=({score_range_min}-{score_range_max}), color={color}")
                 cursor.execute('''
-                    INSERT INTO Comment_Templates (comment_category, comment_type, score_range_min, score_range_max, comment_text)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (comment_category, comment_type, score_range_min, score_range_max, comment_text))
+                    INSERT INTO Comment_Templates (comment_category, comment_type, score_range_min, score_range_max, comment_text, color)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (comment_category, comment_type, score_range_min, score_range_max, comment_text, color))
                 
                 conn.commit()
                 conn.close()
@@ -5396,12 +5403,11 @@ def api_get_comment_template(template_id):
         
         cursor.execute('''
             SELECT id, comment_category, comment_type, score_range_min, score_range_max, 
-                   comment_text, is_active 
+                   comment_text, is_active, color
             FROM Comment_Templates 
             WHERE id = ?
         ''', (template_id,))
-        
-        logging.info(f"Fetching comment template with ID: {template_id}")
+
         result = cursor.fetchone()
         conn.close()
         
@@ -5414,7 +5420,8 @@ def api_get_comment_template(template_id):
                 'score_range_min': result[3],
                 'score_range_max': result[4],
                 'comment_text': result[5],
-                'is_active': bool(result[6])
+                'is_active': bool(result[6]),
+                'color': result[7]
             }
             return jsonify({'success': True, 'template': template})
         else:
@@ -5435,15 +5442,16 @@ def api_comment_template_edit():
         score_range_min = int(request.form['score_range_min'])
         score_range_max = int(request.form['score_range_max'])
         comment_text = request.form['comment_text']
+        color = request.form.get('color', '#2e800b')  # Màu mặc định
         
         conn = connect_db()
         cursor = conn.cursor()
         
         cursor.execute('''
             UPDATE Comment_Templates 
-            SET comment_category=?, comment_type=?, score_range_min=?, score_range_max=?, comment_text=?
+            SET comment_category=?, comment_type=?, score_range_min=?, score_range_max=?, comment_text=?, color=?
             WHERE id=? AND is_active=1
-        ''', (comment_category, comment_type, score_range_min, score_range_max, comment_text, template_id))
+        ''', (comment_category, comment_type, score_range_min, score_range_max, comment_text, color, template_id))
         
         conn.commit()
         conn.close()
@@ -5470,6 +5478,39 @@ def get_auto_comment_for_category(score_difference, category):
         ''', (category, comment_type, abs_diff))
         
         logging.info(f"Fetching auto comment for category={category}, type={comment_type}, abs_diff={abs_diff}")    
+        
+        result = cursor.fetchone()
+        conn.close()
+        return result[0] if result else None
+    except Exception as e:
+        logging.error(f"Error in get_auto_comment_for_category: {str(e)}")
+        return None
+
+def get_ranking_info(total_points):
+    """Lấy thông tin xếp loại và màu từ database"""
+    try:
+        conn = connect_db()
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT comment_text, color FROM Comment_Templates 
+            WHERE comment_category = 'ranking' 
+            AND ? BETWEEN score_range_min AND score_range_max 
+            AND is_active = 1
+            ORDER BY score_range_min LIMIT 1
+        ''', (total_points,))
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        if result:
+            return result[0], result[1]  # ranking_text, color
+        else:
+            return "GVCN liên lạc sau", "#6c757d"  # Default
+            
+    except Exception as e:
+        logging.error(f"Error in get_ranking_info: {str(e)}")
+        return "GVCN liên lạc sau", "#6c757d"  # Default
         result = cursor.fetchone()
         conn.close()
         
@@ -5978,28 +6019,8 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         
         # Calculate ranking
         total_points = total_academic_points + total_conduct_points
-        ranking = get_auto_comment_for_category(total_points, 'ranking')
-        logging.info(f"Calculated total_points: {total_points}, ranking: {ranking}")    
-        if total_points >= 60:
-            ranking_color = "#f09c2b"  # Green
-        elif total_points >= 40:
-            ranking_color = "#b5a80a"  # Info blue
-        elif total_points >= 20:
-            ranking_color = "#2e800b"  # Warning yellow
-        elif total_points >= 0:
-            ranking_color = "#4078a9"  # Secondary gray
-        elif total_points >= -20:
-            ranking_color = "#f62a2a"  # Secondary gray
-        elif total_points >= -20:
-            ranking_color = "#a11f1f"  # Secondary gray
-        elif total_points >= -40:
-            ranking_color = "#621010"  # Secondary gray            
-        else:
-            ranking_color = "#4d0404"  # Danger red
-        
-        if ranking is None:
-            ranking = "GVCN liên lạc sau"
-            ranking_color = "#6c757d"  # Default gray
+        ranking, ranking_color = get_ranking_info(total_points)
+        logging.info(f"Calculated total_points: {total_points}, ranking: {ranking}, color: {ranking_color}")
         
         # Progress indicators
         def get_progress_class(progress):
