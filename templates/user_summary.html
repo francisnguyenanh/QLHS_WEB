@@ -2,69 +2,29 @@
 
 {% block extra_css %}
 <style>
-    .save-status {
-        min-width: 80px;
-        display: inline-block;
-        white-space: nowrap;
-    }
-    
-    .auto-save-comment {
-        resize: vertical;
-    }
-    
-    .auto-save-comment:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-    }
-
-    /* Search form toggle styles */
-    .search-form-card {
-        transition: all 0.3s ease-in-out;
-    }
-
-    .btn-compact {
-        padding: 0.375rem 0.75rem;
-        font-size: 0.875rem;
-    }
-
     /* Table improvements */
     .table th {
         background-color: #f8f9fa;
         font-weight: 600;
     }
-
     .prev-period-data {
         color: #6c757d;
         font-size: 0.875em;
         font-style: italic;
     }
 
-    /* Search form layout improvements */
-    .search-form-card .card {
-        border: 1px solid #dee2e6;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    /* Misc */
+    .save-status {
+        min-width: 80px;
+        display: inline-block;
+        white-space: nowrap;
     }
-
-    .search-form-card .card-header {
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #dee2e6;
-        padding: 0.75rem 1rem;
+    .auto-save-comment {
+        resize: vertical;
     }
-
-    .search-form-card .card-header h6 {
-        color: #495057;
-        font-weight: 600;
-    }
-
-    /* Responsive adjustments */
-    @media (max-width: 768px) {
-        .search-form-card .row {
-            flex-direction: column;
-        }
-        
-        .search-form-card .col-md-4 {
-            margin-bottom: 1rem;
-        }
+    .auto-save-comment:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
     }
 
     /* Toggle button and search form styling */
@@ -72,29 +32,27 @@
         padding: 8px 12px;
         border-radius: 20px;
         font-weight: 500;
+        font-size: 0.875rem;
         transition: all 0.3s ease;
         background: rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.2);
+        min-width: 40px;
     }
-
     .btn-compact:hover {
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
-
     .btn-compact.btn-success {
         background: linear-gradient(135deg, #198754, #20c997);
         border: none;
         color: white;
     }
-
     .btn-compact.btn-primary {
         background: linear-gradient(135deg, #0d6efd, #6610f2);
         border: none;
         color: white;
     }
-
     .btn-compact.active {
         background: linear-gradient(135deg, #6610f2, #0d6efd);
         transform: scale(1.05);
@@ -109,25 +67,99 @@
         backdrop-filter: blur(10px);
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
         overflow: hidden;
+        transition: max-height 0.3s, opacity 0.3s;
+        max-height: 500px;
+        opacity: 1;
+    }
+    .search-form-card.collapsed {
+        max-height: 0 !important;
+        opacity: 0 !important;
+        overflow: hidden !important;
+        margin-bottom: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        transition: max-height 0.3s, opacity 0.3s;
+    }
+    .search-form-card.collapsed .card-body {
+        padding: 0;
+    }
+    .search-form-card .card-body {
+        padding: 20px;
+        transition: padding 0.3s ease;
+    }
+    .search-form-card .card {
+        border: 1px solid #dee2e6;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    .search-form-card .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        padding: 0.75rem 1rem;
+    }
+    .search-form-card .card-header h6 {
+        color: #495057;
+        font-weight: 600;
+    }
+
+    /* Animation for collapse/expand */
+    @keyframes slideDown {
+        from {
+            max-height: 0;
+            opacity: 0;
+        }
+        to {
+            max-height: 500px;
+            opacity: 1;
+        }
+    }
+    @keyframes slideUp {
+        from {
+            max-height: 500px;
+            opacity: 1;
+        }
+        to {
+            max-height: 0;
+            opacity: 0;
+        }
+    }
+    .search-form-card.expanding {
+        animation: slideDown 0.3s ease-out forwards;
+    }
+    .search-form-card.collapsing {
+        animation: slideUp 0.3s ease-out forwards;
     }
 
     /* Responsive adjustments */
     @media (max-width: 768px) {
+        .row.g-3 > .col-12.col-md-4 {
+            height: fit-content;
+            min-height: 100%;
+        }
         .d-flex.gap-2 {
             flex-wrap: wrap;
             gap: 8px !important;
         }
-        
-        .btn-compact {
-            min-width: 40px;
-        }
-        
         .search-form-card .row {
             flex-direction: column;
         }
-        
         .search-form-card .col-md-4 {
             margin-bottom: 1rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        select[multiple] {
+            height: auto !important;
+        }
+        .btn {
+            margin-bottom: 0.5rem;
+        }
+        .table {
+            font-size: 0.7rem;
+        }
+        th, td {
+            padding: 0.5rem !important;
         }
     }
 </style>
@@ -174,86 +206,71 @@
             </div>
 
             <!-- Search Form Card -->
-            <div class="card search-form-card mb-3" id="searchFormCard" style="overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease; max-height: 500px; opacity: 1;">
+            <div class="card search-form-card" id="searchFormCard">
                 <div class="card-body">
                     <form method="POST" id="searchForm">
                         <div class="row g-3">
-                            <!-- Cột bên trái: Điều kiện ngày tháng -->
-                            <div class="col-md-4">
-                                <div class="card h-100">
-                                    <div class="card-body">
-                                        <!-- Chọn loại thời gian -->
-                                        <div class="mb-3">
-                                            <div class="btn-group w-100" role="group">
-                                                <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" {% if period_type == 'week' %}checked{% endif %}>
-                                                <label class="btn btn-outline-primary" for="week_type">Tuần</label>
-                                                <input type="radio" class="btn-check" name="period_type" id="month_type" value="month" {% if period_type == 'month' %}checked{% endif %}>
-                                                <label class="btn btn-outline-primary" for="month_type">Tháng</label>
-                                            </div>
-                                        </div>
+                            <div class="col-12 col-md-4">
+                                <!-- Chọn loại thời gian -->
+                                <div class="form-group mb-3">
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" checked>
+                                        <label class="btn btn-outline-primary" for="week_type">Tuần</label>
+                                        <input type="radio" class="btn-check" name="period_type" id="month_type" value="month">
+                                        <label class="btn btn-outline-primary" for="month_type">Tháng</label>
+                                    </div>
+                                </div>
 
-                                        <!-- Điều hướng thời gian -->
-                                        <div class="mb-3">
-                                            <div class="d-flex align-items-center justify-content-between">
-                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="prevPeriod">
-                                                    <i class="fas fa-chevron-left"></i>
-                                                </button>
-                                                <div class="text-center flex-grow-1 mx-2">
-                                                    <strong id="periodDisplay">Đang tải...</strong>
-                                                </div>
-                                                <button type="button" class="btn btn-outline-secondary btn-sm" id="nextPeriod">
-                                                    <i class="fas fa-chevron-right"></i>
-                                                </button>
-                                            </div>
+                                <!-- Điều hướng thời gian -->
+                                <div class="form-group mb-3">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <button type="button" class="btn btn-outline-secondary" id="prevPeriod">
+                                            <i class="fas fa-chevron-left"></i>
+                                        </button>
+                                        <div class="text-center flex-grow-1 mx-2">
+                                            <strong id="periodDisplay">Đang tải...</strong>
                                         </div>
+                                        <button type="button" class="btn btn-outline-secondary" id="nextPeriod">
+                                            <i class="fas fa-chevron-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
 
-                                        <!-- Khoảng thời gian -->
-                                        <div class="mb-3">
-                                            <div class="d-flex align-items-center gap-2">
-                                                <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ date_from or '' }}" readonly style="flex: 1;">
-                                                <span class="text-muted">~</span>
-                                                <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}" readonly style="flex: 1;">
-                                            </div>
-                                        </div>
+                                <div class="form-group">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ date_from or '' }}" readonly style="flex: 1;">
+                                        <span class="text-muted">~</span>
+                                        <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}" readonly style="flex: 1;">
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Cột ở giữa: Học sinh -->
-                            <div class="col-md-4">
-                                <div class="card h-100">
-                                    <div class="card-body">
-                                        <label for="users" class="form-label">Học sinh:</label>
-                                        <select name="users" id="users" multiple class="form-control" style="height: 200px;">
-                                            {% for user in all_users %}
-                                                <option value="{{ user[0] }}" {% if user[0]|string in selected_users %}selected{% endif %}>{{ user[1] }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
+                            <div class="col-12 col-md-4">
+                                <div class="form-group">
+                                    <label for="users">Học sinh:</label>
+                                    <select name="users" id="users" multiple class="form-control" size="6">
+                                        {% for user in users %}
+                                            <option value="{{ user[0] }}" {% if user[0]|string in selected_users %}selected{% endif %}>{{ user[1] }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                             </div>
-
-                            <!-- Cột ngoài cùng: Nhóm -->
-                             {% if role_name == 'GVCN' or role_name == 'Master' %}
-                            <div class="col-md-4">
-                                <div class="card h-100">
-                                    <div class="card-body">
-                                        <label for="groups" class="form-label">Nhóm:</label>
-                                        <select name="groups" id="groups" multiple class="form-control" style="height: 200px;">
-                                            {% for group in groups %}
-                                                <option value="{{ group.id }}" {% if group.id|string in selected_groups %}selected{% endif %}>{{ group.name }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
+                            {% if role_name == 'GVCN' or role_name == 'Master' %}
+                            <div class="col-12 col-md-4">
+                                <div class="form-group">
+                                    <label for="groups">Nhóm:</label>
+                                    <select name="groups" id="groups" multiple class="form-control" size="6">
+                                        {% for group in groups %}
+                                            <option value="{{ group.id }}" {% if group.id|string in selected_groups %}selected{% endif %}>{{ group.name }}</option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
                             </div>
                             {% endif %}
                         </div>
-
                         <div class="row mt-3">
                             <div class="col-12 text-center">
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-search"></i> Tìm kiếm
+                                    <i class="fas fa-search me-1"></i>Tìm kiếm
                                 </button>
                             </div>
                         </div>
@@ -511,25 +528,11 @@
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded for user_summary');
             
-            var toggleButton = document.getElementById('toggleSearchForm');
-            var searchFormCard = document.getElementById('searchFormCard');
-            var isCollapsed = localStorage.getItem('userSummarySearchCollapsed') === 'true';
+            // ===== TOGGLE SEARCH FORM LOGIC =====
+            const toggleSearchForm = document.getElementById('toggleSearchForm');
+            const searchFormCard = document.getElementById('searchFormCard');
+            let isCollapsed = false;
             
-            console.log('Toggle button:', toggleButton);
-            console.log('Search form card:', searchFormCard);
-            console.log('Initial collapsed state:', isCollapsed);
-            
-            // Apply initial state
-            if (isCollapsed) {
-                searchFormCard.style.maxHeight = '0px';
-                searchFormCard.style.opacity = '0';
-                console.log('Applied collapsed state');
-            } else {
-                searchFormCard.style.maxHeight = '500px';
-                searchFormCard.style.opacity = '1';
-                console.log('Applied expanded state');
-            }
-
             // Initialize tooltips
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
             var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -537,31 +540,40 @@
             });
 
             // Toggle search form
-            if (toggleButton && searchFormCard) {
-                console.log('Setting up toggle functionality');
-                
-                toggleButton.addEventListener('click', function(e) {
-                    console.log('Toggle button clicked');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    isCollapsed = !isCollapsed;
-                    console.log('New collapsed state:', isCollapsed);
-                    
+            if (toggleSearchForm && searchFormCard) {
+                toggleSearchForm.addEventListener('click', function() {
+                    console.log('Toggle clicked, isCollapsed:', isCollapsed);
                     if (isCollapsed) {
-                        searchFormCard.style.maxHeight = '0px';
-                        searchFormCard.style.opacity = '0';
-                        console.log('Collapsing form');
+                        console.log('Expanding...');
+                        // Expand
+                        searchFormCard.classList.remove('collapsed', 'collapsing');
+                        searchFormCard.classList.add('expanding');
+                        this.classList.add('active');
+                        this.innerHTML = '<i class="fas fa-eye-slash"></i><span class="d-none d-md-inline ms-1">Ẩn lọc</span>';
+                        isCollapsed = false;
+                        
+                        // Remove animation class after animation completes
+                        setTimeout(() => {
+                            searchFormCard.classList.remove('expanding');
+                            console.log('Expanded, classes:', searchFormCard.classList.toString());
+                        }, 300);
                     } else {
-                        searchFormCard.style.maxHeight = '500px';
-                        searchFormCard.style.opacity = '1';
-                        console.log('Expanding form');
+                        // Collapse
+                        console.log('Collapsing...');
+                        searchFormCard.classList.remove('expanding');
+                        searchFormCard.classList.add('collapsing');
+                        this.classList.remove('active');
+                        this.innerHTML = '<i class="fas fa-filter"></i><span class="d-none d-md-inline ms-1">Bộ lọc</span>';
+                        
+                        // Add collapsed class after animation completes
+                        setTimeout(() => {
+                            searchFormCard.classList.remove('collapsing');
+                            searchFormCard.classList.add('collapsed');
+                            isCollapsed = true;
+                            console.log('Collapsed, classes:', searchFormCard.classList.toString());
+                        }, 300);
                     }
-                    
-                    localStorage.setItem('userSummarySearchCollapsed', isCollapsed);
                 });
-            } else {
-                console.error('Toggle elements not found:', {toggleButton, searchFormCard});
             }
 
             // Print form functionality
@@ -669,31 +681,6 @@
             // Initialize table events and auto-save
             initializeTableEvents();
             initAutoSave();
-        }
-
-        // Save and restore search form collapse state
-        function saveSearchFormState() {
-            const searchFormCard = document.getElementById('searchFormCard');
-            const isCollapsed = searchFormCard.classList.contains('collapsed');
-            localStorage.setItem('searchFormCollapsed', isCollapsed);
-        }
-
-        function restoreSearchFormState() {
-            const wasCollapsed = localStorage.getItem('searchFormCollapsed') === 'true';
-            const searchFormCard = document.getElementById('searchFormCard');
-            const toggleButton = document.getElementById('toggleSearchForm');
-            
-            if (wasCollapsed) {
-                searchFormCard.classList.add('collapsed');
-                toggleButton.classList.remove('active');
-                toggleButton.innerHTML = '<i class="fas fa-filter"></i><span class="d-none d-md-inline ms-1">Bộ lọc</span>';
-                return true; // Return collapsed state
-            } else {
-                searchFormCard.classList.remove('collapsed');
-                toggleButton.classList.add('active');
-                toggleButton.innerHTML = '<i class="fas fa-eye-slash"></i><span class="d-none d-md-inline ms-1">Ẩn lọc</span>';
-                return false; // Return collapsed state
-            }
         }
 
         // AJAX functionality for form submission
@@ -922,4 +909,138 @@
             });
         }
     </script>
+    <style>
+        @media (max-width: 768px) {
+            .form-group {
+                margin-bottom: 1rem;
+            }
+
+            select[multiple] {
+                height: auto !important;
+            }
+
+            .btn {
+                margin-bottom: 0.5rem;
+            }
+
+            .table {
+                font-size: 0.7rem;
+            }
+
+            th, td {
+                padding: 0.5rem !important;
+            }
+        }
+
+        /* Toggle button and search form styling */
+        .btn-compact {
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-compact:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-compact.btn-success {
+            background: linear-gradient(135deg, #198754, #20c997);
+            border: none;
+            color: white;
+        }
+
+        .btn-compact.btn-primary {
+            background: linear-gradient(135deg, #0d6efd, #6610f2);
+            border: none;
+            color: white;
+        }
+
+        .btn-compact.active {
+            background: linear-gradient(135deg, #6610f2, #0d6efd);
+            transform: scale(1.05);
+        }
+
+        /* Search form card styling */
+        .search-form-card {
+            margin-bottom: 20px;
+            border: none;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .search-form-card.collapsed {
+            max-height: 0;
+            overflow: hidden;
+            margin-bottom: 0;
+            padding: 0;
+            border: none;
+            box-shadow: none;
+        }
+
+        .search-form-card.collapsed .card-body {
+            padding: 0;
+        }
+
+        .search-form-card .card-body {
+            padding: 20px;
+            transition: padding 0.3s ease;
+        }
+
+        /* Animation for collapse/expand */
+        @keyframes slideDown {
+            from {
+                max-height: 0;
+                opacity: 0;
+            }
+            to {
+                max-height: 500px;
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                max-height: 500px;
+                opacity: 1;
+            }
+            to {
+                max-height: 0;
+                opacity: 0;
+            }
+        }
+
+        .search-form-card.expanding {
+            animation: slideDown 0.3s ease-out forwards;
+        }
+
+        .search-form-card.collapsing {
+            animation: slideUp 0.3s ease-out forwards;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .d-flex.gap-2 {
+                flex-wrap: wrap;
+                gap: 8px !important;
+            }
+            
+            .btn-compact {
+                min-width: 40px;
+            }
+
+            .comment-col {
+                min-width: 200px !important;
+                max-width: 200px !important;
+                width: 200px !important;
+            }
+        }
+    </style>
 {% endblock %}

@@ -168,82 +168,82 @@
         <div class="card search-form-card" id="searchFormCard">
             <div class="card-body">
                 <form method="POST" id="searchForm">
-            <div class="row g-3">
-                <div class="col-12 col-md-3">
-                    <!-- Chọn loại thời gian -->
-                    <div class="form-group mb-3">
-                        <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" checked>
-                            <label class="btn btn-outline-primary" for="week_type">Tuần</label>
-                            <input type="radio" class="btn-check" name="period_type" id="month_type" value="month">
-                            <label class="btn btn-outline-primary" for="month_type">Tháng</label>
-                        </div>
-                    </div>
-
-                    <!-- Điều hướng thời gian -->
-                    <div class="form-group mb-3">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <button type="button" class="btn btn-outline-secondary" id="prevPeriod">
-                                <i class="fas fa-chevron-left"></i>
-                            </button>
-                            <div class="text-center flex-grow-1 mx-2">
-                                <strong id="periodDisplay">Đang tải...</strong>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-3">
+                            <!-- Chọn loại thời gian -->
+                            <div class="form-group mb-3">
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="period_type" id="week_type" value="week" checked>
+                                    <label class="btn btn-outline-primary" for="week_type">Tuần</label>
+                                    <input type="radio" class="btn-check" name="period_type" id="month_type" value="month">
+                                    <label class="btn btn-outline-primary" for="month_type">Tháng</label>
+                                </div>
                             </div>
-                            <button type="button" class="btn btn-outline-secondary" id="nextPeriod">
-                                <i class="fas fa-chevron-right"></i>
+
+                            <!-- Điều hướng thời gian -->
+                            <div class="form-group mb-3">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <button type="button" class="btn btn-outline-secondary" id="prevPeriod">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <div class="text-center flex-grow-1 mx-2">
+                                        <strong id="periodDisplay">Đang tải...</strong>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-secondary" id="nextPeriod">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <div class="d-flex align-items-center gap-2">
+                                    <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ date_from or '' }}" readonly style="flex: 1;">
+                                    <span class="text-muted">~</span>
+                                    <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}" readonly style="flex: 1;">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <div class="form-group">
+                                <label for="users">Học sinh:</label>
+                                <select name="users" id="users" multiple class="form-control" size="6">
+                                    {% for user in users %}
+                                        <option value="{{ user.id }}" {% if user.id|string in selected_users %}selected{% endif %}>{{ user.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 col-md-4">
+                            <div class="form-group">
+                                <label for="conducts">Hạnh kiểm:</label>
+                                <select name="conducts" id="conducts" multiple class="form-control" size="6">
+                                    {% for conduct in conducts %}
+                                        <option value="{{ conduct.id }}" {% if conduct.id|string in selected_conducts %}selected{% endif %}>{{ conduct.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        {% if role_name == 'GVCN' or role_name == 'Master' %}
+                        <div class="col-12 col-md-2">
+                            <div class="form-group">
+                                <label for="groups">Nhóm:</label>
+                                <select name="groups" id="groups" multiple class="form-control" size="6">
+                                    {% for group in groups %}
+                                        <option value="{{ group.id }}" {% if group.id|string in selected_groups %}selected{% endif %}>{{ group.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12 text-center">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-1"></i>Tìm kiếm
                             </button>
                         </div>
                     </div>
-
-                    <div class="form-group">
-                        <div class="d-flex align-items-center gap-2">
-                            <input type="date" name="date_from" id="date_from" class="form-control form-control-sm" value="{{ date_from or '' }}" readonly style="flex: 1;">
-                            <span class="text-muted">~</span>
-                            <input type="date" name="date_to" id="date_to" class="form-control form-control-sm" value="{{ date_to or '' }}" readonly style="flex: 1;">
-                        </div>
-                    </div>
-                </div>
-                <div class="col-12 col-md-3">
-                    <div class="form-group">
-                        <label for="users">Học sinh:</label>
-                        <select name="users" id="users" multiple class="form-control" size="6">
-                            {% for user in users %}
-                                <option value="{{ user.id }}" {% if user.id|string in selected_users %}selected{% endif %}>{{ user.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="col-12 col-md-4">
-                    <div class="form-group">
-                        <label for="conducts">Hạnh kiểm:</label>
-                        <select name="conducts" id="conducts" multiple class="form-control" size="6">
-                            {% for conduct in conducts %}
-                                <option value="{{ conduct.id }}" {% if conduct.id|string in selected_conducts %}selected{% endif %}>{{ conduct.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                {% if role_name == 'GVCN' or role_name == 'Master' %}
-                <div class="col-12 col-md-2">
-                    <div class="form-group">
-                        <label for="groups">Nhóm:</label>
-                        <select name="groups" id="groups" multiple class="form-control" size="6">
-                            {% for group in groups %}
-                                <option value="{{ group.id }}" {% if group.id|string in selected_groups %}selected{% endif %}>{{ group.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-            <div class="row mt-3">
-                <div class="col-12 text-center">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-search me-1"></i>Tìm kiếm
-                    </button>
-                </div>
-            </div>
                 </form>
             </div>
         </div>

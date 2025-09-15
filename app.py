@@ -4540,10 +4540,11 @@ def user_summary():
             user_params.extend(selected_groups)
 
         cursor.execute(user_query, user_params)
-        filtered_users = cursor.fetchall()
-
+        users = cursor.fetchall()
+        users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
+        
         records = []
-        for user_id, user_name in filtered_users:
+        for user_id, user_name in users:
             conduct_points = 0
             academic_points = 0
 
@@ -4738,7 +4739,7 @@ def user_summary():
                 <th colspan="3" class="text-center">Học Tập</th>
                 <th colspan="3" class="text-center">Hạnh Kiểm</th>
                 {% if role_name == 'GVCN' or role_name == 'Master' %}
-                <th rowspan="2">Nhận xét</th>
+                <th rowspan="2" class="comment-col">Nhận xét</th>
                 {% endif %}
             </tr>
             <tr>
@@ -4839,7 +4840,7 @@ def user_summary():
                         </span>
                     </td>
                     {% if role_name == 'GVCN' or role_name == 'Master' %}
-                    <td>                        
+                    <td class="comment-col">                        
                         <div class="d-flex align-items-center">
                             <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" rows="2" placeholder="Nhận xét...">{{ (record[5] if record[5] else record[6]) if record|length > 5 else '' }}</textarea>
                             <span class="save-status text-muted small" id="status_{{ record[4] }}"></span>
@@ -4871,12 +4872,10 @@ def user_summary():
                 'success': True,
                 'html': table_html
             })
-
-        
         
         return render_template_with_permissions('user_summary.html',
                                records=records,
-                               all_users=filtered_users,
+                               users=users,
                                groups=groups,
                                date_from=date_from,
                                date_to=date_to,
