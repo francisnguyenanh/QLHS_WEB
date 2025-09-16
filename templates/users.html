@@ -281,24 +281,27 @@
                     rolePasswordField.required = true;
                     // Gọi API sinh username/password cho chức vụ
                     const nameValue = document.getElementById('name').value.trim();
-                    if (nameValue.length > 0) {
-                        fetch('/api/generate_user_credentials', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ name: nameValue, role: roleName })
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.username) {
-                                roleUsernameField.value = data.username;
-                            }
-                            if (data.password) {
-                                rolePasswordField.value = data.password;
-                            }
-                        });
-                    } else {
-                        roleUsernameField.value = '';
-                        rolePasswordField.value = '';
+                    if (!isEditMode) {
+                        const nameValue = document.getElementById('name').value.trim();
+                        if (nameValue.length > 0) {
+                            fetch('/api/generate_user_credentials', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ name: nameValue, role: roleName })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.username) {
+                                    roleUsernameField.value = data.username;
+                                }
+                                if (data.password) {
+                                    rolePasswordField.value = data.password;
+                                }
+                            });
+                        } else {
+                            roleUsernameField.value = '';
+                            rolePasswordField.value = '';
+                        }
                     }
                 }
             } else {

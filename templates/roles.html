@@ -38,9 +38,11 @@
                         <tr>
                             <td>{{ role[1] }}</td>
                             <td>
+                                {%if role[1]!= "GVCN" and role[1]!="Master"%}
                                 <button class="btn btn-sm btn-info" onclick="openMenuPermissionModal({{ role[0] }}, '{{ role[1] }}')">
                                     <i class="fas fa-bars"></i> Cấu hình
                                 </button>
+                                {% endif %}
                             </td>
                             <td>
                                 <button class="btn btn-sm btn-warning" onclick="openSubjectPermissionModal({{ role[0] }}, '{{ role[1] }}')">
