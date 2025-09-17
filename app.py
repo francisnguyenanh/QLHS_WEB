@@ -5171,7 +5171,7 @@ def reset_table(table_name):
         
         # Danh sách table được phép xóa theo thứ tự
         allowed_tables = ['User_Conduct', 'User_Subjects', 'Criteria', 'Subjects', 'Conduct', 
-                         'Groups', 'Role_Permissions', 'Roles', 'Classes', 'Users', 'User_Comments' ]
+                         'Groups', 'Role_Permissions', 'Roles', 'Classes', 'Users', 'User_Comments', 'Week_Settings' ]
         
         if table_name not in allowed_tables:
             return jsonify({'error': 'Table không hợp lệ'}), 400
@@ -5203,6 +5203,7 @@ def reset_table(table_name):
             elif table_name == 'Users':
                 # Không xóa user có role Master, GVCN
                 cursor.execute("DELETE FROM Login_history")
+                cursor.execute("DELETE FROM Week_Settings")
                 
                 cursor.execute("""
                     DELETE FROM Users 
