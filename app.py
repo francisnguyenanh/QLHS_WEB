@@ -6304,60 +6304,64 @@ def settings_weeks():
     permission_check = require_menu_permission('master')
     if permission_check:
         return permission_check
-    
+
     if 'user_id' in session:
-        
-        year = request.args.get('year', datetime.now().year, type=int)
-        
-        # Lấy tất cả ngày thứ 2 trong năm
-        mondays = get_all_mondays_in_year(year)
-        
-        # Lấy week settings đã lưu
+        # Lấy dữ liệu tuần đã lưu (nếu có)
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT monday_date, week_number FROM Week_Settings WHERE year = ?", (year,))
-        saved_weeks = {row[0]: row[1] for row in cursor.fetchall()}
+        cursor.execute("SELECT week_number, from_date, to_date FROM Week_Settings")
+        saved_weeks = {row[0]: {'from_date': row[1], 'to_date': row[2]} for row in cursor.fetchall()}
         conn.close()
-        
-        # Kết hợp data
+
+        # Tạo danh sách 52 tuần
         week_data = []
-        for monday in mondays:
-            date_str = monday.strftime('%Y-%m-%d')
+        for i in range(1, 53):
+            week_info = saved_weeks.get(i, {})
             week_data.append({
-                'date': date_str,
-                'formatted_date': monday.strftime('%d/%m/%Y'),
-                'week_number': saved_weeks.get(date_str, None)
+                'week_number': i,
+                'from_date': week_info.get('from_date', ''),
+                'to_date': week_info.get('to_date', '')
             })
-        
-        return render_template_with_permissions('settings_weeks.html', 
-                                               week_data=week_data, 
-                                               current_year=year)
+
+        return render_template('settings_weeks.html', week_data=week_data)
     else:
         return redirect(url_for('login'))
 
 @app.route('/api/settings/weeks/save', methods=['POST'])
 def save_week_settings():
     if 'user_id' in session:
-        
         data = request.json
-        year = data.get('year')
         week_settings = data.get('week_settings', [])
-        
+
         conn = connect_db()
         cursor = conn.cursor()
-        
+
         try:
-            # Xóa settings cũ của năm này
-            cursor.execute("DELETE FROM Week_Settings WHERE year = ?", (year,))
-            
-            # Thêm settings mới
+            # Lấy tất cả tuần hiện có trong DB
+            cursor.execute("SELECT week_number FROM Week_Settings")
+            existing_weeks = {row[0] for row in cursor.fetchall()}
+
+            # Cập nhật hoặc thêm mới các tuần gửi lên
+            sent_weeks = set()
             for setting in week_settings:
-                if setting['week_number']:  # Chỉ lưu khi có week_number
-                    cursor.execute("""
-                        INSERT INTO Week_Settings (year, monday_date, week_number)
-                        VALUES (?, ?, ?)
-                    """, (year, setting['date'], setting['week_number']))
-            
+                week_number = setting['week_number']
+                from_date = setting['from']
+                to_date = setting['to']
+                sent_weeks.add(week_number)
+                cursor.execute("SELECT id FROM Week_Settings WHERE week_number = ?", (week_number,))
+                row = cursor.fetchone()
+                if row:
+                    # Update
+                    cursor.execute("UPDATE Week_Settings SET from_date=?, to_date=? WHERE week_number=?", (from_date, to_date, week_number))
+                else:
+                    # Insert
+                    cursor.execute("INSERT INTO Week_Settings (week_number, from_date, to_date) VALUES (?, ?, ?)", (week_number, from_date, to_date))
+
+            # Xóa các tuần không còn trong danh sách gửi lên
+            weeks_to_delete = existing_weeks - sent_weeks
+            for week_number in weeks_to_delete:
+                cursor.execute("DELETE FROM Week_Settings WHERE week_number=?", (week_number,))
+
             conn.commit()
             return jsonify({'success': True, 'message': 'Lưu cài đặt tuần thành công'})
         except Exception as e:
@@ -6367,6 +6371,75 @@ def save_week_settings():
             conn.close()
     else:
         return jsonify({'error': 'Unauthorized'}), 401
+
+@app.route('/api/week_by_date')
+def api_week_by_date():
+    date_str = request.args.get('date')
+    if not date_str:
+        return jsonify({'error': 'Thiếu ngày'}), 400
+
+    try:
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+    except Exception:
+        return jsonify({'error': 'Sai định dạng ngày'}), 400
+
+    conn = connect_db()
+    cursor = conn.cursor()
+    # Lấy tất cả tuần có from_date <= date <= to_date
+    cursor.execute("""
+        SELECT week_number, from_date, to_date 
+        FROM Week_Settings 
+        WHERE from_date IS NOT NULL AND to_date IS NOT NULL
+          AND from_date <= ? AND to_date >= ?
+        ORDER BY week_number ASC
+    """, (date_str, date_str))
+    rows = cursor.fetchall()
+    conn.close()
+
+    if rows:
+        # Nếu có nhiều tuần, lấy tuần nhỏ nhất
+        week_number, from_date, to_date = rows[0]
+        return jsonify({
+            'week_number': week_number,
+            'from_date': from_date,
+            'to_date': to_date
+        })
+    else:
+        # Nếu không có, phán đoán tuần theo thứ 2 và chủ nhật
+        monday = date_obj - timedelta(days=date_obj.weekday())
+        sunday = monday + timedelta(days=6)
+        week_number = int(monday.strftime("%U")) + 1
+        return jsonify({
+            'week_number': week_number,
+            'from_date': monday.strftime("%Y-%m-%d"),
+            'to_date': sunday.strftime("%Y-%m-%d")
+        })
+
+@app.route('/api/week_by_number')
+def api_week_by_number():
+    week_number = request.args.get('week_number', type=int)
+
+    if week_number is not None and week_number >= 1 and week_number <= 52:
+        conn = connect_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT week_number, from_date, to_date 
+            FROM Week_Settings 
+            WHERE week_number = ?
+        """, (week_number,))
+        row = cursor.fetchone()
+        conn.close()
+
+        if row and row[1] and row[2]:
+            return jsonify({
+                'week_number': row[0],
+                'from_date': row[1],
+                'to_date': row[2]
+            })
+        else:
+            return jsonify({'error': f'Tuần {week_number} chưa được đăng ký'}), 400
+    else:
+        return jsonify({'error': 'Số tuần không hợp lệ (1-52)'}), 400 
 
 @app.route('/api/get_week_number')
 def get_week_number_api():

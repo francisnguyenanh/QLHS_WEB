@@ -22,102 +22,109 @@
     </style>
 </head>
 <body>
-<div class="container-fluid mt-3">
-    <h2>Cài đặt số tuần</h2>
-    
-    <!-- Year navigation -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <button class="btn btn-outline-secondary" onclick="changeYear({{ current_year - 1 }})">
-            <i class="fas fa-chevron-left"></i> {{ current_year - 1 }}
-        </button>
-        <h4>Năm {{ current_year }}</h4>
-        <button class="btn btn-outline-secondary" onclick="changeYear({{ current_year + 1 }})">
-            {{ current_year + 1 }} <i class="fas fa-chevron-right"></i>
-        </button>
-    </div>
-    
-    <!-- Week settings table -->
-    <div class="card">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Ngày thứ 2</th>
-                            <th>Số tuần</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for week in week_data %}
-                        <tr>
-                            <td>{{ week.formatted_date }}</td>
-                            <td>
-                                <select class="form-control week-select" data-date="{{ week.date }}">
-                                    <option value="">Chọn tuần</option>
-                                    {% for i in range(1, 54) %}
-                                        <option value="{{ i }}" {% if week.week_number == i %}selected{% endif %}>
-                                            Tuần {{ i }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 9999">
+    <div id="toastMsg" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastMsgBody">
+                <!-- Nội dung toast -->
             </div>
-            
-            <div class="text-center mt-3">
-                <button class="btn btn-primary" onclick="saveWeekSettings()">
-                    <i class="fas fa-save"></i> Lưu cài đặt
-                </button>
-            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
     </div>
 </div>
+<div class="container-fluid mt-3">
+    <h2>Cài đặt số tuần</h2>
+    <form id="weeksForm">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Số tuần</th>
+                    <th>Ngày bắt đầu</th>
+                    <th>Ngày kết thúc</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for week in week_data %}
+                <tr>
+                    <td>
+                        <input type="number" class="form-control week-number" value="{{ week.week_number }}" readonly data-week="{{ week.week_number }}">
+                    </td>
+                    <td>
+                        <input type="date" class="form-control week-from" data-week="{{ week.week_number }}" value="{{ week.from_date or '' }}">
+                    </td>
+                    <td>
+                        <input type="date" class="form-control week-to" data-week="{{ week.week_number }}" value="{{ week.to_date or '' }}">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="d-flex justify-content-center">
+            <button type="button" class="btn btn-primary" id="registerWeeksBtn">Đăng ký</button>
+        </div>
+    </form>
+    <script>
+        function showToast(message, type='success') {
+            const toastMsg = document.getElementById('toastMsg');
+            const toastBody = document.getElementById('toastMsgBody');
+            toastBody.textContent = message;
+            toastMsg.className = 'toast align-items-center text-white border-0 bg-' + (type === 'success' ? 'success' : (type === 'error' ? 'danger' : 'warning'));
+            const toast = new bootstrap.Toast(toastMsg);
+            toast.show();
+        }
 
-<script>
-function changeYear(year) {
-    window.location.href = `/settings/weeks?year=${year}`;
-}
-
-function saveWeekSettings() {
-    const weekSettings = [];
-    const selects = document.querySelectorAll('.week-select');
-    
-    selects.forEach(select => {
-        if (select.value) {
-            weekSettings.push({
-                date: select.dataset.date,
-                week_number: parseInt(select.value)
+        document.getElementById('registerWeeksBtn').onclick = function() {
+            let valid = true;
+            let weekSettings = [];
+            document.querySelectorAll('tbody tr').forEach(function(row) {
+                const weekNumber = parseInt(row.querySelector('.week-number').value);
+                const fromInput = row.querySelector('.week-from');
+                const toInput = row.querySelector('.week-to');
+                const from = fromInput.value;
+                const to = toInput.value;
+                // Reset style
+                row.querySelector('.week-number').classList.remove('is-invalid');
+                // Nếu 1 trong 2 ngày có giá trị thì bắt buộc nhập cả 2
+                if ((from && !to) || (!from && to)) {
+                    valid = false;
+                    row.querySelector('.week-number').classList.add('is-invalid');
+                }
+                // Nếu cả 2 đều có giá trị, kiểm tra from <= to
+                if (from && to) {
+                    if (from > to) {
+                        valid = false;
+                        row.querySelector('.week-number').classList.add('is-invalid');
+                    } else {
+                        weekSettings.push({week_number: weekNumber, from: from, to: to});
+                    }
+                }
+                // Nếu cả 2 đều blank: không gửi lên backend
             });
-        }
-    });
-    
-    fetch('/api/settings/weeks/save', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            year: {{ current_year }},
-            week_settings: weekSettings
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showSuccess(data.message);
-        } else {
-            showError(data.error || 'Có lỗi xảy ra');
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        showError('Có lỗi xảy ra khi lưu cài đặt');
-    });
-}
-</script>
+            if (!valid) {
+                showToast('Vui lòng kiểm tra lại các dòng tô đỏ: ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc và phải nhập đủ cả 2 ngày nếu muốn đăng ký tuần.', 'error');
+                return;
+            }
+            // Gửi dữ liệu lên backend
+            fetch('/api/settings/weeks/save', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({week_settings: weekSettings})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Lưu thành công!', 'success');
+                    setTimeout(() => location.reload(), 1200);
+                } else {
+                    showToast('Lỗi: ' + (data.error || 'Không xác định'), 'error');
+                }
+            });
+        };
+    </script>
+    <style>
+    .is-invalid { border: 2px solid red; }
+    </style>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

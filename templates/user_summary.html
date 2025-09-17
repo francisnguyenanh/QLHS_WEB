@@ -302,12 +302,44 @@
         let isInitializing = true;
         let isCollapsed = false; // Global variable for collapse state
 
-        // Hàm lấy thứ Hai của tuần
-        function getMonday(date) {
-            const d = new Date(date);
-            const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Điều chỉnh cho Chủ Nhật
-            return new Date(d.setDate(diff));
+        // Hàm lấy tuần hiện tại từ backend
+        async function loadCurrentWeek() {
+            const today = new Date();
+            const todayStr = today.toISOString().slice(0, 10);
+            try {
+                const res = await fetch(`/api/week_by_date?date=${todayStr}`);
+                const data = await res.json();
+                if (res.ok && !data.error) {
+                    document.getElementById('date_from').value = data.from_date;
+                    document.getElementById('date_to').value = data.to_date;
+                    document.getElementById('periodDisplay').textContent = `Tuần ${data.week_number}`;
+                    window.currentWeekNumber = data.week_number;
+                } else {
+                    showError(data.error || 'Không lấy được dữ liệu tuần');
+                }
+            } catch (error) {
+                showError('Không thể kết nối tới máy chủ');
+            }
+        }
+
+        // Hàm chuyển tuần (lùi/tới)
+        async function changeWeek(direction) {
+            let week = window.currentWeekNumber || 1;
+            week = direction === 'next' ? week + 1 : week - 1;
+            try {
+                const res = await fetch(`/api/week_by_number?week_number=${week}`);
+                const data = await res.json();
+                if (res.ok && !data.error) {
+                    document.getElementById('date_from').value = data.from_date;
+                    document.getElementById('date_to').value = data.to_date;
+                    document.getElementById('periodDisplay').textContent = `Tuần ${data.week_number}`;
+                    window.currentWeekNumber = data.week_number;
+                } else {
+                    showError(data.error || 'Không lấy được dữ liệu tuần');
+                }
+            } catch (error) {
+                showError('Không thể kết nối tới máy chủ');
+            }
         }
 
         // Hàm lấy ngày đầu tháng
@@ -336,15 +368,6 @@
             const dateToInput = document.getElementById('date_to');
 
             if (currentPeriodType === 'week') {
-                const monday = getMonday(currentDate);
-                const sunday = new Date(monday);
-                sunday.setDate(monday.getDate() + 6);
-
-                dateFromInput.value = formatDate(monday);
-                dateToInput.value = formatDate(sunday);
-
-                const weekNumber = await getWeekNumber(monday);
-                periodDisplay.textContent = `Tuần ${weekNumber} - ${monday.getFullYear()}`;
             }  else { // month
                 const firstDay = getFirstDayOfMonth(currentDate);
                 const lastDay = getLastDayOfMonth(currentDate);
@@ -361,24 +384,6 @@
             if (!isInitializing) {
                 loadData();
             }
-        }
-
-        async function getWeekNumber(date) {
-            const monday = getMonday(date);
-            const mondayStr = formatDate(monday);
-            try {
-                const response = await fetch(`/api/get_week_number?monday_date=${mondayStr}`);
-                const data = await response.json();
-                return data.week_number || getDefaultWeekNumber(date);
-            } catch (error) {
-                return getDefaultWeekNumber(date);
-            }
-        }
-
-        function getDefaultWeekNumber(date) {
-            const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-            const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
-            return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
         }
 
         // Toggle search form functionality
@@ -432,34 +437,8 @@
                     }
                 });
             }
-
-            // Print form functionality
-            const printForm = document.getElementById('printForm');
-            if (printForm) {
-                printForm.addEventListener('submit', function(event) {
-                    const checkboxes = document.querySelectorAll('input[type="checkbox"]:checked');
-                    const selectedUserIds = Array.from(checkboxes)
-                        .filter(cb => cb.name.startsWith('in_'))
-                        .map(cb => cb.name.split('_')[1]);
-
-                    if (selectedUserIds.length === 0) {
-                        alert("Vui lòng chọn ít nhất một học sinh để xuất phiếu.");
-                        event.preventDefault();
-                        return;
-                    }
-
-                    const selectedUsersInput = document.getElementById('selected_users_input');
-                    const dateFromInput = document.getElementById('date_from_input');
-                    const dateToInput = document.getElementById('date_to_input');
-                    const dateFrom = document.getElementById('date_from');
-                    const dateTo = document.getElementById('date_to');
-
-                    if (selectedUsersInput) selectedUsersInput.value = selectedUserIds.join(',');
-                    if (dateFromInput && dateFrom) dateFromInput.value = dateFrom.value;
-                    if (dateToInput && dateTo) dateToInput.value = dateTo.value;
-                });
-            }
-
+            
+            loadCurrentWeek();
             // Khởi tạo period display
             initializePeriodDisplay();
         });
@@ -482,7 +461,6 @@
                 
                 if (currentPeriodType === 'week') {
                     // Tuần: sử dụng ngày đầu tuần
-                    currentDate = getMonday(fromDate);
                     document.getElementById('week_type').checked = true;
                 } else {
                     // Tháng: sử dụng ngày đầu tháng  
@@ -491,7 +469,6 @@
                 }
             } else {
                 // Nếu không có giá trị từ server, khởi tạo với tuần hiện tại
-                currentDate = getMonday(new Date());
                 currentPeriodType = 'week';
                 document.getElementById('week_type').checked = true;
             }
@@ -501,32 +478,33 @@
             // Hoàn thành khởi tạo
             isInitializing = false;
 
-            // Xử lý thay đổi loại thời gian
             document.querySelectorAll('input[name="period_type"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     currentPeriodType = this.value;
-                    updatePeriodDisplay();
+                    if (currentPeriodType === 'week') {
+                        loadCurrentWeek();
+                    } else {
+                        updatePeriodDisplay(); // Tháng giữ logic cũ
+                    }
                 });
             });
 
-            // Xử lý nút lùi
             document.getElementById('prevPeriod').addEventListener('click', function() {
                 if (currentPeriodType === 'week') {
-                    currentDate.setDate(currentDate.getDate() - 7);
+                    changeWeek('prev');
                 } else {
                     currentDate.setMonth(currentDate.getMonth() - 1);
+                    updatePeriodDisplay();
                 }
-                updatePeriodDisplay();
             });
 
-            // Xử lý nút tiến
             document.getElementById('nextPeriod').addEventListener('click', function() {
                 if (currentPeriodType === 'week') {
-                    currentDate.setDate(currentDate.getDate() + 7);
+                    changeWeek('next');
                 } else {
                     currentDate.setMonth(currentDate.getMonth() + 1);
+                    updatePeriodDisplay();
                 }
-                updatePeriodDisplay();
             });
 
             // AJAX form submission

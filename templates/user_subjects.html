@@ -342,6 +342,35 @@
         var currentSortBy = '{{ sort_by }}';
         var currentSortOrder = '{{ sort_order }}';
 
+        async function loadCurrentWeek() {
+            const today = new Date();
+            const todayStr = today.toISOString().slice(0, 10);
+            const res = await fetch(`/api/week_by_date?date=${todayStr}`);
+            const data = await res.json();
+            document.getElementById('date_from').value = data.from_date;
+            document.getElementById('date_to').value = data.to_date;
+            document.getElementById('periodDisplay').textContent = `Tuần ${data.week_number}`;
+            window.currentWeekNumber = data.week_number;
+        }
+
+        async function changeWeek(direction) {
+            let week = window.currentWeekNumber || 1;
+            week = direction === 'next' ? week + 1 : week - 1;
+            try {
+                const res = await fetch(`/api/week_by_number?week_number=${week}`);
+                const data = await res.json();
+                if (res.ok && !data.error) {
+                    document.getElementById('date_from').value = data.from_date;
+                    document.getElementById('date_to').value = data.to_date;
+                    document.getElementById('periodDisplay').textContent = `Tuần ${data.week_number}`;
+                    window.currentWeekNumber = data.week_number;
+                } else {
+                    showError(data.error || 'Có lỗi xảy ra khi lấy dữ liệu tuần', 'error');
+                }
+            } catch (error) {
+                showError('Không thể kết nối tới máy chủ', 'error');
+            }
+        }
         // Load filtered users for modal
         function loadFilteredUsersForModal() {
             fetch('/api/users/filtered')
@@ -740,6 +769,7 @@
         }
         // Gộp tất cả DOMContentLoaded logic vào một function duy nhất
         document.addEventListener('DOMContentLoaded', function() {
+            loadCurrentWeek();
             // Hiển thị page content sau khi DOM ready
             const pageContent = document.querySelector('.page-content');
             if (pageContent) {
@@ -749,38 +779,42 @@
             }
             
             // ===== PERIOD NAVIGATION LOGIC =====
-            // Luôn khởi tạo với tuần hiện tại dựa trên ngày hiện tại để đảm bảo tất cả trang đều hiển thị cùng tuần
-            currentDate = getMonday(new Date());
+            // Luôn khởi tạo với tuần hiện tại dựa trên ngày hiện tại đềEđảm bảo tất cả trang đều hiển thềEcùng tuần
+            // Khởi tạo tuần hiện tại khi load trang
             currentPeriodType = 'week';
             document.getElementById('week_type').checked = true;
-            updatePeriodDisplay();
+            loadCurrentWeek(); // Gọi API lấy tuần hiện tại từ DB
 
             // Xử lý thay đổi loại thời gian
             document.querySelectorAll('input[name="period_type"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     currentPeriodType = this.value;
-                    updatePeriodDisplay();
+                    if (currentPeriodType === 'week') {
+                        loadCurrentWeek();
+                    } else {
+                        updatePeriodDisplay(); // Tháng vẫn dùng logic cũ
+                    }
                 });
             });
 
             // Xử lý nút lùi
             document.getElementById('prevPeriod').addEventListener('click', function() {
                 if (currentPeriodType === 'week') {
-                    currentDate.setDate(currentDate.getDate() - 7);
+                    changeWeek('prev'); // Gọi API lấy tuần trước
                 } else {
                     currentDate.setMonth(currentDate.getMonth() - 1);
+                    updatePeriodDisplay();
                 }
-                updatePeriodDisplay();
             });
 
             // Xử lý nút tiến
             document.getElementById('nextPeriod').addEventListener('click', function() {
                 if (currentPeriodType === 'week') {
-                    currentDate.setDate(currentDate.getDate() + 7);
+                    changeWeek('next'); // Gọi API lấy tuần sau
                 } else {
                     currentDate.setMonth(currentDate.getMonth() + 1);
+                    updatePeriodDisplay();
                 }
-                updatePeriodDisplay();
             });
             
             // ===== TOGGLE SEARCH FORM LOGIC =====
