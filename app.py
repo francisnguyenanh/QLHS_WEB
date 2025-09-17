@@ -2319,14 +2319,20 @@ def update_user_api(id):
         conn = connect_db()
         cursor = conn.cursor()
         # Kiểm tra trùng cặp username + password
-        cursor.execute("SELECT COUNT(*) FROM Users WHERE username = ? AND password = ? AND is_deleted = 0", (username, password))
+        cursor.execute(
+            "SELECT COUNT(*) FROM Users WHERE username = ? AND password = ? AND is_deleted = 0 AND id != ?",
+            (username, password, id)
+        )
         if cursor.fetchone()[0] > 0:
             conn.close()
             return jsonify({'error': 'Cặp tên đăng nhập và mật khẩu đã tồn tại'}), 400
 
         # Nếu có role_username và role_password, kiểm tra trùng cặp
         if role_username and role_password:
-            cursor.execute("SELECT COUNT(*) FROM Users WHERE role_username = ? AND role_password = ? AND is_deleted = 0", (role_username, role_password))
+            cursor.execute(
+                "SELECT COUNT(*) FROM Users WHERE role_username = ? AND role_password = ? AND is_deleted = 0 AND id != ?",
+                (role_username, role_password, id)
+            )
             if cursor.fetchone()[0] > 0:
                 conn.close()
                 return jsonify({'error': 'Cặp role username và role password đã tồn tại'}), 400
