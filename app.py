@@ -4661,7 +4661,7 @@ def user_summary():
                     conduct_difference = current_conduct_points - prev_conduct_points
                     total_point = current_academic_points + current_conduct_points
                     
-                    logging.info(f"User ID: {user_id}, Academic Diff: {current_academic_points}, Conduct Diff: {current_conduct_points}, Total: {total_point}")
+                    #logging.info(f"User ID: {user_id}, Academic Diff: {current_academic_points}, Conduct Diff: {current_conduct_points}, Total: {total_point}")
                     
                     auto_comment = get_auto_comment(academic_difference, conduct_difference)
                     auto_ranking = get_auto_comment_for_category(total_point, "ranking")
@@ -5264,7 +5264,6 @@ def comment_management():
                 ORDER BY comment_category, comment_type, score_range_min
             ''')
             templates = cursor.fetchall()
-            logging.info(f"Loaded {templates} comment templates")
             conn.close()
             
             return render_template_with_permissions('comment_management.html', templates=templates)
@@ -5294,7 +5293,7 @@ def comment_template_create():
                 conn = connect_db()
                 cursor = conn.cursor()
                 
-                logging.info(f"Creating comment template: category={comment_category}, type={comment_type}, range=({score_range_min}-{score_range_max}), color={color}")
+                #logging.info(f"Creating comment template: category={comment_category}, type={comment_type}, range=({score_range_min}-{score_range_max}), color={color}")
                 cursor.execute('''
                     INSERT INTO Comment_Templates (comment_category, comment_type, score_range_min, score_range_max, comment_text, color)
                     VALUES (?, ?, ?, ?, ?, ?)
@@ -5389,7 +5388,7 @@ def api_comment_template_create():
     try:        
         comment_category = request.form['comment_category']
         comment_type = request.form['comment_type']
-        logging.info(f"API Received comment_type: {comment_type}")
+        #logging.info(f"API Received comment_type: {comment_type}")
         score_range_min = int(request.form['score_range_min'])
         score_range_max = int(request.form['score_range_max'])
         comment_text = request.form['comment_text']
@@ -5429,7 +5428,7 @@ def api_get_comment_template(template_id):
         result = cursor.fetchone()
         conn.close()
         
-        logging.info(f"Fetched comment template: {result}")
+        #logging.info(f"Fetched comment template: {result}")
         if result:
             template = {
                 'id': result[0],
@@ -5495,7 +5494,7 @@ def get_auto_comment_for_category(score_difference, category):
             ORDER BY score_range_min LIMIT 1
         ''', (category, comment_type, abs_diff))
         
-        logging.info(f"Fetching auto comment for category={category}, type={comment_type}, abs_diff={abs_diff}")    
+        #logging.info(f"Fetching auto comment for category={category}, type={comment_type}, abs_diff={abs_diff}")    
         
         result = cursor.fetchone()
         conn.close()
@@ -6038,7 +6037,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         # Calculate ranking
         total_points = total_academic_points + total_conduct_points
         ranking, ranking_color = get_ranking_info(total_points)
-        logging.info(f"Calculated total_points: {total_points}, ranking: {ranking}, color: {ranking_color}")
+        #logging.info(f"Calculated total_points: {total_points}, ranking: {ranking}, color: {ranking_color}")
         
         # Progress indicators
         def get_progress_class(progress):
@@ -6709,7 +6708,7 @@ def user_account_encoded(encoded_id):
     if not user:
         return "<h3>Không tìm thấy user!</h3>", 404
     
-    logging.info(f"Accessed user account for user_id: {class_data}")
+    #logging.info(f"Accessed user account for user_id: {class_data}")
     
     return render_template(
         'user_account.html',
