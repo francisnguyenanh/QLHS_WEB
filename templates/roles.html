@@ -38,7 +38,7 @@
                         <tr>
                             <td>{{ role[1] }}</td>
                             <td>
-                                {%if role[1]!= "GVCN" and role[1]!="Master"%}
+                                {%if role[1]!="Master"%}
                                 <button class="btn btn-sm btn-info" onclick="openMenuPermissionModal({{ role[0] }}, '{{ role[1] }}')">
                                     <i class="fas fa-bars"></i> Cấu hình
                                 </button>
@@ -157,22 +157,16 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="user_conduct_menu" name="menus" value="user_conduct">
-                                    <label class="form-check-label" for="user_conduct_menu">Quản lý hạnh kiểm</label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="user_subject_menu" name="menus" value="user_subject">
-                                    <label class="form-check-label" for="user_subject_menu">Quản lý môn học</label>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="group_summary_menu" name="menus" value="group_summary">
                                     <label class="form-check-label" for="group_summary_menu">Thống kê nhóm</label>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="user_conduct_menu" name="menus" value="user_conduct">
+                                    <label class="form-check-label" for="user_conduct_menu">Quản lý hạnh kiểm</label>
+                                </div>
+                            </div>                         
                             <div class="col-md-6">
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="user_summary_menu" name="menus" value="user_summary">
@@ -181,8 +175,8 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="student_report_menu" name="menus" value="student_report">
-                                    <label class="form-check-label" for="student_report_menu">Báo cáo kết quả</label>
+                                    <input class="form-check-input" type="checkbox" id="user_subject_menu" name="menus" value="user_subject">
+                                    <label class="form-check-label" for="user_subject_menu">Quản lý môn học</label>
                                 </div>
                             </div>
                         </div>
