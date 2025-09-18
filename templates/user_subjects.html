@@ -243,7 +243,7 @@
                         <tr data-id="{{ record[0] }}">
                             <td>{{ record[1] }}</td>
                             <td>{{ record[2] }}</td>
-                            <td>{{ record[3] or 'None' }}</td>
+                            <td style="color: {{ 'red' if record[8] == 0 else 'green' }};">{{ record[3] or 'None' }}</td>
                             <td>{{ record[7] }}</td>
                             <td style="display: none;">{{ record[5] }}</td>
                             <td>{{ record[4] }}</td>
