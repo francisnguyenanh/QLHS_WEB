@@ -937,7 +937,7 @@ def get_filtered_users_by_role():
     if session.get('role_name') == 'Master':
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, username, name FROM Users WHERE is_deleted = 0 ORDER BY name")
+        cursor.execute("SELECT id, username, name FROM Users WHERE is_deleted = 0 and id != ? ORDER BY name", (session['user_id'],))
         users = cursor.fetchall()
         conn.close()
         return [{'id': user[0], 'username': user[1], 'name': user[2]} for user in users]
