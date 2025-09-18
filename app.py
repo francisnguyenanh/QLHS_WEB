@@ -2984,7 +2984,7 @@ def user_conduct_list():
         
         # Base query with role-based filtering
         query = """
-                SELECT uc.id, u.name AS user_name, c.name AS conduct_name, uc.registered_date, uc.total_points, uc.entered_by, g.name AS group_name
+                SELECT uc.id, u.name AS user_name, c.name AS conduct_name, uc.registered_date, uc.total_points, uc.entered_by, g.name AS group_name, c.conduct_type AS conduct_type
                 FROM User_Conduct uc
                 JOIN Users u ON uc.user_id = u.id
                 JOIN Conduct c ON uc.conduct_id = c.id
@@ -3085,7 +3085,7 @@ def user_conduct_list():
             # row[3] là trường ngày (registered_date)
             formatted_date = format_date_ddmmyyyy(row[3])
             # Tạo tuple mới với ngày đã format
-            record = (row[0], row[1], row[2], formatted_date, row[4], row[5], row[6])
+            record = (row[0], row[1], row[2], formatted_date, row[4], row[5], row[6], row[7])
             records.append(record)
     
         # Check if this is an AJAX request
@@ -3103,7 +3103,8 @@ def user_conduct_list():
                                     conducts=selected_conducts, groups=selected_groups)
                 delete_button = f'<button class="btn btn-sm btn-danger" data-delete-url="{delete_url}" onclick="confirmDeleteRecord(this)">Delete</button>'
                 
-                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td>{record[6]}</td><td>{record[3]}</td><td style="display: none;">{record[4]}</td><td>{record[5]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
+                color = 'red' if record[7] == 'điểm trừ' else 'green'
+                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td style="color: {color};">{record[2]}</td><td>{record[6]}</td><td>{record[3]}</td><td style="display: none;">{record[4]}</td><td>{record[5]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
             
             table_html += "</tbody>"
             return jsonify({'html': table_html})
