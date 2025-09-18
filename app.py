@@ -1082,7 +1082,7 @@ def get_filtered_criteria_by_role():
     if session.get('role_name') == 'Master':
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name, criterion_type, criterion_points FROM Criteria WHERE is_deleted = 0 ORDER BY criterion_type, name")
+        cursor.execute("SELECT id, name, criterion_type, criterion_points FROM Criteria WHERE is_deleted = 0 ORDER BY criterion_type DESC, name ASC")
         criteria = cursor.fetchall()
         conn.close()
         return [{'id': criterion[0], 'name': criterion[1], 'criterion_type': criterion[2], 'criterion_points': criterion[3]} for criterion in criteria]
@@ -1097,7 +1097,7 @@ def get_filtered_criteria_by_role():
     
     if is_all_result and is_all_result[0]:
         # Role has access to all criteria
-        cursor.execute("SELECT id, name, criterion_type, criterion_points FROM Criteria WHERE is_deleted = 0 ORDER BY criterion_type, name")
+        cursor.execute("SELECT id, name, criterion_type, criterion_points FROM Criteria WHERE is_deleted = 0 ORDER BY criterion_type DESC, name ASC")
         criteria = cursor.fetchall()
         conn.close()
         return [{'id': criterion[0], 'name': criterion[1], 'criterion_type': criterion[2], 'criterion_points': criterion[3]} for criterion in criteria]
@@ -1114,7 +1114,7 @@ def get_filtered_criteria_by_role():
     conn = connect_db()
     cursor = conn.cursor()
     placeholders = ','.join('?' * len(criteria_ids))
-    cursor.execute(f"SELECT id, name, criterion_type, criterion_points FROM Criteria WHERE id IN ({placeholders}) AND is_deleted = 0 ORDER BY criterion_type, name", criteria_ids)
+    cursor.execute(f"SELECT id, name, criterion_type, criterion_points FROM Criteria WHERE id IN ({placeholders}) AND is_deleted = 0 ORDER BY criterion_type DESC, name ASC", criteria_ids)
     criteria = cursor.fetchall()
     conn.close()
     
@@ -1894,7 +1894,7 @@ def get_filtered_criteria_api():
         return jsonify({'error': 'Unauthorized'}), 401
     
     criteria = get_filtered_criteria_by_role()
-    criteria.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+    #criteria.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
     return jsonify({'criteria': criteria})
 
 # --- Conduct ---
@@ -3519,7 +3519,7 @@ def user_subjects_list():
         users.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=True))
         groups.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
         subjects.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
-        criteria.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+        #criteria.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
         
         # Modal users same as filtered users for consistency
         modal_users = users.copy()
@@ -3689,7 +3689,7 @@ def user_subjects_list():
             
             table_html += "</tbody>"
             return jsonify({'html': table_html})
-
+            
         return render_template_with_permissions('user_subjects.html',
                                records=records,
                                users=modal_users,  # Use filtered users for both filter and modal
