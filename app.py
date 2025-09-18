@@ -984,7 +984,7 @@ def get_filtered_conducts_by_role():
     if session.get('role_name') == 'Master':
         conn = connect_db()
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type, name DESC")
+        cursor.execute("SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type DESC, name")
         conducts = cursor.fetchall()
         conn.close()
         return [{'id': conduct[0], 'name': conduct[1], 'conduct_type': conduct[2], 'conduct_points': conduct[3]} for conduct in conducts]
@@ -999,7 +999,7 @@ def get_filtered_conducts_by_role():
     
     if is_all_result and is_all_result[0]:
         # Role has access to all conducts
-        cursor.execute("SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type, name DESC")
+        cursor.execute("SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE is_deleted = 0 ORDER BY conduct_type DESC, name")
         conducts = cursor.fetchall()
         conn.close()
         return [{'id': conduct[0], 'name': conduct[1], 'conduct_type': conduct[2], 'conduct_points': conduct[3]} for conduct in conducts]
@@ -1016,7 +1016,7 @@ def get_filtered_conducts_by_role():
     conn = connect_db()
     cursor = conn.cursor()
     placeholders = ','.join('?' * len(conduct_ids))
-    cursor.execute(f"SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE id IN ({placeholders}) AND is_deleted = 0 ORDER BY conduct_type, conduct_points DESC", conduct_ids)
+    cursor.execute(f"SELECT id, name, conduct_type, conduct_points FROM Conduct WHERE id IN ({placeholders}) AND is_deleted = 0 ORDER BY conduct_type DESC, name", conduct_ids)
     conducts = cursor.fetchall()
     conn.close()
     
@@ -1853,7 +1853,7 @@ def get_filtered_conducts_api():
         return jsonify({'error': 'Unauthorized'}), 401
     
     conducts = get_filtered_conducts_by_role()
-    conducts.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+    conducts.sort(key=lambda u: (u.get('conducts_type', 0), vietnamese_sort_key(u['name'], sort_by_first_name=False)))
     
     return jsonify({'conducts': conducts})
 
@@ -1894,7 +1894,7 @@ def get_filtered_criteria_api():
         return jsonify({'error': 'Unauthorized'}), 401
     
     criteria = get_filtered_criteria_by_role()
-    #criteria.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+    criteria.sort(key=lambda u: (u.get('criterion_type', 0), vietnamese_sort_key(u['name'], sort_by_first_name=False)))
     return jsonify({'criteria': criteria})
 
 # --- Conduct ---
@@ -2938,7 +2938,7 @@ def user_conduct_list():
         
         # Sort users by first name using Vietnamese normalization
         users.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=True))
-        conducts.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+        conducts.sort(key=lambda u: (u.get('conduct_type', 0), vietnamese_sort_key(u['name'], sort_by_first_name=False)))
         groups.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
         
         # Modal users same as filtered users for consistency
@@ -3519,7 +3519,8 @@ def user_subjects_list():
         users.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=True))
         groups.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
         subjects.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
-        #criteria.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+        criteria.sort(key=lambda u: (u.get('criteria_type', 0), vietnamese_sort_key(u['name'], sort_by_first_name=False)))
+        
         
         # Modal users same as filtered users for consistency
         modal_users = users.copy()

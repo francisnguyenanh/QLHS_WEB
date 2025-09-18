@@ -219,7 +219,11 @@
                                 <label for="conducts">Hạnh kiểm:</label>
                                 <select name="conducts" id="conducts" multiple class="form-control" size="6">
                                     {% for conduct in conducts %}
-                                        <option value="{{ conduct.id }}" {% if conduct.id|string in selected_conducts %}selected{% endif %}>{{ conduct.name }}</option>
+                                        <option value="{{ conduct.id }}"
+                                                {% if conduct.id|string in selected_conducts %}selected{% endif %}
+                                                style="color: {{ 'red' if conduct.conduct_type == 'điểm trừ' else 'green' }};">
+                                            {{ conduct.name }}
+                                        </option>
                                     {% endfor %}
                                 </select>
                             </div>
