@@ -1853,7 +1853,7 @@ def get_filtered_conducts_api():
         return jsonify({'error': 'Unauthorized'}), 401
     
     conducts = get_filtered_conducts_by_role()
-    conducts.sort(key=lambda u: (u.get('conducts_type', 0), vietnamese_sort_key(u['name'], sort_by_first_name=False)))
+    conducts.sort(key=lambda u: (u.get('conduct_type', 0), vietnamese_sort_key(u['name'], sort_by_first_name=False)))
     
     return jsonify({'conducts': conducts})
 
@@ -5528,12 +5528,6 @@ def get_ranking_info(total_points):
     except Exception as e:
         logging.error(f"Error in get_ranking_info: {str(e)}")
         return "GVCN liên lạc sau", "#6c757d"  # Default
-        result = cursor.fetchone()
-        conn.close()
-        
-        return result[0] if result else None
-    except:
-        return None
 
 def get_auto_comment(academic_diff, conduct_diff):
     """Lấy nhận xét tự động cho cả học tập và hạnh kiểm"""
