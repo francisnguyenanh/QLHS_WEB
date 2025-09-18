@@ -4609,6 +4609,8 @@ def user_summary():
             comment_result = cursor.fetchone()
             if comment_result:
                 current_comment = comment_result[0] or ""
+            else:
+                current_comment = ""
             
             # Tính điểm kỳ trước (cùng khoảng thời gian tuần trước)
             prev_conduct_points = 0
@@ -4664,6 +4666,11 @@ def user_summary():
                     if auto_comment is None:
                         auto_comment = ""
                     
+                    if current_comment is not None and current_comment.strip() != "":
+                        comment_to_show = current_comment
+                    else:
+                        comment_to_show = auto_comment or ""
+    
                 except:
                     pass
             
@@ -4697,7 +4704,7 @@ def user_summary():
                 standard = ""
 
             # Thêm vào tuple record
-            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, standard, user_id, current_comment, auto_comment, prev_academic_points, prev_conduct_points, auto_ranking))
+            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, standard, user_id, comment_to_show, comment_to_show, prev_academic_points, prev_conduct_points, auto_ranking))
 
         if sort_by == 'user_name':
             records.sort(key=lambda x: vietnamese_sort_key(x[0], sort_by_first_name=True) if x[0] else '', reverse=(sort_order == 'desc'))
