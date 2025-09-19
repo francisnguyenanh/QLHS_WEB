@@ -2911,7 +2911,7 @@ def user_conduct_list():
         
         # Get sort parameters from both GET and POST requests
         sort_by = request.form.get('sort_by') or request.args.get('sort_by', 'registered_date')
-        sort_order = request.form.get('sort_order') or request.args.get('sort_order', 'asc')
+        sort_order = request.form.get('sort_order') or request.args.get('sort_order', 'desc')
         
         # Debug logging for AJAX requests
         if request.form.get('ajax') == '1' or request.args.get('ajax') == '1':
@@ -3142,7 +3142,7 @@ def user_conduct_create():
     if 'user_id' in session:
         # Lấy các tham số lọc từ request.args
         sort_by = request.args.get('sort_by', 'registered_date')
-        sort_order = request.args.get('sort_order', 'asc')
+        sort_order = request.args.get('sort_order', 'desc')
         date_from = request.args.get('date_from', '')
         date_to = request.args.get('date_to', '')
         selected_users = request.args.getlist('users')
@@ -3236,7 +3236,7 @@ def user_conduct_edit_secure(id, token):
     
     # Lấy các tham số lọc từ request.args
     sort_by = request.args.get('sort_by', 'registered_date')
-    sort_order = request.args.get('sort_order', 'asc')
+    sort_order = request.args.get('sort_order', 'desc')
     date_from = request.args.get('date_from', '')
     date_to = request.args.get('date_to', '')
     selected_users = request.args.getlist('users')
@@ -3489,7 +3489,7 @@ def user_subjects_list():
     if 'user_id' in session:        
         # Get sort parameters from both GET and POST requests  
         sort_by = request.form.get('sort_by') or request.args.get('sort_by', 'registered_date')
-        sort_order = request.form.get('sort_order') or request.args.get('sort_order', 'asc')
+        sort_order = request.form.get('sort_order') or request.args.get('sort_order', 'desc')
         
         # Debug logging for AJAX requests
         if request.form.get('ajax') == '1' or request.args.get('ajax') == '1':
@@ -3652,6 +3652,7 @@ def user_subjects_list():
                 query += " AND 1 = 0"
 
         query += f" ORDER BY {sort_column} {sort_direction}"
+               
         cursor.execute(query, params)
         db_rows = cursor.fetchall()
         
@@ -3728,7 +3729,7 @@ def user_subjects_create():
     if 'user_id' in session:
         # Lấy các tham số lọc từ request.args
         sort_by = request.args.get('sort_by', 'registered_date')
-        sort_order = request.args.get('sort_order', 'asc')
+        sort_order = request.args.get('sort_order', 'desc')
         date_from = request.args.get('date_from', '')
         date_to = request.args.get('date_to', '')
         selected_users = request.args.getlist('users')
@@ -3828,7 +3829,7 @@ def user_subjects_edit_secure(id, token):
     
     # Lấy các tham số lọc từ request.args
     sort_by = request.args.get('sort_by', 'registered_date')
-    sort_order = request.args.get('sort_order', 'asc')
+    sort_order = request.args.get('sort_order', 'desc')
     date_from = request.args.get('date_from', '')
     date_to = request.args.get('date_to', '')
     selected_users = request.args.getlist('users')
