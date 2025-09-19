@@ -725,10 +725,9 @@
                             }
                             showSuccess(`Đã tạo thành công ${results.length} bản ghi hạnh kiểm`);
                             
-                            // Highlight bản ghi đầu tiên được tạo
-                            if (results.length > 0 && results[0].id) {
-                                setHighlightRow(results[0].id);
-                            }
+                            const ids = results.filter(r => r.id).map(r => r.id);
+                            setHighlightRow(ids);
+                        
                             
                             refreshTableData();
                         } else {
@@ -1057,8 +1056,8 @@
                         console.log('Updated global sort state:', currentSortBy, currentSortOrder);
                         
                         // Re-apply any row highlighting if needed
-                        if (highlightRowId) {
-                            const rowToHighlight = document.querySelector(`tbody tr[data-id="${highlightRowId}"]`);
+                        if (highlightRowIds) {
+                            const rowToHighlight = document.querySelector(`tbody tr[data-id="${highlightRowIds}"]`);
                             if (rowToHighlight) {
                                 rowToHighlight.classList.add('highlight-row');
                                 rowToHighlight.style.color = '#dc3545';
@@ -1078,7 +1077,7 @@
                                         cell.style.color = '';
                                         cell.style.fontWeight = '';
                                     });
-                                    highlightRowId = null;
+                                    highlightRowIds = null;
                                 }, 10000);
                             }
                         }
@@ -1251,7 +1250,7 @@
     </style>
 
     <script>
-        let highlightRowId = null;
+        let highlightRowIds = []; // Lưu nhiều id
         // Function đềExóa item - đặt ngoài DOMContentLoaded đềEcó thềEtruy cập global
         function deleteItem(url) {
             // Hiển thềEtoast thành công trước
@@ -1336,43 +1335,22 @@
                     tbody.innerHTML = newTableBody.innerHTML;
                     
                     // Highlight row if specified
-                    if (highlightRowId) {
-                        console.log('Looking for row with ID:', highlightRowId);
-                        const rowToHighlight = tbody.querySelector(`tr[data-id="${highlightRowId}"]`);
-                        console.log('Found row:', rowToHighlight);
-                        if (rowToHighlight) {
-                            console.log('Applying text highlight to row');
-                            rowToHighlight.classList.add('highlight-row');
-                            
-                            // Force text color change for immediate visibility
-                            rowToHighlight.style.color = '#dc3545';
-                            rowToHighlight.style.fontWeight = 'bold';
-                            
-                            // Apply to all cells in the row
-                            const cells = rowToHighlight.querySelectorAll('td');
-                            cells.forEach(cell => {
-                                cell.style.color = '#dc3545';
-                                cell.style.fontWeight = 'bold';
-                            });
-                            
-                            console.log('Text highlight applied. Row should now be red and bold.');
-                            console.log('Row classes after adding highlight:', rowToHighlight.className);
-                            
-                            // Remove highlight after 5 seconds
-                            setTimeout(() => {
-                                rowToHighlight.classList.remove('highlight-row');
-                                rowToHighlight.style.color = '';
-                                rowToHighlight.style.fontWeight = '';
-                                cells.forEach(cell => {
-                                    cell.style.color = '';
-                                    cell.style.fontWeight = '';
-                                });
-                                highlightRowId = null;
-                                console.log('Text highlight removed');
-                            }, 10000);
-                        } else {
-                            console.log('Row not found with data-id:', highlightRowId);
-                        }
+                    if (highlightRowIds && highlightRowIds.length > 0) {
+                        highlightRowIds.forEach(id => {
+                            const rowToHighlight = tbody.querySelector(`tr[data-id="${id}"]`);
+                            if (rowToHighlight) {
+                                const nameCell = rowToHighlight.querySelector('td:first-child');
+                                if (nameCell) {
+                                    nameCell.classList.add('highlight-name');
+
+                                    setTimeout(() => {
+                                        nameCell.classList.remove('highlight-name');
+                                        nameCell.style.color = '';
+                                        nameCell.style.fontWeight = '';
+                                    }, 10000);
+                                }
+                            }
+                        });
                     }
                 } else {
                     tbody.innerHTML = '<tr><td colspan="100%" class="text-center">Không có dữ liệu</td></tr>';
@@ -1388,62 +1366,38 @@
         }
         
         // Function to set highlighted row after create/edit
-        function setHighlightRow(id) {
-            console.log('setHighlightRow called with ID:', id);
-            highlightRowId = id;
-            
-            // Immediately apply highlight to the row if it exists
-            const targetRow = document.querySelector(`tbody tr[data-id="${id}"]`);
-            if (targetRow) {
-                console.log('Found target row, applying text highlight');
-                targetRow.classList.add('highlight-row');
-                
-                // Force text color change directly for immediate visibility
-                targetRow.style.color = '#dc3545';
-                targetRow.style.fontWeight = 'bold';
-                
-                // Apply to all cells in the row
-                const cells = targetRow.querySelectorAll('td');
-                cells.forEach(cell => {
-                    cell.style.color = '#dc3545';
-                    cell.style.fontWeight = 'bold';
-                });
-                
-                console.log('Text highlight applied successfully');
-                
-                // Remove highlight after 5 seconds
-                setTimeout(() => {
-                    targetRow.classList.remove('highlight-row');
-                    targetRow.style.color = '';
-                    targetRow.style.fontWeight = '';
-                    cells.forEach(cell => {
-                        cell.style.color = '';
-                        cell.style.fontWeight = '';
-                    });
-                    console.log('Text highlight removed');
-                }, 10000);
-            } else {
-                console.log('Target row not found for ID:', id);
-            }
+        function setHighlightRow(ids) {
+            // ids: mảng các id (hoặc 1 id đơn lẻ)
+            if (!Array.isArray(ids)) ids = [ids];
+            highlightRowIds = ids;
+
+            ids.forEach(id => {
+                const row = document.querySelector(`tbody tr[data-id="${id}"]`);
+                if (row) {
+                    // Chỉ tô đỏ cột họ tên (cột đầu tiên)
+                    const nameCell = row.querySelector('td:first-child');
+                    if (nameCell) {
+                        nameCell.classList.add('highlight-name');
+                        nameCell.style.color = '#dc3545';
+                        nameCell.style.fontWeight = 'bold';
+                        setTimeout(() => {
+                            nameCell.classList.remove('highlight-name');
+                            nameCell.style.color = '';
+                            nameCell.style.fontWeight = '';
+                        }, 10000);
+                    }
+                }
+            });
         }
         
         // Function to clear highlight (called when search button is clicked)
         function clearHighlight() {
-            highlightRowId = null;
-            const highlightedRows = document.querySelectorAll('.highlight-row');
-            highlightedRows.forEach(row => {
-                row.classList.remove('highlight-row');
-                row.style.color = '';
-                row.style.fontWeight = '';
-                
-                // Clear styles from all cells
-                const cells = row.querySelectorAll('td');
-                cells.forEach(cell => {
-                    cell.style.color = '';
-                    cell.style.fontWeight = '';
-                });
+            highlightRowIds = [];
+            document.querySelectorAll('.highlight-name').forEach(cell => {
+                cell.classList.remove('highlight-name');
+                cell.style.color = '';
+                cell.style.fontWeight = '';
             });
-            console.log('All highlights cleared');
         }
         
         // Test function to manually highlight first row (for debugging)
