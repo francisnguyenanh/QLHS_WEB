@@ -3689,8 +3689,9 @@ def user_subjects_list():
             
                 criteria_text = record[3] if record[3] else 'None'
                 color = 'red' if record[8] == 0 else 'green'
-                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td style="color: {color};">{criteria_text}</td><td>{record[4]}</td><td style="display: none;">{record[5]}</td><td>{record[6]}</td><td>{record[7]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
                 
+                table_html += f'<tr data-id="{record[0]}"><td>{record[1]}</td><td>{record[2]}</td><td style="color: {color};">{criteria_text}</td><td>{record[7]}</td><td style="display: none;">{record[5]}</td><td>{record[4]}</td><td>{record[6]}</td><td class="text-nowrap">{edit_button}{delete_button}</td></tr>'
+               
             
             table_html += "</tbody>"
             return jsonify({'html': table_html})
