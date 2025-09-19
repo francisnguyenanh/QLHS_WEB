@@ -58,17 +58,6 @@
         transition: all 0.3s ease-in-out;
     }
     
-    /* Highlighted row after create/edit - Text color approach */
-    .table tbody tr.highlight-row {
-        color: #dc3545 !important; /* Bootstrap danger red */
-        font-weight: bold !important;
-        animation: text-highlight-fade 3s ease-in-out;
-    }
-    
-    .table tbody tr.highlight-row td {
-        color: #dc3545 !important; /* Ensure all cells get the color */
-        font-weight: bold !important;
-    }
     
     @keyframes text-highlight-fade {
         0% { 
@@ -626,7 +615,7 @@
                         showSuccess(result.message);
 
                         setHighlightRow(currentEditId);
-                        
+
                         refreshTableData();
                     } else {
                         showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
@@ -1016,23 +1005,11 @@
                             const rowToHighlight = document.querySelector(`tbody tr[data-id="${highlightRowIds}"]`);
                             if (rowToHighlight) {
                                 rowToHighlight.classList.add('highlight-row');
-                                rowToHighlight.style.color = '#dc3545';
-                                rowToHighlight.style.fontWeight = 'bold';
-                                
-                                const cells = rowToHighlight.querySelectorAll('td');
-                                cells.forEach(cell => {
-                                    cell.style.color = '#dc3545';
-                                    cell.style.fontWeight = 'bold';
-                                });
                                 
                                 setTimeout(() => {
                                     rowToHighlight.classList.remove('highlight-row');
                                     rowToHighlight.style.color = '';
                                     rowToHighlight.style.fontWeight = '';
-                                    cells.forEach(cell => {
-                                        cell.style.color = '';
-                                        cell.style.fontWeight = '';
-                                    });
                                     highlightRowIds = null;
                                 }, 10000);
                             }
