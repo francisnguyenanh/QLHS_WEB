@@ -197,7 +197,10 @@
                         </button>
                     -->
                     </form>
-                    
+                    <button type="button" class="btn btn-success btn-compact" id="loadCommentsBtn" data-bs-toggle="tooltip" title="Nhập nhận xét">
+                        <i class="fas fa-comments"></i>
+                        <span class="d-none d-md-inline ms-1">Nhận xét</span>
+                    </button>
                     <button type="button" class="btn btn-primary btn-compact" id="toggleSearchForm" data-bs-toggle="tooltip" title="Hiện/Ẩn điều kiện tìm kiếm">
                         <i class="fas fa-filter"></i>
                         <span class="d-none d-md-inline ms-1">Bộ lọc</span>
@@ -784,6 +787,34 @@
                 });
             });
         }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadCommentsBtn = document.getElementById('loadCommentsBtn');
+            loadCommentsBtn.addEventListener('click', function() {
+                // Lấy danh sách user_id đang hiển thị
+                document.querySelectorAll('textarea.auto-save-comment').forEach(async textarea => {
+                    const userId = textarea.dataset.userId;
+                    const academic_diff_points = textarea.dataset.academicPoint;
+                    const conduct_diff_points = textarea.dataset.conductPoint;
+                    const dateFrom = document.getElementById('date_from').value;
+                    const dateTo = document.getElementById('date_to').value;
+                    // Gọi API lấy comment
+                    const res = await fetch(`/api/user_comment?user_id=${userId}&dateFrom=${dateFrom}&dateTo=${dateTo}&academic_diff_points=${academic_diff_points}&conduct_diff_points=${conduct_diff_points}`);
+                    const data = await res.json();
+                    if (data.success) {
+                        textarea.value = data.comment || '';
+                        textarea.readOnly = false;
+                        textarea.disabled = false;
+                    } else {
+                        textarea.value = '';
+                        textarea.readOnly = false;
+                        textarea.disabled = false;
+                    }
+                    // Gọi auto-save để lưu comment vừa fill vào DB
+                    saveComment(userId, false);
+                });
+            });
+        });
     </script>
     <style>
         @media (max-width: 768px) {

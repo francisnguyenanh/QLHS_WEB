@@ -4676,6 +4676,7 @@ def user_summary():
                         comment_to_show = current_comment
                     else:
                         comment_to_show = auto_comment or ""
+                    
     
                 except:
                     pass
@@ -4710,7 +4711,7 @@ def user_summary():
                 standard = ""
 
             # Thêm vào tuple record
-            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, standard, user_id, comment_to_show, comment_to_show, prev_academic_points, prev_conduct_points, auto_ranking))
+            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, standard, user_id, comment_to_show, comment_to_show, prev_academic_points, prev_conduct_points, auto_ranking, total_point))
 
         if sort_by == 'user_name':
             records.sort(key=lambda x: vietnamese_sort_key(x[0], sort_by_first_name=True) if x[0] else '', reverse=(sort_order == 'desc'))
@@ -4728,6 +4729,8 @@ def user_summary():
             records.sort(key=lambda x: x[2] - x[8], reverse=(sort_order == 'desc'))  # current - previous
         elif sort_by == 'total_points':
             records.sort(key=lambda x: x[1] + x[2], reverse=(sort_order == 'desc'))
+        elif sort_by == 'sum_points':
+            records.sort(key=lambda x: x[10], reverse=(sort_order == 'desc'))   # index 10 is sum points
         elif sort_by == 'standard':
             # Sắp xếp theo tiêu chuẩn: HT/HK > HT > HK > ''
             def standard_sort_key(val):
@@ -4748,7 +4751,7 @@ def user_summary():
     <table class="table table-striped table-hover">
         <thead>
             <tr>
-                <th rowspan="2" style="width: 90px;">
+                <th rowspan="2" style="width: 60px;">
                     <a href="#" class="sort-link text-decoration-none text-dark" data-sort="standard" data-order="{{ 'desc' if sort_by == 'standard' and sort_order == 'asc' else 'asc' }}">
                         Đạt
                         {% if sort_by == 'standard' %}
@@ -4758,7 +4761,7 @@ def user_summary():
                         {% endif %}
                     </a>
                 </th>
-                <th rowspan="2" style="width: 220px;">
+                <th rowspan="2" class="text-center" style="width: 220px;">
                     <a href="#" class="sort-link text-decoration-none text-dark" data-sort="user_name" data-order="{{ 'desc' if sort_by == 'user_name' and sort_order == 'asc' else 'asc' }}">
                         Họ Tên
                         {% if sort_by == 'user_name' %}
@@ -4770,9 +4773,19 @@ def user_summary():
                 </th>
                 <th colspan="3" class="text-center">Học Tập</th>
                 <th colspan="3" class="text-center">Hạnh Kiểm</th>
+                <th rowspan="2" class="text-center" style="width: 80px;">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="sum_points" data-order="{{ 'desc' if sort_by == 'sum_points' and sort_order == 'asc' else 'asc' }}">
+                        Tổng
+                        {% if sort_by == 'sum_points' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
                 {% if role_name == 'GVCN' or role_name == 'Master' %}
-                <th rowspan="2" class="comment-col">Xếp loại</th>
-                <th rowspan="2" class="comment-col">Nhận xét</th>
+                <th rowspan="2" class="comment-col text-center" style="width: 100px;">Xếp loại</th>
+                <th rowspan="2" class="comment-col text-center">Nhận xét</th>
                 {% endif %}
             </tr>
             <tr>
@@ -4796,7 +4809,7 @@ def user_summary():
                         {% endif %}
                     </a>
                 </th>
-                <th class="text-center" style="width: 90px;">
+                <th class="text-center" style="width: 60px;">
                     <a href="#" class="sort-link text-decoration-none text-dark" data-sort="academic_progress" data-order="{{ 'desc' if sort_by == 'academic_progress' and sort_order == 'asc' else 'asc' }}">
                         ↑↓
                         {% if sort_by == 'academic_progress' %}
@@ -4826,7 +4839,7 @@ def user_summary():
                         {% endif %}
                     </a>
                 </th>
-                <th class="text-center" style="width: 90px;">
+                <th class="text-center" style="width: 60px;">
                     <a href="#" class="sort-link text-decoration-none text-dark" data-sort="conduct_progress" data-order="{{ 'desc' if sort_by == 'conduct_progress' and sort_order == 'asc' else 'asc' }}">
                         ↑↓
                         {% if sort_by == 'conduct_progress' %}
@@ -4872,6 +4885,9 @@ def user_summary():
                             {% if conduct_progress > 0 %}+{% endif %}{{ conduct_progress }}
                         </span>
                     </td>
+                    <td class="text-center">
+                        {{ record[10] }}
+                    </td>
                     {% if role_name == 'GVCN' or role_name == 'Master' %}
                     <td>                        
                         <div class="d-flex align-items-center">
@@ -4880,7 +4896,7 @@ def user_summary():
                     </td>
                     <td class="comment-col">                        
                         <div class="d-flex align-items-center">
-                            <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" rows="2">{{ (record[5] if record[5] else record[6]) if record|length > 5 else '' }}</textarea>
+                            <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" data-academic-point="{{ record[1] - record[7] }}"  data-conduct-point="{{ record[2] - record[8] }}" rows="2" readonly></textarea>
                             <span class="save-status text-muted small" id="status_{{ record[4] }}"></span>
                         </div>                        
                     </td>
@@ -4928,6 +4944,63 @@ def user_summary():
                                is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
+
+
+@app.route('/api/user_comment')
+def api_user_comment():
+    user_id = request.args.get('user_id')
+    date_from = request.args.get('dateFrom')
+    date_to = request.args.get('dateTo')
+    academic_difference = request.args.get('academic_diff_points')
+    conduct_difference = request.args.get('conduct_diff_points')
+    
+    try:
+        academic_difference = int(academic_difference)
+    except (TypeError, ValueError):
+        academic_difference = 0
+
+    try:
+        conduct_difference = int(conduct_difference)
+    except (TypeError, ValueError):
+        conduct_difference = 0
+    
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    current_comment = ""
+    auto_comment = ""
+    
+    # Lấy nhận xét hiện tại từ User_Comments
+    cursor.execute('''
+        SELECT comment_text FROM User_Comments 
+        WHERE user_id = ? AND period_start = ? AND period_end = ?
+        ORDER BY updated_date DESC LIMIT 1
+    ''', (user_id, date_from, date_to))
+    comment_result = cursor.fetchone()
+    conn.close()
+    
+    if comment_result:
+        current_comment = comment_result[0] or ""
+    else:
+        current_comment = ""
+    
+    logging.info(f"User ID: {user_id}, Academic Diff: {academic_difference}, Conduct Diff: {conduct_difference}")
+    logging.info(f"Current Comment: {current_comment}")
+    
+    auto_comment = get_auto_comment(academic_difference, conduct_difference)
+    if auto_comment is None:
+        auto_comment = ""
+    
+    logging.info(f"Auto Comment: {auto_comment}")
+    
+    if current_comment is not None and current_comment.strip() != "":
+        comment_to_show = current_comment
+    else:
+        comment_to_show = auto_comment or ""
+    
+    logging.info(f"Comment to show: {comment_to_show}")
+    
+    return jsonify({'success': True, 'comment': comment_to_show})
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -5541,8 +5614,8 @@ def get_auto_comment(academic_diff, conduct_diff):
         comments.append(f"Học tập: {academic_comment}")
     if conduct_comment:
         comments.append(f"Hạnh kiểm: {conduct_comment}")
-    
-    return "; ".join(comments) if comments else None
+    result = ";".join(comments) if comments else None
+    return result
 
 @app.route('/save_user_comment', methods=['POST'])
 def save_user_comment():
@@ -5559,6 +5632,24 @@ def save_user_comment():
         conn = connect_db()
         cursor = conn.cursor()
         
+        # Kiểm tra xem đã có nhận xét cho kỳ này chưa
+        cursor.execute('''
+            SELECT id FROM User_Comments 
+            WHERE user_id = ? AND period_start = ? AND period_end = ?
+        ''', (user_id, period_start, period_end))
+        existing = cursor.fetchone()
+
+        # Nếu nhận xét rỗng hoặc 'None'
+        if not comment_text or comment_text.lower() == 'none':
+            if existing:
+                cursor.execute('''
+                    DELETE FROM User_Comments 
+                    WHERE user_id = ? AND period_start = ? AND period_end = ?
+                ''', (user_id, period_start, period_end))
+                conn.commit()
+            conn.close()
+            return jsonify({'success': True, 'message': 'Đã xoá nhận xét rỗng.'})
+
         # Tính điểm hiện tại và điểm kỳ trước
         current_points = 0
         previous_points = 0
@@ -6269,7 +6360,7 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
                     period_display = ""
                 
                 # Escape HTML in comment content
-                safe_comment = str(comment_text).replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>')
+                safe_comment = str(comment_text).replace('Hạnh kiểm:', '<br> Hạnh kiểm:')
                 
                 if safe_comment and safe_comment != "None":
                     html += f"""
