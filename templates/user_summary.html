@@ -810,6 +810,8 @@
                         textarea.readOnly = false;
                         textarea.disabled = false;
                     }
+                    // Set rows=5 cho textarea
+                    textarea.setAttribute('rows', 5);
                     // Gọi auto-save để lưu comment vừa fill vào DB
                     saveComment(userId, false);
                 });

@@ -4896,7 +4896,7 @@ def user_summary():
                     </td>
                     <td class="comment-col">                        
                         <div class="d-flex align-items-center">
-                            <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" data-academic-point="{{ record[1] - record[7] }}"  data-conduct-point="{{ record[2] - record[8] }}" rows="2" readonly></textarea>
+                            <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" data-academic-point="{{ record[1] - record[7] }}"  data-conduct-point="{{ record[2] - record[8] }}" rows="1" readonly></textarea>
                             <span class="save-status text-muted small" id="status_{{ record[4] }}"></span>
                         </div>                        
                     </td>
@@ -5595,6 +5595,7 @@ def get_ranking_info(total_points):
         result = cursor.fetchone()
         conn.close()
         
+        logging.info(f"Ranking info for total_points={total_points}: {result}")
         if result:
             return result[0], result[1]  # ranking_text, color
         else:
