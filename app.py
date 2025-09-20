@@ -4666,7 +4666,8 @@ def user_summary():
                     #logging.info(f"User ID: {user_id}, Academic Diff: {current_academic_points}, Conduct Diff: {current_conduct_points}, Total: {total_point}")
                     
                     auto_comment = get_auto_comment(academic_difference, conduct_difference)
-                    auto_ranking = get_auto_comment_for_category(total_point, "ranking")
+                    #auto_ranking = get_auto_comment_for_category(total_point, "ranking")
+                    auto_ranking, ranking_color = get_ranking_info(total_point)
                     if auto_ranking is None:
                         auto_ranking = ""
                     if auto_comment is None:
@@ -5583,24 +5584,35 @@ def get_ranking_info(total_points):
     try:
         conn = connect_db()
         cursor = conn.cursor()
-        
-        cursor.execute('''
-            SELECT comment_text, color FROM Comment_Templates 
-            WHERE comment_category = 'ranking' 
-            AND ? BETWEEN score_range_min AND score_range_max 
-            AND is_active = 1
-            ORDER BY score_range_min LIMIT 1
-        ''', (total_points,))
-        
+
+        abs_diff = abs(total_points)
+        # Nếu total_points = 0 thì không cần comment_type trong query
+        if total_points == 0:
+            cursor.execute('''
+                SELECT comment_text, color FROM Comment_Templates 
+                WHERE comment_category = 'ranking'
+                AND ? BETWEEN score_range_min AND score_range_max 
+                AND is_active = 1
+                ORDER BY score_range_min LIMIT 1
+            ''', (abs_diff,))
+        else:
+            comment_type = 'encouragement' if total_points > 0 else 'reminder'
+            cursor.execute('''
+                SELECT comment_text, color FROM Comment_Templates 
+                WHERE comment_category = 'ranking' AND comment_type = ? 
+                AND ? BETWEEN score_range_min AND score_range_max 
+                AND is_active = 1
+                ORDER BY score_range_min LIMIT 1
+            ''', (comment_type, abs_diff))
+
         result = cursor.fetchone()
         conn.close()
-        
-        logging.info(f"Ranking info for total_points={total_points}: {result}")
+    
         if result:
             return result[0], result[1]  # ranking_text, color
         else:
-            return "GVCN liên lạc sau", "#6c757d"  # Default
-            
+            return "Đang cập nhật", "#6c757d"  # Default
+
     except Exception as e:
         logging.error(f"Error in get_ranking_info: {str(e)}")
         return "GVCN liên lạc sau", "#6c757d"  # Default
