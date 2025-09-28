@@ -592,8 +592,8 @@
             const registeredDate = document.getElementById('modal_registered_date').value;
             const enteredBy = document.getElementById('modal_entered_by').value;
 
-            if (userIds.length === 0 || !registeredDate || !enteredBy) {
-                showWarning('Vui lòng điền đầy đủ thông tin bắt buộc');
+            if (!registeredDate || !enteredBy) {
+                showWarning('Vui lòng chọn ngày đăng ký');
                 return;
             }
             
@@ -669,8 +669,8 @@
                     });
                 });
 
-                if (validationFailed) {
-                    showWarning('Vui lòng chọn kết quả cho tất cả môn học đã chọn');
+                if (userIds.length === 0) {
+                    showWarning('Vui lòng chọn ít nhất một học sinh');
                     return;
                 }
 
@@ -678,6 +678,11 @@
                     showWarning('Vui lòng chọn ít nhất một môn học');
                     return;
                 }
+
+                if (validationFailed) {
+                    showWarning('Vui lòng chọn kết quả cho tất cả môn học đã chọn');
+                    return;
+                }                
 
                 // Lặp qua từng user và từng subject để gọi API lưu từng bản ghi
                 const apiCalls = [];
