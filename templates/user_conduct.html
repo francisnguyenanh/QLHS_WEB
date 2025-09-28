@@ -313,17 +313,29 @@
                         <div class="row g-3">
                             <div class="col-12 col-md-4">
                                 <div class="form-group">
-                                    <label for="modal_user_id">Học sinh:</label>
-                                    <select name="user_id" id="modal_user_id" class="form-control" required onchange="calculateModalTotalPoints()">
-                                        <option value="">Chọn học sinh</option>
-                                        {% for user in all_users %}
-                                            <option value="{{ user.id }}">{{ user.name }}</option>
-                                        {% endfor %}
-                                    </select>
+                                    <label>Học sinh:</label>
+                                    <div id="user-list-container" class="user-list-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #ced4da; border-radius: 0.25rem; padding: 10px;">
+                                        <div class="row">
+                                            {% for user in all_users %}
+                                            <div class="col-12 mb-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input user-checkbox" type="checkbox" name="user_ids" value="{{ user.id }}" id="user_{{ user.id }}">
+                                                    <label class="form-check-label" for="user_{{ user.id }}">{{ user.name }}</label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div id="user-dropdown-container" style="display: none;">
+                                        <div class="form-group">
+                                            <input type="text" id="modal_user_name" class="form-control" readonly>
+                                            <input type="hidden" id="modal_user_id" name="user_id">
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="form-group mt-3">
                                     <label for="modal_registered_date">Dữ liệu ngày:</label>
-                                    <input type="date" name="registered_date" id="modal_registered_date" class="form-control" required onchange="calculateModalTotalPoints()">
+                                    <input type="date" name="registered_date" id="modal_registered_date" class="form-control" required>
                                 </div>
                                 <div class="form-group mt-3" style="display: none;">
                                     <label for="modal_entered_by">Người đăng ký:</label>
@@ -335,7 +347,7 @@
                                 <div id="conduct-dropdown-container" style="display: none;">
                                     <div class="form-group">
                                         <label for="modal_conduct_id">Hạnh kiểm:</label>
-                                        <select name="conduct_id" id="modal_conduct_id" class="form-control" onchange="loadModalConductPoints()">
+                                        <select name="conduct_id" id="modal_conduct_id" class="form-control">
                                             <option value="">Chọn hạnh kiểm</option>
                                             <!-- Options will be loaded dynamically -->
                                         </select>
@@ -447,6 +459,9 @@
             // Hiển thị danh sách checkbox cho create, ẩn dropdown
             document.getElementById('conduct-list-container').style.display = 'block';
             document.getElementById('conduct-dropdown-container').style.display = 'none';
+
+            document.getElementById('user-dropdown-container').style.display = 'none';
+            document.getElementById('user-list-container').style.display = 'block';
             
             // Load filtered conducts for modal
             loadFilteredConductsForModal();
@@ -462,6 +477,9 @@
             currentEditId = id;
             document.getElementById('conductModalLabel').textContent = 'Chỉnh sửa hạnh kiểm học sinh';
             
+            document.getElementById('user-dropdown-container').style.display = 'block';
+            document.getElementById('user-list-container').style.display = 'none';
+
             // Reset form và ẩn danh sách checkbox, hiển thị dropdown
             document.getElementById('conductForm').reset();
             document.getElementById('conduct-list-container').style.display = 'none';
@@ -476,16 +494,16 @@
                 .then(data => {
                     document.getElementById('modal_id').value = data.id;
                     document.getElementById('modal_user_id').value = data.user_id;
-                    
-                    // Small delay to ensure dropdown is populated before setting value
-                    setTimeout(() => {
-                        document.getElementById('modal_conduct_id').value = data.conduct_id;
-                        loadModalConductPoints();
-                    }, 100);
+                    document.getElementById('modal_user_name').value = data.user_name;
                     
                     document.getElementById('modal_registered_date').value = data.registered_date;
                     document.getElementById('modal_entered_by').value = data.entered_by;
                     
+                    // Set conduct_id cho dropdown (phải load xong options trước)
+                    setTimeout(() => {
+                        document.getElementById('modal_conduct_id').value = data.conduct_id;
+                    }, 100);
+
                     const modal = new bootstrap.Modal(document.getElementById('conductModal'));
                     modal.show();
                 })
@@ -504,51 +522,6 @@
                 totalConductPoints += parseInt(checkbox.dataset.points);
             });
             
-            document.getElementById('modal_conduct_points').value = totalConductPoints;
-            calculateModalTotalPoints();
-        }
-
-        function loadModalConductPoints() {
-            const conductId = document.getElementById('modal_conduct_id').value;
-            if (conductId) {
-                fetch(`/get_conduct_points/${conductId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const conductPoints = data.conduct_points || 0;
-                        document.getElementById('modal_conduct_points').value = conductPoints;
-                        calculateModalTotalPoints();
-                    })
-                    .catch(error => {
-                        console.error('Error fetching conduct points:', error);
-                        document.getElementById('modal_conduct_points').value = 0;
-                        calculateModalTotalPoints();
-                    });
-            } else {
-                document.getElementById('modal_conduct_points').value = 0;
-                calculateModalTotalPoints();
-            }
-        }
-
-        function calculateModalTotalPoints() {
-            const userId = document.getElementById('modal_user_id').value;
-            const registeredDate = document.getElementById('modal_registered_date').value;
-            const conductPoints = parseFloat(document.getElementById('modal_conduct_points').value) || 0;
-            const excludeId = isEditMode ? currentEditId : 0;
-
-            if (userId && registeredDate) {
-                fetch(`/user_conduct_total_points?user_id=${userId}&registered_date=${registeredDate}&exclude_id=${excludeId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const totalPoints = (data.total_points || 0) + conductPoints;
-                        document.getElementById('modal_total_points').value = totalPoints;
-                    })
-                    .catch(error => {
-                        console.error('Error fetching total points:', error);
-                        document.getElementById('modal_total_points').value = conductPoints;
-                    });
-            } else {
-                document.getElementById('modal_total_points').value = conductPoints;
-            }
         }
 
         function loadFilteredConductsForModal() {
@@ -620,14 +593,22 @@
             const form = document.getElementById('conductForm');
             const formData = new FormData(form);
             
+            const userCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+            const userIds = Array.from(userCheckboxes).map(cb => cb.value);
+
             const baseData = {
-                user_id: formData.get('user_id'),
+                user_ids: userIds,
                 registered_date: formData.get('registered_date'),
                 entered_by: formData.get('entered_by')
             };
 
+            if (userIds.length === 0) {
+                showWarning('Vui lòng chọn ít nhất một học sinh');
+                return;
+            }
+
             // Validate required fields
-            if (!baseData.user_id || !baseData.registered_date || !baseData.entered_by) {
+            if (!baseData.user_ids || !baseData.registered_date || !baseData.entered_by) {
                 showWarning('Vui lòng điền đầy đủ thông tin');
                 return;
             }
@@ -685,21 +666,21 @@
                 // Tạo array các API call cho từng hạnh kiểm được chọn
                 const apiCalls = [];
                 selectedConducts.forEach(checkbox => {
+                userIds.forEach(userId => {
                     const data = {
-                        ...baseData,
-                        conduct_id: checkbox.value
+                        user_id: userId,
+                        conduct_id: checkbox.value,
+                        registered_date: baseData.registered_date,
+                        entered_by: baseData.entered_by
                     };
-                    
                     const apiCall = fetch('/api/user_conduct', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(data)
                     });
-                    
                     apiCalls.push(apiCall);
                 });
+            });
 
                 // Thực hiện tất cả API calls
                 Promise.all(apiCalls)

@@ -2825,9 +2825,19 @@ def get_user_conduct_api(id):
     if 'user_id' in session:
         record = read_record_by_id('User_Conduct', id, 
                                    ['id', 'user_id', 'conduct_id', 'registered_date', 'total_points', 'entered_by'])
+        user_name = ""
+        if record and record[1]:
+            conn = connect_db()
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM Users WHERE id = ?", (record[1],))
+            user_row = cursor.fetchone()
+            conn.close()
+            if user_row:
+                user_name = user_row[0]
         return jsonify({
             'id': record[0],
             'user_id': record[1],
+            'user_name': user_name,
             'conduct_id': record[2],
             'registered_date': record[3],
             'total_points': record[4],
