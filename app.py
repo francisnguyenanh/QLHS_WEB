@@ -2834,6 +2834,7 @@ def get_user_conduct_api(id):
             conn.close()
             if user_row:
                 user_name = user_row[0]
+                
         return jsonify({
             'id': record[0],
             'user_id': record[1],
@@ -3350,9 +3351,19 @@ def get_user_subjects_api(id):
     if 'user_id' in session:
         record = read_record_by_id('User_Subjects', id, 
                                    ['id', 'user_id', 'subject_id', 'criteria_id', 'registered_date', 'total_points', 'entered_by'])
+        user_name = ""
+        if record and record[1]:
+            conn = connect_db()
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM Users WHERE id = ?", (record[1],))
+            user_row = cursor.fetchone()
+            conn.close()
+            if user_row:
+                user_name = user_row[0]
         return jsonify({
             'id': record[0],
             'user_id': record[1],
+            'user_name': user_name,
             'subject_id': record[2],
             'criteria_id': record[3],
             'registered_date': record[4],

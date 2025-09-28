@@ -268,13 +268,25 @@
                         <div class="row g-3">
                             <div class="col-12 col-md-4">
                                 <div class="form-group">
-                                    <label for="modal_user_id">Họ tên:</label>
-                                    <select name="user_id" id="modal_user_id" class="form-control" required>
-                                        <option value="">Chọn học sinh</option>
-                                        {% for user in all_users %}
-                                            <option value="{{ user.id }}">{{ user.name }}</option>
-                                        {% endfor %}
-                                    </select>
+                                    <label>Học sinh:</label>
+                                    <div id="user-list-container" class="user-list-container" style="max-height: 200px; overflow-y: auto; border: 1px solid #ced4da; border-radius: 0.25rem; padding: 10px;">
+                                        <div class="row">
+                                            {% for user in all_users %}
+                                            <div class="col-12 mb-2">
+                                                <div class="form-check">
+                                                    <input class="form-check-input user-checkbox" type="checkbox" name="user_ids" value="{{ user.id }}" id="user_{{ user.id }}">
+                                                    <label class="form-check-label" for="user_{{ user.id }}">{{ user.name }}</label>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                    <div id="user-dropdown-container" style="display: none;">
+                                        <div class="form-group">
+                                            <input type="text" id="modal_user_name" class="form-control" readonly>
+                                            <input type="hidden" id="modal_user_id" name="user_id">
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="form-group mt-3">
                                     <label for="modal_registered_date">Dữ liệu ngày:</label>
@@ -496,6 +508,10 @@
             document.getElementById('create_subjects_section').style.display = 'block';
             document.getElementById('edit_subjects_section').style.display = 'none';
             document.getElementById('edit_criteria_section').style.display = 'none';
+
+            document.getElementById('user-dropdown-container').style.display = 'none';
+            document.getElementById('user-list-container').style.display = 'block';
+
             
             // Load filtered data
             //loadFilteredUsersForModal();
@@ -529,6 +545,9 @@
             // Reset form first
             document.getElementById('userSubjectsForm').reset();
             
+            document.getElementById('user-dropdown-container').style.display = 'block';
+            document.getElementById('user-list-container').style.display = 'none';
+
             // Show edit mode sections, hide create mode sections
             document.getElementById('create_subjects_section').style.display = 'none';
             document.getElementById('edit_subjects_section').style.display = 'block';
@@ -546,6 +565,7 @@
                         // Set basic fields
                         document.getElementById('modal_id').value = data.id;
                         document.getElementById('modal_user_id').value = data.user_id;
+                        document.getElementById('modal_user_name').value = data.user_name;
                         document.getElementById('modal_registered_date').value = data.registered_date;
                         document.getElementById('modal_entered_by').value = data.entered_by;
                         
@@ -553,6 +573,7 @@
                         document.getElementById('modal_subject_id_edit').value = data.subject_id;
                         document.getElementById('modal_criteria_id_edit').value = data.criteria_id || '';
                         
+
                         const modal = new bootstrap.Modal(document.getElementById('userSubjectsModal'));
                     modal.show();
                 })
@@ -565,12 +586,13 @@
         
 
         function saveUserSubjects() {
-            const userId = document.getElementById('modal_user_id').value;
+            // Lấy danh sách user đã chọn (checkbox)
+            const userCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+            const userIds = Array.from(userCheckboxes).map(cb => cb.value);
             const registeredDate = document.getElementById('modal_registered_date').value;
             const enteredBy = document.getElementById('modal_entered_by').value;
-            
-            // Validate required fields
-            if (!userId || !registeredDate || !enteredBy) {
+
+            if (userIds.length === 0 || !registeredDate || !enteredBy) {
                 showWarning('Vui lòng điền đầy đủ thông tin bắt buộc');
                 return;
             }
@@ -627,78 +649,74 @@
                 });
                 
             } else {
-                // Create mode: handle batch creation
+                // Create mode: lặp qua từng học sinh và từng môn học
                 const selectedSubjects = [];
                 let validationFailed = false;
-                
-                // Kiểm tra tất cả môn học được chọn
+
                 document.querySelectorAll('.subject-checkbox:checked').forEach(checkbox => {
                     const subjectId = checkbox.value;
                     const criteriaSelect = document.getElementById('criteria_' + subjectId);
                     const criteriaId = criteriaSelect.value;
-                    
+
                     if (!criteriaId) {
                         validationFailed = true;
-                        return; // Continue to check other subjects
+                        return;
                     }
-                    
+
                     selectedSubjects.push({
                         subject_id: subjectId,
                         criteria_id: criteriaId
                     });
                 });
-                
-                // Kiểm tra validation sau khi duyệt hết
+
                 if (validationFailed) {
                     showWarning('Vui lòng chọn kết quả cho tất cả môn học đã chọn');
                     return;
                 }
-                
+
                 if (selectedSubjects.length === 0) {
                     showWarning('Vui lòng chọn ít nhất một môn học');
                     return;
                 }
-                
-                // Prepare data for batch creation
-                const batchData = {
-                    user_id: userId,
-                    registered_date: registeredDate,
-                    entered_by: enteredBy,
-                    subjects: selectedSubjects
-                };
-                
-                // Send batch request
-                fetch('/api/user_subjects/batch', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(batchData)
-                })
-                .then(response => response.json())
-                .then(result => {
-                    if (result.success) {
-                        // Close modal
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('userSubjectsModal'));
-                        if (modal) {
-                            modal.hide();
-                        }
-                        showSuccess(result.message);
 
-                        // Highlight các dòng vừa tạo
-                        const ids = result.ids || []; // result.ids là mảng id backend trả về
-                        setHighlightRow(ids);
-                        
-                        // Refresh table
-                        refreshTableData();
-                    } else {
-                        showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error saving user subjects:', error);
-                    showError('Có lỗi xảy ra khi lưu dữ liệu');
+                // Lặp qua từng user và từng subject để gọi API lưu từng bản ghi
+                const apiCalls = [];
+                userIds.forEach(userId => {
+                    selectedSubjects.forEach(subject => {
+                        const data = {
+                            user_id: userId,
+                            subject_id: subject.subject_id,
+                            criteria_id: subject.criteria_id,
+                            registered_date: registeredDate,
+                            entered_by: enteredBy
+                        };
+                        apiCalls.push(
+                            fetch('/api/user_subjects', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(data)
+                            })
+                            .then(response => response.json())
+                        );
+                    });
                 });
+
+                Promise.all(apiCalls)
+                    .then(results => {
+                        let allSuccess = results.every(r => r.success);
+                        if (allSuccess) {
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('userSubjectsModal'));
+                            if (modal) modal.hide();
+                            showSuccess('Đã lưu thành công!');
+                            refreshTableData();
+                        } else {
+                            showError('Có lỗi xảy ra khi lưu một số bản ghi');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error saving user subjects:', error);
+                        showError('Có lỗi xảy ra khi lưu dữ liệu');
+                    });
             }
         }
 
