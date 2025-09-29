@@ -217,6 +217,34 @@
             color: #3612fa !important;
             font-weight: bold !important;
         }
+
+        input[readonly], textarea[readonly] {
+            pointer-events: none;
+            background-color: #f5f5f5 !important;
+            color: #888 !important;
+            cursor: not-allowed;
+        }
+        .save-status-dot {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+            background: #ccc;
+            z-index: 2;
+            transition: background 0.3s;
+        }
+        .save-status-dot.saved {
+            background: #28a745; /* xanh lá: đã lưu */
+        }
+        .save-status-dot.saving {
+            background: #ffc107; /* vàng: đang lưu */
+        }
+        .save-status-dot.error {
+            background: #dc3545; /* đỏ: lỗi */
+        }
     </style>
 </head>
 <body>

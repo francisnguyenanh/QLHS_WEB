@@ -458,217 +458,6 @@ def is_master_user(user_id):
         print(f"Error checking master role: {e}")
         return False
 
-
-# Tạo dữ liệu mẫu
-def setup_sample_data():
-    conn = connect_db()
-    conn.executescript("""
-            CREATE TABLE IF NOT EXISTS Classes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                is_deleted BOOLEAN DEFAULT 0
-            );
-
-            CREATE TABLE IF NOT EXISTS Roles (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                is_deleted BOOLEAN DEFAULT 0
-            );
-
-            CREATE TABLE IF NOT EXISTS Role_Permissions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                role_id INTEGER NOT NULL,
-                permission_type TEXT NOT NULL,
-                permission_level TEXT NOT NULL,
-                is_deleted BOOLEAN DEFAULT 0,
-                FOREIGN KEY (role_id) REFERENCES Roles(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS Role_Menu_Permissions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                role_id INTEGER NOT NULL,
-                menu_name TEXT NOT NULL,
-                is_allowed BOOLEAN DEFAULT 0,
-                FOREIGN KEY (role_id) REFERENCES Roles(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS Role_Subject_Permissions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                role_id INTEGER NOT NULL,
-                subject_id INTEGER,
-                is_all BOOLEAN DEFAULT 0,
-                FOREIGN KEY (role_id) REFERENCES Roles(id),
-                FOREIGN KEY (subject_id) REFERENCES Subjects(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS Role_Criteria_Permissions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                role_id INTEGER NOT NULL,
-                criteria_id INTEGER,
-                is_all BOOLEAN DEFAULT 0,
-                FOREIGN KEY (role_id) REFERENCES Roles(id),
-                FOREIGN KEY (criteria_id) REFERENCES Criteria(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS Role_Conduct_Permissions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                role_id INTEGER NOT NULL,
-                conduct_id INTEGER,
-                is_all BOOLEAN DEFAULT 0,
-                FOREIGN KEY (role_id) REFERENCES Roles(id),
-                FOREIGN KEY (conduct_id) REFERENCES Conduct(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS Role_Group_Permissions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                role_id INTEGER NOT NULL,
-                group_id INTEGER,
-                is_all BOOLEAN DEFAULT 0,
-                FOREIGN KEY (role_id) REFERENCES Roles(id),
-                FOREIGN KEY (group_id) REFERENCES Groups(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS Role_User_Permissions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                role_id INTEGER NOT NULL,
-                user_id INTEGER,
-                is_all BOOLEAN DEFAULT 0,
-                FOREIGN KEY (role_id) REFERENCES Roles(id),
-                FOREIGN KEY (user_id) REFERENCES Users(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS Groups (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                is_deleted BOOLEAN DEFAULT 0
-            );
-
-            CREATE TABLE IF NOT EXISTS Users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                username TEXT NOT NULL UNIQUE,
-                password TEXT NOT NULL,
-                class_id INTEGER,
-                group_id INTEGER,
-                role_id INTEGER,
-                is_deleted BOOLEAN DEFAULT 0,
-                FOREIGN KEY (class_id) REFERENCES Classes(id),
-                FOREIGN KEY (role_id) REFERENCES Roles(id),
-                FOREIGN KEY (group_id) REFERENCES Groups(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS Conduct (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                conduct_type TEXT,
-                conduct_points INTEGER,
-                is_deleted BOOLEAN DEFAULT 0
-            );
-
-            CREATE TABLE IF NOT EXISTS Subjects (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                is_deleted BOOLEAN DEFAULT 0
-            );
-
-            CREATE TABLE IF NOT EXISTS Criteria (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                criterion_type BOOLEAN,
-                criterion_points INTEGER,
-                is_deleted BOOLEAN DEFAULT 0
-            );
-
-            CREATE TABLE IF NOT EXISTS User_Conduct (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                conduct_id INTEGER NOT NULL,
-                registered_date TEXT,
-                total_points INTEGER,
-                entry_date TEXT DEFAULT CURRENT_TIMESTAMP,
-                entered_by TEXT,
-                is_deleted BOOLEAN DEFAULT 0,
-                FOREIGN KEY (user_id) REFERENCES Users(id),
-                FOREIGN KEY (conduct_id) REFERENCES Conduct(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS User_Subjects (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                subject_id INTEGER NOT NULL,
-                criteria_id INTEGER,
-                registered_date TEXT,
-                total_points INTEGER,
-                entry_date TEXT DEFAULT CURRENT_TIMESTAMP,
-                entered_by TEXT,
-                is_deleted BOOLEAN DEFAULT 0,
-                FOREIGN KEY (user_id) REFERENCES Users(id),
-                FOREIGN KEY (subject_id) REFERENCES Subjects(id),
-                FOREIGN KEY (criteria_id) REFERENCES Criteria(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS Settings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                setting_key TEXT UNIQUE NOT NULL,
-                setting_value TEXT,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_by INTEGER,
-                FOREIGN KEY (updated_by) REFERENCES Users(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS User_Comments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                period_start TEXT NOT NULL,
-                period_end TEXT NOT NULL,
-                previous_score INTEGER DEFAULT 0,
-                current_score INTEGER DEFAULT 0,
-                score_difference INTEGER DEFAULT 0,
-                comment_text TEXT,
-                is_auto_generated BOOLEAN DEFAULT 0,
-                created_date TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_date TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES Users(id)
-            );
-
-            CREATE TABLE IF NOT EXISTS Comment_Templates (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                comment_category TEXT NOT NULL, -- 'academic' hoặc 'conduct'
-                comment_type TEXT NOT NULL, -- 'encouragement' hoặc 'reminder'
-                score_range_min INTEGER,
-                score_range_max INTEGER,
-                comment_text TEXT NOT NULL,
-                is_active BOOLEAN DEFAULT 1,
-                created_date TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-    
-    # Thêm setting mặc định cho background
-    conn.execute("""
-        INSERT OR IGNORE INTO Settings (setting_key, setting_value) 
-        VALUES ('background_image', '')
-    """)
-    
-    # Thêm các cột mới cho Users table nếu chưa tồn tại
-    try:
-        conn.execute("ALTER TABLE Users ADD COLUMN role_username TEXT")
-    except:
-        pass  # Column already exists
-    
-    try:
-        conn.execute("ALTER TABLE Users ADD COLUMN role_password TEXT")
-    except:
-        pass  # Column already exists
-    
-    # Thêm cột color cho Comment_Templates table nếu chưa tồn tại
-    try:
-        conn.execute("ALTER TABLE Comment_Templates ADD COLUMN color TEXT DEFAULT '#2e800b'")
-    except:
-        pass  # Column already exists
-    
-    conn.commit()
-    conn.close()
-
 def is_user_gvcn():
     if 'user_id' in session:
         user = read_record_by_id('Users', session['user_id'])
@@ -1129,6 +918,22 @@ def format_date_ddmmyyyy(date_str):
 def generate_random_string(length=6):
     chars = string.ascii_lowercase + string.digits
     return ''.join(random.choices(chars, k=length))
+
+
+def get_user_ranking_from_comments(user_id, date_from, date_to):
+    """Trả về (ranking, ranking_color) từ bảng User_Comments nếu có, ngược lại trả về (None, None)"""
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT ranking, ranking_color FROM User_Comments
+        WHERE user_id = ? AND period_start = ? AND period_end = ?
+        LIMIT 1
+    """, (user_id, date_from, date_to))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return row[0], row[1]
+    return None, None
 
 # Trang chủ
 @app.route('/')
@@ -4911,16 +4716,22 @@ def user_summary():
                         {{ record[10] }}
                     </td>
                     {% if role_name == 'GVCN' or role_name == 'Master' %}
-                    <td>                        
-                        <div class="d-flex align-items-center">
-                            <span class="comment-text">{{record[9]}}</span>
-                        </div>                        
+                    <td class="text-center comment-col">
+                        <div class="position-relative">
+                            <input type="text" class="form-control auto-save-ranking" 
+                                id="ranking_{{ record[4] }}" 
+                                data-user-id="{{ record[4] }}" 
+                                data-total-point="{{ record[10] }}" 
+                                value="" 
+                                readonly>
+                            <span id="ranking_status_{{ record[4] }}" class="save-status-dot"></span>
+                        </div>
                     </td>
                     <td class="comment-col">                        
-                        <div class="d-flex align-items-center">
-                            <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" data-academic-point="{{ record[1] - record[7] }}"  data-conduct-point="{{ record[2] - record[8] }}" rows="1" readonly></textarea>
-                            <span class="save-status text-muted small" id="status_{{ record[4] }}"></span>
-                        </div>                        
+                            <div class="position-relative">
+                                <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" data-academic-point="{{ record[1] - record[7] }}"  data-conduct-point="{{ record[2] - record[8] }}" rows="1" readonly></textarea>
+                                <span id="status_{{ record[4] }}" class="save-status-dot"></span>
+                            </div>                     
                     </td>
                     {% endif %}
                 </tr>
@@ -5600,9 +5411,12 @@ def get_auto_comment_for_category(score_difference, category):
         logging.error(f"Error in get_auto_comment_for_category: {str(e)}")
         return None
 
-def get_ranking_info(total_points):
+def get_ranking_info(total_points, is_getting=True):
     """Lấy thông tin xếp loại và màu từ database"""
     try:
+        if not is_getting:
+            return "Chưa xếp loại", "#6c757d"  # Default
+        
         conn = connect_db()
         cursor = conn.cursor()
 
@@ -5632,10 +5446,10 @@ def get_ranking_info(total_points):
         if result:
             return result[0], result[1]  # ranking_text, color
         else:
-            return "Đang cập nhật", "#6c757d"  # Default
+            return "Chưa xếp loại", "#6c757d"  # Default
 
     except Exception as e:
-        logging.error(f"Error in get_ranking_info: {str(e)}")
+        logging.info(f"Error in get_ranking_info: {str(e)}")
         return "GVCN liên lạc sau", "#6c757d"  # Default
 
 def get_auto_comment(academic_diff, conduct_diff):
@@ -6157,7 +5971,9 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
         
         # Calculate ranking
         total_points = total_academic_points + total_conduct_points
-        ranking, ranking_color = get_ranking_info(total_points)
+        ranking, ranking_color = get_user_ranking_from_comments(user_id, date_from, date_to)
+        if not ranking:
+            ranking, ranking_color = get_ranking_info(total_points, False)
         #logging.info(f"Calculated total_points: {total_points}, ranking: {ranking}, color: {ranking_color}")
         
         # Progress indicators
@@ -6842,7 +6658,47 @@ def user_account_encoded(encoded_id):
         class_name=class_data['name'] if class_data else "Chưa phân lớp"
     )
 
+@app.route('/api/user_ranking')
+def api_user_ranking():
+    user_id = request.args.get('user_id')
+    date_from = request.args.get('dateFrom')
+    date_to = request.args.get('dateTo')
+    total_point = request.args.get('total_point', type=int)
+
+    ranking, ranking_color = get_user_ranking_from_comments(user_id, date_from, date_to)
+    if not ranking or not ranking_color:
+        ranking, ranking_color = get_ranking_info(total_point)
+    return jsonify({'success': True, 'ranking': ranking, 'ranking_color': ranking_color})
+
+@app.route('/save_user_ranking', methods=['POST'])
+def save_user_ranking():
+    data = request.get_json()
+    user_id = data['user_id']
+    ranking = (data['ranking'] or '').strip()
+    ranking_color = data.get('ranking_color', '').strip()
+    period_start = data['period_start']
+    period_end = data['period_end']
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id FROM User_Comments
+        WHERE user_id = ? AND period_start = ? AND period_end = ?
+    """, (user_id, period_start, period_end))
+    row = cursor.fetchone()
+    if row:
+        cursor.execute("""
+            UPDATE User_Comments SET ranking = ?, ranking_color = ?
+            WHERE user_id = ? AND period_start = ? AND period_end = ?
+        """, (ranking, ranking_color, user_id, period_start, period_end))
+    else:
+        cursor.execute("""
+            INSERT INTO User_Comments (user_id, period_start, period_end, ranking, ranking_color)
+            VALUES (?, ?, ?, ?, ?)
+        """, (user_id, period_start, period_end, ranking, ranking_color))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
 
 if __name__ == '__main__':
-    setup_sample_data()
     app.run(debug=True, port=5001)

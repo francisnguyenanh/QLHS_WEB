@@ -197,6 +197,10 @@
                         </button>
                     -->
                     </form>
+                    <button type="button" class="btn btn-warning btn-compact" id="loadRankingBtn" data-bs-toggle="tooltip" title="Nhập xếp loại">
+                        <i class="fas fa-star"></i>
+                        <span class="d-none d-md-inline ms-1">Xếp loại</span>
+                    </button>
                     <button type="button" class="btn btn-success btn-compact" id="loadCommentsBtn" data-bs-toggle="tooltip" title="Nhập nhận xét">
                         <i class="fas fa-comments"></i>
                         <span class="d-none d-md-inline ms-1">Nhận xét</span>
@@ -654,6 +658,8 @@
                     });
                 });
             });
+
+            initAutoSaveRanking()
         }
 
         // Hàm lưu nhận xét
@@ -663,10 +669,8 @@
             const dateTo = document.getElementById('date_to').value;
             const statusElement = document.getElementById(`status_${userId}`);
             
-            // Show saving status
             if (statusElement) {
-                statusElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang lưu...';
-                statusElement.className = 'save-status text-info small';
+                statusElement.className = 'save-status-dot saving';
             }
             
             fetch('/save_user_comment', {
@@ -684,33 +688,21 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    if (showAlert) {
-                        alert('Đã lưu nhận xét thành công!');
-                    }
                     if (statusElement) {
-                        statusElement.innerHTML = '<i class="fas fa-check"></i> Đã lưu';
-                        statusElement.className = 'save-status text-success small';
+                        statusElement.className = 'save-status-dot saved';
                         setTimeout(() => {
-                            statusElement.innerHTML = '';
+                            statusElement.className = 'save-status-dot';
                         }, 2000);
                     }
                 } else {
                     if (statusElement) {
-                        statusElement.innerHTML = '<i class="fas fa-times"></i> Lỗi';
-                        statusElement.className = 'save-status text-danger small';
-                    }
-                    if (showAlert) {
-                        alert('Lỗi: ' + data.error);
+                        statusElement.className = 'save-status-dot error';
                     }
                 }
             })
             .catch(error => {
                 if (statusElement) {
-                    statusElement.innerHTML = '<i class="fas fa-times"></i> Lỗi kết nối';
-                    statusElement.className = 'save-status text-danger small';
-                }
-                if (showAlert) {
-                    alert('Lỗi kết nối: ' + error);
+                    statusElement.className = 'save-status-dot error';
                 }
             });
         }
@@ -719,7 +711,13 @@
         function saveRanking(userId, ranking) {
             const dateFrom = document.getElementById('date_from').value;
             const dateTo = document.getElementById('date_to').value;
-            
+            const input = document.getElementById(`ranking_${userId}`);
+            const rankingColor = input.getAttribute('data-ranking-color') || '';
+            const statusElement = document.getElementById(`ranking_status_${userId}`);
+            if (statusElement) {
+                statusElement.className = 'save-status-dot saving';
+            }
+
             fetch('/save_user_ranking', {
                 method: 'POST',
                 headers: {
@@ -728,18 +726,30 @@
                 body: JSON.stringify({
                     user_id: userId,
                     ranking: ranking,
+                    ranking_color: rankingColor,
                     period_start: dateFrom,
                     period_end: dateTo
                 })
             })
             .then(response => response.json())
             .then(data => {
-                if (!data.success) {
-                    console.error('Lỗi lưu xếp loại:', data.error);
+                if (data.success) {
+                    if (statusElement) {
+                        statusElement.className = 'save-status-dot saved';
+                        setTimeout(() => {
+                            statusElement.className = 'save-status-dot';
+                        }, 2000);
+                    }
+                } else {
+                    if (statusElement) {
+                        statusElement.className = 'save-status-dot error';
+                    }
                 }
             })
             .catch(error => {
-                console.error('Lỗi kết nối khi lưu xếp loại:', error);
+                if (statusElement) {
+                    statusElement.className = 'save-status-dot error';
+                }
             });
         }
 
@@ -817,6 +827,55 @@
                 });
             });
         });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const loadRankingBtn = document.getElementById('loadRankingBtn');
+            loadRankingBtn.addEventListener('click', function() {
+                document.querySelectorAll('input.auto-save-ranking').forEach(async input => {
+                    const userId = input.dataset.userId;
+                    const dateFrom = document.getElementById('date_from').value;
+                    const dateTo = document.getElementById('date_to').value;
+                    const totalPoint = input.dataset.totalPoint;
+                    // Gọi API lấy ranking
+                    const res = await fetch(`/api/user_ranking?user_id=${userId}&dateFrom=${dateFrom}&dateTo=${dateTo}&total_point=${totalPoint}`);
+                    const data = await res.json();
+                    if (data.success) {
+                        input.value = data.ranking || '';
+                        input.readOnly = false;
+                        input.disabled = false;
+                        // Set thuộc tính ranking_color vào input
+                        if (data.ranking_color) {
+                            input.setAttribute('data-ranking-color', data.ranking_color);
+                        }
+                    } else {
+                        input.value = '';
+                        input.readOnly = false;
+                        input.disabled = false;
+                        input.removeAttribute('data-ranking-color');
+                    }
+                    // Gọi auto-save để lưu ranking vừa fill vào DB
+                    saveRanking(userId, input.value);
+                });
+            });
+        });
+
+        function initAutoSaveRanking() {
+            document.querySelectorAll('input.auto-save-ranking').forEach(input => {
+                const userId = input.dataset.userId;
+                // Auto-save khi blur
+                input.addEventListener('blur', function() {
+                    saveRanking(userId, input.value);
+                });
+                // Optional: auto-save khi nhập xong (debounce)
+                let saveTimeout;
+                input.addEventListener('input', function() {
+                    clearTimeout(saveTimeout);
+                    saveTimeout = setTimeout(() => {
+                        saveRanking(userId, input.value);
+                    }, 2000);
+                });
+            });
+        }
     </script>
     <style>
         @media (max-width: 768px) {
@@ -859,6 +918,12 @@
 
         .btn-compact.btn-success {
             background: linear-gradient(135deg, #198754, #20c997);
+            border: none;
+            color: white;
+        }
+
+        .btn-compact.btn-warning {
+            background: linear-gradient(135deg, #e0a800, #dbb43eff);
             border: none;
             color: white;
         }
@@ -950,6 +1015,11 @@
                 max-width: 200px !important;
                 width: 200px !important;
             }
+        }
+
+        .auto-save-comment {
+            flex-grow: 1; /* Cho phép textarea mở rộng chiều rộng */
+            width: 100%; /* Đảm bảo chiếm toàn bộ chiều rộng của container */
         }
     </style>
 {% endblock %}
