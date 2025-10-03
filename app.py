@@ -29,35 +29,19 @@ from unicodedata import normalize
 import base64
 import string
 
-# Import obfuscated schema constants with fallback for deployment
-try:
-    from schema_constants import (
-        T_8B6D, T_A751, T_4FCC, T_6A7B, T_2F8E, 
-        T_9C3D, T_1B9E, T_D4F2, T_7E1B,
-        T_A3F8, T_5D9A, T_8F4C,
-        T_6B3E, T_9A2D,
-        T_4E7B, T_2C8F,
-        T_7D1E, get_table_name,
-        F_8A2C, F_3D7F, F_9E4A, F_8C3F, F_4D9E,
-        F_7F2C, F_1E9C, F_6A4D, F_3F7E, F_9C2F,
-        F_4F8C, F_7E3A, F_2C8F, F_5A7C,
-        F_8D2F, F_1C9E, F_6C2F, F_3A7F
-    )
-except ImportError:
-    # Fallback to secure version if schema_constants.py not found
-    from schema_constants_secure import (
-        T_8B6D, T_A751, T_4FCC, T_6A7B, T_2F8E, 
-        T_9C3D, T_1B9E, T_D4F2, T_7E1B,
-        T_A3F8, T_5D9A, T_8F4C,
-        T_6B3E, T_9A2D,
-        T_4E7B, T_2C8F,
-        T_7D1E, get_table_name,
-        F_8A2C, F_3D7F, F_9E4A, F_8C3F, F_4D9E,
-        F_7F2C, F_1E9C, F_6A4D, F_3F7E, F_9C2F,
-        F_4F8C, F_7E3A, F_2C8F, F_5A7C,
-        F_8D2F, F_1C9E, F_6C2F, F_3A7F
-    )
-    print("⚠️  Using secure schema constants (obfuscated names)")
+# Import obfuscated schema constants
+from schema_constants import (
+    T_8B6D, T_A751, T_4FCC, T_6A7B, T_2F8E, 
+    T_9C3D, T_1B9E, T_D4F2, T_7E1B,
+    T_A3F8, T_5D9A, T_8F4C,
+    T_6B3E, T_9A2D,
+    T_4E7B, T_2C8F,
+    T_7D1E, get_table_name,
+    F_8A2C, F_3D7F, F_9E4A, F_8C3F, F_4D9E,
+    F_7F2C, F_1E9C, F_6A4D, F_3F7E, F_9C2F,
+    F_4F8C, F_7E3A, F_2C8F, F_5A7C,
+    F_8D2F, F_1C9E, F_6C2F, F_3A7F
+)
     
 logging.basicConfig(level=logging.INFO)
 
