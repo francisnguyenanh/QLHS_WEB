@@ -29,6 +29,36 @@ from unicodedata import normalize
 import base64
 import string
 
+# Import obfuscated schema constants with fallback for deployment
+try:
+    from schema_constants import (
+        T_8B6D, T_A751, T_4FCC, T_6A7B, T_2F8E, 
+        T_9C3D, T_1B9E, T_D4F2, T_7E1B,
+        T_A3F8, T_5D9A, T_8F4C,
+        T_6B3E, T_9A2D,
+        T_4E7B, T_2C8F,
+        T_7D1E, get_table_name,
+        F_8A2C, F_3D7F, F_9E4A, F_8C3F, F_4D9E,
+        F_7F2C, F_1E9C, F_6A4D, F_3F7E, F_9C2F,
+        F_4F8C, F_7E3A, F_2C8F, F_5A7C,
+        F_8D2F, F_1C9E, F_6C2F, F_3A7F
+    )
+except ImportError:
+    # Fallback to secure version if schema_constants.py not found
+    from schema_constants_secure import (
+        T_8B6D, T_A751, T_4FCC, T_6A7B, T_2F8E, 
+        T_9C3D, T_1B9E, T_D4F2, T_7E1B,
+        T_A3F8, T_5D9A, T_8F4C,
+        T_6B3E, T_9A2D,
+        T_4E7B, T_2C8F,
+        T_7D1E, get_table_name,
+        F_8A2C, F_3D7F, F_9E4A, F_8C3F, F_4D9E,
+        F_7F2C, F_1E9C, F_6A4D, F_3F7E, F_9C2F,
+        F_4F8C, F_7E3A, F_2C8F, F_5A7C,
+        F_8D2F, F_1C9E, F_6C2F, F_3A7F
+    )
+    print("⚠️  Using secure schema constants (obfuscated names)")
+    
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
@@ -263,12 +293,12 @@ def delete_record_by_key(table_name, key_name, key_value):
 def delete_all_role_permissions_except_system():
     system_roles = [5, 9, 15]
     tables = [
-        'Role_Permissions',
-        'Role_Menu_Permissions',
-        'Role_Subject_Permissions',
-        'Role_Criteria_Permissions',
-        'Role_User_Permissions',
-        'Role_Conduct_Permissions'
+        T_8F4C,
+        T_6B3E,
+        T_9A2D,
+        T_4E7B,
+        T_2C8F,
+        T_7D1E
     ]
     conn = connect_db()
     cursor = conn.cursor()
@@ -460,10 +490,10 @@ def is_master_user(user_id):
 
 def is_user_gvcn():
     if 'user_id' in session:
-        user = read_record_by_id('Users', session['user_id'])
+        user = read_record_by_id(T_8B6D, session['user_id'])
         if not user or not user[6]:  # Check if user exists and has role_id
             return False
-        role = read_record_by_id('Roles', user[6]) # role_id is at index 6
+        role = read_record_by_id(T_A751, user[6]) # role_id is at index 6
         return (role and role[1] == 'GVCN') # role name is at index 1
     return False
 
@@ -471,7 +501,7 @@ def is_user_gvcn():
 
 def get_user_by_id(user_id):
     """Get user information by user_id"""
-    user_record = read_record_by_id('Users', user_id)
+    user_record = read_record_by_id(T_8B6D, user_id)
     if not user_record:
         return None
     
@@ -495,7 +525,7 @@ def get_user_data_filters():
     if 'user_id' not in session:
         return {}
     
-    user = read_record_by_id('Users', session['user_id'])
+    user = read_record_by_id(T_8B6D, session['user_id'])
     
     filters = {
         'user_id': user[0],
@@ -602,13 +632,13 @@ def get_current_user_info():
     if 'user_id' not in session:
         return None
     
-    user = read_record_by_id('Users', session['user_id'])
+    user = read_record_by_id(T_8B6D, session['user_id'])
     if not user:
         return None
     
     role = None
     if user[6]:  # role_id
-        role = read_record_by_id('Roles', user[6])
+        role = read_record_by_id(T_A751, user[6])
     
     return {
         'id': user[0],
@@ -948,7 +978,7 @@ def index():
 @app.route('/api/classes/<int:id>')
 def get_class_api(id):
     if 'user_id' in session:
-        class_data = read_record_by_id('Classes', id, ['id', 'name'])
+        class_data = read_record_by_id(T_4FCC, id, ['id', 'name'])
         return jsonify({'id': class_data[0], 'name': class_data[1]})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -956,7 +986,7 @@ def get_class_api(id):
 def create_class_api():
     if 'user_id' in session:
         data = {'name': request.json['name'], 'is_deleted': 0}
-        class_id = create_record('Classes', data)
+        class_id = create_record(T_4FCC, data)
         
         # Cập nhật tất cả users có class_id = null thành class mới tạo
         conn = connect_db()
@@ -972,7 +1002,7 @@ def create_class_api():
 def update_class_api(id):
     if 'user_id' in session:
         data = {'name': request.json['name']}
-        update_record('Classes', id, data)
+        update_record(T_4FCC, id, data)
         return jsonify({'success': True, 'message': 'Cập nhật thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -984,7 +1014,7 @@ def classes_list():
         return permission_check
     
     if 'user_id' in session:
-        classes = read_all_records('Classes', ['id', 'name'])
+        classes = read_all_records(T_4FCC, ['id', 'name'])
         # Kiểm tra xem đã có class nào tồn tại chưa
         has_existing_class = len(classes) > 0
         return render_template_with_permissions('classes.html', classes=classes, has_existing_class=has_existing_class, 
@@ -1001,7 +1031,7 @@ def class_create():
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name'], 'is_deleted': 0}
-            create_record('Classes', data)
+            create_record(T_4FCC, data)
             return redirect(url_for('classes_list'))
         return render_template('class_create.html', is_gvcn=is_user_gvcn())
     else:
@@ -1018,9 +1048,9 @@ def class_edit(id):
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name']}
-            update_record('Classes', id, data)
+            update_record(T_4FCC, id, data)
             return redirect(url_for('classes_list'))
-        class_data = read_record_by_id('Classes', id, ['id', 'name'])
+        class_data = read_record_by_id(T_4FCC, id, ['id', 'name'])
         return render_template('class_edit.html', class_data=class_data, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
@@ -1036,14 +1066,14 @@ def class_delete(id):
     conn.commit()
     conn.close()
     
-    delete_record('Classes', id)
+    delete_record(T_4FCC, id)
     return redirect(url_for('classes_list'))
 
 # --- API routes for Groups ---
 @app.route('/api/groups/<int:id>')
 def get_group_api(id):
     if 'user_id' in session:
-        group_data = read_record_by_id('Groups', id, ['id', 'name'])
+        group_data = read_record_by_id(T_6A7B, id, ['id', 'name'])
         return jsonify({'id': group_data[0], 'name': group_data[1]})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1051,7 +1081,7 @@ def get_group_api(id):
 def create_group_api():
     if 'user_id' in session:
         data = {'name': request.json['name'], 'is_deleted': 0}
-        create_record('Groups', data)
+        create_record(T_6A7B, data)
         return jsonify({'success': True, 'message': 'Tạo mới thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1059,7 +1089,7 @@ def create_group_api():
 def update_group_api(id):
     if 'user_id' in session:
         data = {'name': request.json['name']}
-        update_record('Groups', id, data)
+        update_record(T_6A7B, id, data)
         return jsonify({'success': True, 'message': 'Cập nhật thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1071,7 +1101,7 @@ def groups_list():
         return permission_check
     
     if 'user_id' in session:
-        groups = read_all_records('Groups', ['id', 'name'])
+        groups = read_all_records(T_6A7B, ['id', 'name'])
         return render_template_with_permissions('groups.html', groups=groups, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
@@ -1087,7 +1117,7 @@ def group_create():
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name'], 'is_deleted': 0}
-            create_record('Groups', data)
+            create_record(T_6A7B, data)
             return redirect(url_for('groups_list'))
         return render_template('group_create.html', is_gvcn=is_user_gvcn())
     else:
@@ -1104,9 +1134,9 @@ def group_edit(id):
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name']}
-            update_record('Groups', id, data)
+            update_record(T_6A7B, id, data)
             return redirect(url_for('groups_list'))
-        group_data = read_record_by_id('Groups', id, ['id', 'name'])
+        group_data = read_record_by_id(T_6A7B, id, ['id', 'name'])
         return render_template('group_edit.html', group_data=group_data, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
@@ -1125,7 +1155,7 @@ def group_delete(id):
     if user_count > 0:
         flash(f'Không thể xóa nhóm này vì đang có {user_count} người liên kết với nhóm', 'error')
     else:
-        delete_record('Groups', id)
+        delete_record(T_6A7B, id)
         flash('Xóa nhóm thành công', 'success')
     
     return redirect(url_for('groups_list'))
@@ -1134,7 +1164,7 @@ def group_delete(id):
 @app.route('/api/roles/<int:id>')
 def get_role_api(id):
     if 'user_id' in session:
-        role_data = read_record_by_id('Roles', id, ['id', 'name'])
+        role_data = read_record_by_id(T_A751, id, ['id', 'name'])
         return jsonify({'id': role_data[0], 'name': role_data[1]})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1142,7 +1172,7 @@ def get_role_api(id):
 def create_role_api():
     if 'user_id' in session:
         data = {'name': request.json['name'], 'is_deleted': 0}
-        create_record('Roles', data)
+        create_record(T_A751, data)
         return jsonify({'success': True, 'message': 'Tạo mới thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1150,12 +1180,12 @@ def create_role_api():
 def update_role_api(id):
     if 'user_id' in session:
         # Kiểm tra role hiện tại
-        role_data = read_record_by_id('Roles', id, ['id', 'name'])
+        role_data = read_record_by_id(T_A751, id, ['id', 'name'])
         if role_data and role_data[1] in ['GVCN', 'Master']:
             return jsonify({'success': False, 'error': 'Không thể thay đổi role hệ thống'}), 400
         
         data = {'name': request.json['name']}
-        update_record('Roles', id, data)
+        update_record(T_A751, id, data)
         return jsonify({'success': True, 'message': 'Cập nhật thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1259,7 +1289,7 @@ def roles_list():
         return permission_check
     
     if 'user_id' in session:
-        roles = read_all_records('Roles', ['id', 'name'])
+        roles = read_all_records(T_A751, ['id', 'name'])
         return render_template_with_permissions('roles.html', roles=roles, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
@@ -1275,7 +1305,7 @@ def role_create():
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name'], 'is_deleted': 0}
-            create_record('Roles', data)
+            create_record(T_A751, data)
             return redirect(url_for('roles_list'))
         return render_template('role_create.html', is_gvcn=is_user_gvcn())
     else:
@@ -1292,9 +1322,9 @@ def role_edit(id):
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name']}
-            update_record('Roles', id, data)
+            update_record(T_A751, id, data)
             return redirect(url_for('roles_list'))
-        role_data = read_record_by_id('Roles', id, ['id', 'name'])
+        role_data = read_record_by_id(T_A751, id, ['id', 'name'])
         return render_template('role_edit.html', role_data=role_data, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
@@ -1304,7 +1334,7 @@ def role_edit(id):
 @app.route('/roles/delete/<int:id>')
 def role_delete(id):
     # Kiểm tra role hiện tại
-    role_data = read_record_by_id('Roles', id, ['id', 'name'])
+    role_data = read_record_by_id(T_A751, id, ['id', 'name'])
     if role_data and (role_data[1] in ['GVCN', 'Master', 'Học sinh']):
         flash('Không thể xóa role hệ thống', 'error')
         return redirect(url_for('roles_list'))
@@ -1319,13 +1349,13 @@ def role_delete(id):
     if user_count > 0:
         flash(f'Không thể xóa chức vụ này vì đang có {user_count} người liên kết với chức vụ', 'error')
     else:
-        delete_record('Roles', id)
-        delete_record_by_key('Role_Permissions', 'role_id', id)
-        delete_record_by_key('Role_Menu_Permissions', 'role_id', id)
-        delete_record_by_key('Role_Subject_Permissions', 'role_id', id)
-        delete_record_by_key('Role_Criteria_Permissions', 'role_id', id)
-        delete_record_by_key('Role_User_Permissions', 'role_id', id)
-        delete_record_by_key('Role_Conduct_Permissions', 'role_id', id)
+        delete_record(T_A751, id)
+        delete_record_by_key(T_8F4C, 'role_id', id)
+        delete_record_by_key(T_6B3E, 'role_id', id)
+        delete_record_by_key(T_9A2D, 'role_id', id)
+        delete_record_by_key(T_4E7B, 'role_id', id)
+        delete_record_by_key(T_2C8F, 'role_id', id)
+        delete_record_by_key(T_7D1E, 'role_id', id)
 
         flash('Xóa chức vụ thành công', 'success')
     
@@ -1617,7 +1647,7 @@ def get_users_by_groups_api():
 @app.route('/api/conducts/<int:id>')
 def get_conduct_api(id):
     if 'user_id' in session:
-        conduct_data = read_record_by_id('Conduct', id, ['id', 'name', 'conduct_type', 'conduct_points'])
+        conduct_data = read_record_by_id(T_9C3D, id, ['id', 'name', 'conduct_type', 'conduct_points'])
         return jsonify({
             'id': conduct_data[0], 
             'name': conduct_data[1], 
@@ -1635,7 +1665,7 @@ def create_conduct_api():
             'conduct_points': request.json['conduct_points'],
             'is_deleted': 0
         }
-        create_record('Conduct', data)
+        create_record(T_9C3D, data)
         return jsonify({'success': True, 'message': 'Tạo mới thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1647,7 +1677,7 @@ def update_conduct_api(id):
             'conduct_type': request.json['conduct_type'],
             'conduct_points': request.json['conduct_points']
         }
-        update_record('Conduct', id, data)
+        update_record(T_9C3D, id, data)
         return jsonify({'success': True, 'message': 'Cập nhật thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1761,7 +1791,7 @@ def conduct_create():
                 'conduct_points': request.form['conduct_points'],
                 'is_deleted': 0
             }
-            create_record('Conduct', data)
+            create_record(T_9C3D, data)
             return redirect(url_for('conducts_list'))
         return render_template('conduct_create.html', is_gvcn=is_user_gvcn())
     else:
@@ -1782,9 +1812,9 @@ def conduct_edit(id):
                 'conduct_type': request.form['conduct_type'],
                 'conduct_points': request.form['conduct_points']
             }
-            update_record('Conduct', id, data)
+            update_record(T_9C3D, id, data)
             return redirect(url_for('conducts_list'))
-        conduct_data = read_record_by_id('Conduct', id, ['id', 'name', 'conduct_type', 'conduct_points'])
+        conduct_data = read_record_by_id(T_9C3D, id, ['id', 'name', 'conduct_type', 'conduct_points'])
         return render_template('conduct_edit.html', conduct_data=conduct_data, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
@@ -1793,8 +1823,8 @@ def conduct_edit(id):
 
 @app.route('/conducts/delete/<int:id>')
 def conduct_delete(id):
-    delete_record('Conduct', id)
-    delete_record_by_key('Role_Conduct_Permissions', 'conduct_id', id)
+    delete_record(T_9C3D, id)
+    delete_record_by_key(T_7D1E, 'conduct_id', id)
     return redirect(url_for('conducts_list'))
 
 
@@ -1802,7 +1832,7 @@ def conduct_delete(id):
 @app.route('/api/subjects/<int:id>')
 def get_subject_api(id):
     if 'user_id' in session:
-        subject_data = read_record_by_id('Subjects', id, ['id', 'name'])
+        subject_data = read_record_by_id(T_2F8E, id, ['id', 'name'])
         return jsonify({'id': subject_data[0], 'name': subject_data[1]})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1810,7 +1840,7 @@ def get_subject_api(id):
 def create_subject_api():
     if 'user_id' in session:
         data = {'name': request.json['name'], 'is_deleted': 0}
-        create_record('Subjects', data)
+        create_record(T_2F8E, data)
         return jsonify({'success': True, 'message': 'Tạo mới thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1818,7 +1848,7 @@ def create_subject_api():
 def update_subject_api(id):
     if 'user_id' in session:
         data = {'name': request.json['name']}
-        update_record('Subjects', id, data)
+        update_record(T_2F8E, id, data)
         return jsonify({'success': True, 'message': 'Cập nhật thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1876,7 +1906,7 @@ def subject_create():
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name'], 'is_deleted': 0}
-            create_record('Subjects', data)
+            create_record(T_2F8E, data)
             return redirect(url_for('subjects_list'))
         return render_template('subject_create.html', is_gvcn=is_user_gvcn())
     else:
@@ -1893,9 +1923,9 @@ def subject_edit(id):
     if 'user_id' in session:
         if request.method == 'POST':
             data = {'name': request.form['name']}
-            update_record('Subjects', id, data)
+            update_record(T_2F8E, id, data)
             return redirect(url_for('subjects_list'))
-        subject_data = read_record_by_id('Subjects', id, ['id', 'name'])
+        subject_data = read_record_by_id(T_2F8E, id, ['id', 'name'])
         return render_template('subject_edit.html', subject_data=subject_data, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
@@ -1904,8 +1934,8 @@ def subject_edit(id):
 
 @app.route('/subjects/delete/<int:id>')
 def subject_delete(id):
-    delete_record('Subjects', id)
-    delete_record_by_key('Role_Subject_Permissions', 'subject_id', id)
+    delete_record(T_2F8E, id)
+    delete_record_by_key(T_9A2D, 'subject_id', id)
     
     return redirect(url_for('subjects_list'))
 
@@ -1914,7 +1944,7 @@ def subject_delete(id):
 @app.route('/api/criteria/<int:id>')
 def get_criteria_api(id):
     if 'user_id' in session:
-        criteria_data = read_record_by_id('Criteria', id, ['id', 'name', 'criterion_type', 'criterion_points'])
+        criteria_data = read_record_by_id(T_1B9E, id, ['id', 'name', 'criterion_type', 'criterion_points'])
         return jsonify({
             'id': criteria_data[0], 
             'name': criteria_data[1], 
@@ -1932,7 +1962,7 @@ def create_criteria_api():
             'criterion_points': request.json['criterion_points'],
             'is_deleted': 0
         }
-        create_record('Criteria', data)
+        create_record(T_1B9E, data)
         return jsonify({'success': True, 'message': 'Tạo mới thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -1944,7 +1974,7 @@ def update_criteria_api(id):
             'criterion_type': request.json['criterion_type'],
             'criterion_points': request.json['criterion_points']
         }
-        update_record('Criteria', id, data)
+        update_record(T_1B9E, id, data)
         return jsonify({'success': True, 'message': 'Cập nhật thành công'})
     return jsonify({'error': 'Unauthorized'}), 401
 
@@ -2007,7 +2037,7 @@ def criteria_create():
                 'criterion_points': request.form['criterion_points'],
                 'is_deleted': 0
             }
-            create_record('Criteria', data)
+            create_record(T_1B9E, data)
             return redirect(url_for('criteria_list'))
         return render_template('criteria_create.html', is_gvcn=is_user_gvcn())
     else:
@@ -2028,9 +2058,9 @@ def criteria_edit(id):
                 'criterion_type': 1 if request.form.get('criterion_type') == 'on' else 0,
                 'criterion_points': request.form['criterion_points']
             }
-            update_record('Criteria', id, data)
+            update_record(T_1B9E, id, data)
             return redirect(url_for('criteria_list'))
-        criteria_data = read_record_by_id('Criteria', id, ['id', 'name', 'criterion_type', 'criterion_points'])
+        criteria_data = read_record_by_id(T_1B9E, id, ['id', 'name', 'criterion_type', 'criterion_points'])
         return render_template('criteria_edit.html', criteria_data=criteria_data, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
@@ -2039,8 +2069,8 @@ def criteria_edit(id):
 
 @app.route('/criteria/delete/<int:id>')
 def criteria_delete(id):
-    delete_record('Criteria', id)
-    delete_record_by_key('Role_Criteria_Permissions', 'criteria_id', id)
+    delete_record(T_1B9E, id)
+    delete_record_by_key(T_4E7B, 'criteria_id', id)
     return redirect(url_for('criteria_list'))
 
 
@@ -2390,8 +2420,8 @@ def user_create():
             # Kiểm tra các trường bắt buộc
             if not all([name, username, password, class_id, role_id]):
                 error_message = 'Vui lòng điền đầy đủ tất cả các trường.'
-                classes = read_all_records('Classes', ['id', 'name'])
-                roles = read_all_records('Roles', ['id', 'name'])
+                classes = read_all_records(T_4FCC, ['id', 'name'])
+                roles = read_all_records(T_A751, ['id', 'name'])
                 return render_template('user_create.html', classes=classes, roles=roles, error_message=error_message, is_gvcn=is_user_gvcn())
 
             # Kiểm tra trùng username
@@ -2403,8 +2433,8 @@ def user_create():
             if existing_user:
                 conn.close()
                 error_message = 'Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.'
-                classes = read_all_records('Classes', ['id', 'name'])
-                roles = read_all_records('Roles', ['id', 'name'])
+                classes = read_all_records(T_4FCC, ['id', 'name'])
+                roles = read_all_records(T_A751, ['id', 'name'])
                 return render_template('user_create.html', classes=classes, roles=roles, error_message=error_message, is_gvcn=is_user_gvcn())
 
             # Tạo bản ghi mới
@@ -2420,8 +2450,8 @@ def user_create():
             conn.close()
             return redirect(url_for('users_list'))
 
-        classes = read_all_records('Classes', ['id', 'name'])
-        roles = read_all_records('Roles', ['id', 'name'])
+        classes = read_all_records(T_4FCC, ['id', 'name'])
+        roles = read_all_records(T_A751, ['id', 'name'])
         return render_template('user_create.html', classes=classes, roles=roles, error_message=error_message, is_gvcn=is_user_gvcn())
     else:
         return redirect(url_for('login'))
@@ -2455,8 +2485,8 @@ def user_edit_secure(id, token):
         if not all([name, username, password, class_id, role_id]):
             error_message = 'Vui lòng điền đầy đủ tất cả các trường.'
             user = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
-            classes = read_all_records('Classes', ['id', 'name'])
-            roles = read_all_records('Roles', ['id', 'name'])
+            classes = read_all_records(T_4FCC, ['id', 'name'])
+            roles = read_all_records(T_A751, ['id', 'name'])
             return render_template('user_edit.html', user=user, classes=classes, roles=roles, error_message=error_message, is_gvcn=is_user_gvcn(), token=token)
 
         # Kiểm tra trùng username, ngoại trừ bản ghi hiện tại
@@ -2469,8 +2499,8 @@ def user_edit_secure(id, token):
             conn.close()
             error_message = 'Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.'
             user = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
-            classes = read_all_records('Classes', ['id', 'name'])
-            roles = read_all_records('Roles', ['id', 'name'])
+            classes = read_all_records(T_4FCC, ['id', 'name'])
+            roles = read_all_records(T_A751, ['id', 'name'])
             return render_template('user_edit.html', user=user, classes=classes, roles=roles, error_message=error_message, is_gvcn=is_user_gvcn(), token=token)
 
         # Cập nhật bản ghi
@@ -2491,8 +2521,8 @@ def user_edit_secure(id, token):
         flash('Không tìm thấy người dùng', 'error')
         return redirect(url_for('users_list'))
     
-    classes = read_all_records('Classes', ['id', 'name'])
-    roles = read_all_records('Roles', ['id', 'name'])
+    classes = read_all_records(T_4FCC, ['id', 'name'])
+    roles = read_all_records(T_A751, ['id', 'name'])
     return render_template('user_edit.html', user=user, classes=classes, roles=roles, error_message=error_message, is_gvcn=is_user_gvcn(), token=token)
 
 def user_delete_secure(id, token):
@@ -2510,7 +2540,7 @@ def user_delete_secure(id, token):
     # Kiểm tra user có role Master hoặc GVCN không
     user_data = read_record_by_id('Users', id, ['id', 'name', 'username', 'password', 'class_id', 'group_id', 'role_id'])
     if user_data and user_data[6]:  # role_id at index 6
-        role_data = read_record_by_id('Roles', user_data[6], ['id', 'name'])
+        role_data = read_record_by_id(T_A751, user_data[6], ['id', 'name'])
         if role_data and role_data[1] in ['Master', 'GVCN']:
             error_msg = f'Không thể xóa user {role_data[1]}'
             if is_ajax:
@@ -2526,7 +2556,7 @@ def user_delete_secure(id, token):
         return redirect(url_for('users_list'))
     
     delete_record('Users', id)
-    delete_record_by_key('Role_User_Permissions', 'user_id', id)
+    delete_record_by_key(T_2C8F, 'user_id', id)
     
     success_msg = 'Xóa người dùng thành công'
     if is_ajax:
@@ -2628,7 +2658,7 @@ def user_subjects_total_points():
 @app.route('/api/user_conduct/<int:id>')
 def get_user_conduct_api(id):
     if 'user_id' in session:
-        record = read_record_by_id('User_Conduct', id, 
+        record = read_record_by_id(T_D4F2, id, 
                                    ['id', 'user_id', 'conduct_id', 'registered_date', 'total_points', 'entered_by'])
         user_name = ""
         if record and record[1]:
@@ -2678,7 +2708,7 @@ def create_user_conduct_api():
             'entered_by': entered_by,
             'is_deleted': 0
         }
-        new_id = create_record('User_Conduct', data)
+        new_id = create_record(T_D4F2, data)
         conn.close()
         
         return jsonify({'success': True, 'message': 'Tạo mới thành công', 'id': new_id})
@@ -2710,7 +2740,7 @@ def update_user_conduct_api(id):
             'total_points': individual_points,  # Use individual points, not cumulative
             'entered_by': entered_by
         }
-        update_record('User_Conduct', id, data)
+        update_record(T_D4F2, id, data)
         conn.close()
         
         return jsonify({'success': True, 'message': 'Cập nhật thành công', 'id': id})
@@ -2996,7 +3026,7 @@ def user_conduct_create():
                 'entered_by': request.form['entered_by'],
                 'is_deleted': 0
             }
-            create_record('User_Conduct', data)
+            create_record(T_D4F2, data)
             conn.close()
 
             # Chuyển hướng với các tham số lọc
@@ -3013,7 +3043,7 @@ def user_conduct_create():
                                     select_all_groups=select_all_groups))
 
         users = read_all_records('Users', ['id', 'name'])
-        conducts = read_all_records('Conduct', ['id', 'name'])
+        conducts = read_all_records(T_9C3D, ['id', 'name'])
         return render_template('user_conduct_create.html',
                                users=users,
                                conducts=conducts,
@@ -3089,20 +3119,20 @@ def user_conduct_edit_secure(id, token):
             'total_points': total_points,
             'entered_by': request.form['entered_by']
         }
-        update_record('User_Conduct', id, data)
+        update_record(T_D4F2, id, data)
         conn.close()
         
         flash('Cập nhật hạnh kiểm thành công', 'success')
         return redirect(url_for('user_conduct_list'))
 
-    record = read_record_by_id('User_Conduct', id,
+    record = read_record_by_id(T_D4F2, id,
                                ['id', 'user_id', 'conduct_id', 'registered_date', 'total_points', 'entered_by'])
     if not record:
         flash('Không tìm thấy bản ghi', 'error')
         return redirect(url_for('user_conduct_list'))
     
     users = read_all_records('Users', ['id', 'name'])
-    conducts = read_all_records('Conduct', ['id', 'name'])
+    conducts = read_all_records(T_9C3D, ['id', 'name'])
     return render_template('user_conduct_edit.html',
                            record=record,
                            users=users,
@@ -3140,12 +3170,12 @@ def user_conduct_delete_secure(id, token):
         return redirect(url_for('login'))
     
     # Verify record exists
-    record = read_record_by_id('User_Conduct', id)
+    record = read_record_by_id(T_D4F2, id)
     if not record:
         flash('Không tìm thấy bản ghi', 'error')
         return redirect(url_for('user_conduct_list'))
     
-    delete_record('User_Conduct', id)
+    delete_record(T_D4F2, id)
     flash('Xóa bản ghi thành công', 'success')
     return redirect(url_for('user_conduct_list'))
 
@@ -3154,7 +3184,7 @@ def user_conduct_delete_secure(id, token):
 @app.route('/api/user_subjects/<int:id>')
 def get_user_subjects_api(id):
     if 'user_id' in session:
-        record = read_record_by_id('User_Subjects', id, 
+        record = read_record_by_id(T_7E1B, id, 
                                    ['id', 'user_id', 'subject_id', 'criteria_id', 'registered_date', 'total_points', 'entered_by'])
         user_name = ""
         if record and record[1]:
@@ -3218,7 +3248,7 @@ def create_user_subjects_batch_api():
                     'is_deleted': 0
                 }
                 
-                new_id = create_record('User_Subjects', record_data)
+                new_id = create_record(T_7E1B, record_data)
                 created_records.append(new_id)
             
             conn.close()
@@ -3265,7 +3295,7 @@ def create_user_subjects_api():
             'entered_by': entered_by,
             'is_deleted': 0
         }
-        new_id = create_record('User_Subjects', data)
+        new_id = create_record(T_7E1B, data)
         conn.close()
         
         return jsonify({'success': True, 'message': 'Tạo mới thành công', 'id': new_id})
@@ -3299,7 +3329,7 @@ def update_user_subjects_api(id):
             'total_points': individual_points,  # Use individual points, not cumulative
             'entered_by': entered_by
         }
-        update_record('User_Subjects', id, data)
+        update_record(T_7E1B, id, data)
         conn.close()
         
         return jsonify({'success': True, 'message': 'Cập nhật thành công', 'id': id})
@@ -3598,7 +3628,7 @@ def user_subjects_create():
                 'entered_by': request.form['entered_by'],
                 'is_deleted': 0
             }
-            create_record('User_Subjects', data)
+            create_record(T_7E1B, data)
             conn.close()
 
             # Chuyển hướng với các tham số lọc
@@ -3615,8 +3645,8 @@ def user_subjects_create():
                                     select_all_groups=select_all_groups))
 
         users = read_all_records('Users', ['id', 'name'])
-        subjects = read_all_records('Subjects', ['id', 'name'])
-        criteria = read_all_records('Criteria', ['id', 'name'])
+        subjects = read_all_records(T_2F8E, ['id', 'name'])
+        criteria = read_all_records(T_1B9E, ['id', 'name'])
         return render_template('user_subjects_create.html',
                                users=users,
                                subjects=subjects,
@@ -3697,21 +3727,21 @@ def user_subjects_edit_secure(id, token):
             'total_points': total_points,
             'entered_by': request.form['entered_by']
         }
-        update_record('User_Subjects', id, data)
+        update_record(T_7E1B, id, data)
         conn.close()
         
         flash('Cập nhật học tập thành công', 'success')
         return redirect(url_for('user_subjects_list'))
 
-    record = read_record_by_id('User_Subjects', id,
+    record = read_record_by_id(T_7E1B, id,
                                ['id', 'user_id', 'subject_id', 'criteria_id', 'registered_date', 'total_points', 'entered_by'])
     if not record:
         flash('Không tìm thấy bản ghi', 'error')
         return redirect(url_for('user_subjects_list'))
     
     users = read_all_records('Users', ['id', 'name'])
-    subjects = read_all_records('Subjects', ['id', 'name'])
-    criteria = read_all_records('Criteria', ['id', 'name'])
+    subjects = read_all_records(T_2F8E, ['id', 'name'])
+    criteria = read_all_records(T_1B9E, ['id', 'name'])
     return render_template('user_subjects_edit.html',
                            record=record,
                            users=users,
@@ -3750,12 +3780,12 @@ def user_subjects_delete_secure(id, token):
         return redirect(url_for('login'))
     
     # Verify record exists
-    record = read_record_by_id('User_Subjects', id)
+    record = read_record_by_id(T_7E1B, id)
     if not record:
         flash('Không tìm thấy bản ghi', 'error')
         return redirect(url_for('user_subjects_list'))
     
-    delete_record('User_Subjects', id)
+    delete_record(T_7E1B, id)
     flash('Xóa bản ghi thành công', 'success')
     return redirect(url_for('user_subjects_list'))
 
@@ -3845,7 +3875,7 @@ def group_summary():
 
     # Xây dựng truy vấn tổng điểm (User_Conduct và User_Subjects)
     queries = []
-    for table, points_column in [('User_Conduct', 'conduct_points'), ('User_Subjects', 'study_points')]:
+    for table, points_column in [(T_D4F2, 'conduct_points'), (T_7E1B, 'study_points')]:
         query = f"""
             SELECT g.name AS group_name, SUM(t.total_points) AS {points_column}
             FROM {table} t
@@ -3895,7 +3925,7 @@ def group_summary():
     points_data = {}
     for period, start_date, end_date in [('prev', prev_date_from, prev_date_to), ('now', date_from, date_to)]:
         points_data[period] = {'conduct': {}, 'study': {}}
-        for table, points_type in [('User_Conduct', 'conduct'), ('User_Subjects', 'study')]:
+        for table, points_type in [(T_D4F2, 'conduct'), (T_7E1B, 'study')]:
             query = f"""
                 SELECT g.name AS group_name, SUM(t.total_points) AS {points_type}_points
                 FROM {table} t
@@ -4879,7 +4909,7 @@ def login():
                 
                 # Get role name
                 if user_data[6]:
-                    role_data = read_record_by_id('Roles', user_data[6], ['id', 'name'])
+                    role_data = read_record_by_id(T_A751, user_data[6], ['id', 'name'])
                     session['role_name'] = role_data[1] if role_data else None
                 else:
                     session['role_name'] = None
@@ -5072,15 +5102,15 @@ def reset_page():
     if 'user_id' in session:        
         # Danh sách các table và mô tả theo thứ tự xóa
         tables = [
-            {'name': 'User_Conduct', 'description': 'Dữ liệu hạnh kiểm học sinh'},
-            {'name': 'User_Subjects', 'description': 'Dữ liệu học tập học sinh'},
-            {'name': 'Criteria', 'description': 'Dữ liệu tiêu chí đánh giá'},
-            {'name': 'Subjects', 'description': 'Dữ liệu môn học'},
-            {'name': 'Conduct', 'description': 'Dữ liệu hạnh kiểm'},
-            {'name': 'Groups', 'description': 'Dữ liệu nhóm'},
-            {'name': 'Role_Permissions', 'description': 'Dữ liệu phân quyền'},
-            {'name': 'Roles', 'description': 'Dữ liệu chức vụ'},
-            {'name': 'Classes', 'description': 'Dữ liệu lớp học'},
+            {'name': T_D4F2, 'description': 'Dữ liệu hạnh kiểm học sinh'},
+            {'name': T_7E1B, 'description': 'Dữ liệu học tập học sinh'},
+            {'name': T_1B9E, 'description': 'Dữ liệu tiêu chí đánh giá'},
+            {'name': T_2F8E, 'description': 'Dữ liệu môn học'},
+            {'name': T_9C3D, 'description': 'Dữ liệu hạnh kiểm'},
+            {'name': T_6A7B, 'description': 'Dữ liệu nhóm'},
+            {'name': T_8F4C, 'description': 'Dữ liệu phân quyền'},
+            {'name': T_A751, 'description': 'Dữ liệu chức vụ'},
+            {'name': T_4FCC, 'description': 'Dữ liệu lớp học'},
             {'name': 'Users', 'description': 'Dữ liệu người dùng'}
         ]
         
@@ -5094,8 +5124,8 @@ def reset_table(table_name):
     if 'user_id' in session:
         
         # Danh sách table được phép xóa theo thứ tự
-        allowed_tables = ['User_Conduct', 'User_Subjects', 'Criteria', 'Subjects', 'Conduct', 
-                         'Groups', 'Role_Permissions', 'Roles', 'Classes', 'Users', 'User_Comments', 'Week_Settings' ]
+        allowed_tables = [T_D4F2, T_7E1B, T_1B9E, T_2F8E, T_9C3D, 
+                         T_6A7B, T_8F4C, T_A751, T_4FCC, 'Users', T_5D9A, 'Week_Settings' ]
         
         if table_name not in allowed_tables:
             return jsonify({'error': 'Table không hợp lệ'}), 400
@@ -5105,22 +5135,22 @@ def reset_table(table_name):
             cursor = conn.cursor()
             
             # Xóa dữ liệu với điều kiện đặc biệt
-            if table_name == 'Role_Permissions':
+            if table_name == T_8F4C:
                 system_roles = [5, 9, 15]
                 tables = [
-                    'Role_Permissions',
-                    'Role_Menu_Permissions',
-                    'Role_Subject_Permissions',
-                    'Role_Criteria_Permissions',
-                    'Role_User_Permissions',
-                    'Role_Conduct_Permissions'
+                    T_8F4C,
+                    T_6B3E,
+                    T_9A2D,
+                    T_4E7B,
+                    T_2C8F,
+                    T_7D1E
                 ]
                 for table in tables:
                     query = f"DELETE FROM {table} WHERE role_id NOT IN ({','.join(str(r) for r in system_roles)})"
                     cursor.execute(query)
                 
                 cursor.execute("DELETE FROM Role_User_Permissions")
-            elif table_name == 'Roles':
+            elif table_name == T_A751:
                 # Không xóa role Master, GVCN và role ID = 9
                 cursor.execute("DELETE FROM Roles WHERE name NOT IN ('Master', 'GVCN') AND id != 9")
                 
@@ -6706,7 +6736,7 @@ def user_account_encoded(encoded_id):
     user = cursor.fetchone()
     conn.close()
     
-    class_data = read_record_by_id('Classes', id, ['id', 'name'])
+    class_data = read_record_by_id(T_4FCC, id, ['id', 'name'])
     
     if not user:
         return "<h3>Không tìm thấy user!</h3>", 404

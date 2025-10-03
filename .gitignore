@@ -8,3 +8,8 @@ schoolX.db
 *.db
 schoolX.db
 .DS_Store
+schema_constants.py
+schema_constants_local.py
+.env
+*.db
+schoolX.db
