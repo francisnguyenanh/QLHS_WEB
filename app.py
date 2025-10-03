@@ -4491,7 +4491,7 @@ def user_summary():
                     
                     #logging.info(f"User ID: {user_id}, Academic Diff: {current_academic_points}, Conduct Diff: {current_conduct_points}, Total: {total_point}")
                     
-                    auto_comment = get_auto_comment(academic_difference, conduct_difference)
+                    auto_comment = get_auto_comment(academic_difference, conduct_difference, total_point)
                     #auto_ranking = get_auto_comment_for_category(total_point, "ranking")
                     auto_ranking, ranking_color = get_ranking_info(total_point)
                     if auto_ranking is None:
@@ -4729,7 +4729,7 @@ def user_summary():
                     </td>
                     <td class="comment-col">                        
                             <div class="position-relative">
-                                <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" data-academic-point="{{ record[1] - record[7] }}"  data-conduct-point="{{ record[2] - record[8] }}" rows="1" readonly></textarea>
+                                <textarea class="form-control me-2 auto-save-comment" id="comment_{{ record[4] }}" data-user-id="{{ record[4] }}" data-academic-point="{{ record[1] - record[7] }}"  data-conduct-point="{{ record[2] - record[8] }}" data-total-point="{{ record[10] }}" rows="1" readonly></textarea>
                                 <span id="status_{{ record[4] }}" class="save-status-dot"></span>
                             </div>                     
                     </td>
@@ -4786,6 +4786,7 @@ def api_user_comment():
     date_to = request.args.get('dateTo')
     academic_difference = request.args.get('academic_diff_points')
     conduct_difference = request.args.get('conduct_diff_points')
+    total_point = request.args.get('total_point')
     
     try:
         academic_difference = int(academic_difference)
@@ -4796,6 +4797,11 @@ def api_user_comment():
         conduct_difference = int(conduct_difference)
     except (TypeError, ValueError):
         conduct_difference = 0
+    
+    try:
+        total_point = int(total_point)
+    except (TypeError, ValueError):
+        total_point = 0
     
     conn = connect_db()
     cursor = conn.cursor()
@@ -4816,22 +4822,15 @@ def api_user_comment():
         current_comment = comment_result[0] or ""
     else:
         current_comment = ""
-    
-    logging.info(f"User ID: {user_id}, Academic Diff: {academic_difference}, Conduct Diff: {conduct_difference}")
-    logging.info(f"Current Comment: {current_comment}")
-    
-    auto_comment = get_auto_comment(academic_difference, conduct_difference)
-    if auto_comment is None:
-        auto_comment = ""
-    
-    logging.info(f"Auto Comment: {auto_comment}")
-    
+        
     if current_comment is not None and current_comment.strip() != "":
         comment_to_show = current_comment
     else:
-        comment_to_show = auto_comment or ""
-    
-    logging.info(f"Comment to show: {comment_to_show}")
+        auto_comment = get_auto_comment(academic_difference, conduct_difference, total_point)
+        if auto_comment is None:
+            comment_to_show = ""
+        else:
+            comment_to_show = auto_comment or ""
     
     return jsonify({'success': True, 'comment': comment_to_show})
 
@@ -5452,16 +5451,20 @@ def get_ranking_info(total_points, is_getting=True):
         logging.info(f"Error in get_ranking_info: {str(e)}")
         return "GVCN liên lạc sau", "#6c757d"  # Default
 
-def get_auto_comment(academic_diff, conduct_diff):
+def get_auto_comment(academic_diff, conduct_diff, total):
     """Lấy nhận xét tự động cho cả học tập và hạnh kiểm"""
     academic_comment = get_auto_comment_for_category(academic_diff, 'academic') if academic_diff != 0 else None
     conduct_comment = get_auto_comment_for_category(conduct_diff, 'conduct') if conduct_diff != 0 else None
+    total_comment = get_auto_comment_for_category(total, 'comment_general') if total != 0 else None
+    logging.info(f"Auto comments: point = {total}, total={total_comment}")
     
     comments = []
     if academic_comment:
         comments.append(f"Học tập: {academic_comment}")
     if conduct_comment:
         comments.append(f"Hạnh kiểm: {conduct_comment}")
+    if total_comment:
+        comments.append(f"Nhận xét chung: {total_comment}")
     result = ";".join(comments) if comments else None
     return result
 
@@ -6209,26 +6212,89 @@ def generate_student_report_html(user_id, date_from, date_to, student, teacher_i
                 except:
                     period_display = ""
                 
-                # Escape HTML in comment content
-                safe_comment = str(comment_text).replace('Hạnh kiểm:', '<br> Hạnh kiểm:')
-                
-                if safe_comment and safe_comment != "None":
+                if comment_text and comment_text != "None":
+                    # Phân tích comment_text theo pattern
+                    comment_parts = {
+                        'hoc_tap': '',
+                        'hanh_kiem': '',
+                        'nhan_xet_chung': ''
+                    }
+                    
+                    # Tách các phần comment
+                    if 'Học tập:' in comment_text:
+                        # Tìm phần học tập
+                        start_idx = comment_text.find('Học tập:') + len('Học tập:')
+                        end_idx = comment_text.find(';', start_idx)
+                        if end_idx == -1:
+                            end_idx = len(comment_text)
+                        comment_parts['hoc_tap'] = comment_text[start_idx:end_idx].strip()
+                    
+                    if ';Hạnh kiểm:' in comment_text:
+                        # Tìm phần hạnh kiểm
+                        start_idx = comment_text.find(';Hạnh kiểm:') + len(';Hạnh kiểm:')
+                        end_idx = comment_text.find(';', start_idx)
+                        if end_idx == -1:
+                            end_idx = len(comment_text)
+                        comment_parts['hanh_kiem'] = comment_text[start_idx:end_idx].strip()
+                    
+                    if ';Nhận xét chung:' in comment_text:
+                        # Tìm phần nhận xét chung
+                        start_idx = comment_text.find(';Nhận xét chung:') + len(';Nhận xét chung:')
+                        comment_parts['nhan_xet_chung'] = comment_text[start_idx:].strip()
+                    
                     html += f"""
-                        <div class=\"comment-item mb-3 p-3\" style=\"background: #f8f9fa; border-left: 4px solid #f39c12; border-radius: 5px;\">
-                            <div class=\"comment-content\" style=\"color: #34495e; line-height: 1.6;\">
-                                {safe_comment}
+                        <div class="comment-item mb-3 p-3" style="background: #f8f9fa; border-left: 4px solid #f39c12; border-radius: 5px;">
+                    """
+                    
+                    
+                    
+                    # Hiển thị so sánh với lần trước nếu có học tập hoặc hạnh kiểm
+                    if comment_parts['hoc_tap'] or comment_parts['hanh_kiem']:
+                        html += f"""
+                            <div class="mb-3">
+                                <h5 style="color: #0776e6; font-weight: 600; margin-bottom: 10px;">So sánh với lần trước</h5>
+                                <div class="comment-content" style="color: #34495e; line-height: 1.6;">
+                        """
+                        
+                        # Hiển thị học tập
+                        if comment_parts['hoc_tap']:
+                            html += f"""
+                                <div class="mb-2">
+                                    <strong>Học tập:</strong> {comment_parts['hoc_tap']}
+                                </div>
+                            """
+                        
+                        # Hiển thị hạnh kiểm
+                        if comment_parts['hanh_kiem']:
+                            html += f"""
+                                <div class="mb-2">
+                                    <strong>Hạnh kiểm:</strong> {comment_parts['hanh_kiem']}
+                                </div>
+                            """
+                        
+                        # Hiển thị nhận xét chung nếu có
+                    if comment_parts['nhan_xet_chung']:
+                        html += f"""
+                            <div class="mb-3">
+                                <h5 style="color: #0776e6; font-weight: 600; margin-bottom: 10px;">Nhận xét chung</h5>
+                                <div class="comment-content" style="color: #34495e; line-height: 1.6;">
+                                    {comment_parts['nhan_xet_chung']}
+                                </div>
                             </div>
+                        """
+                        
+                        html += """
+                                </div>
+                            </div>
+                        """
+                    
+                    html += """
                         </div>
                     """
             
             html += """
                 </div>
             """
-        
-        html += """
-            </div>
-        </div>
-        """
         
         return html
         

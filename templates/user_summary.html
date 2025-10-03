@@ -806,10 +806,11 @@
                     const userId = textarea.dataset.userId;
                     const academic_diff_points = textarea.dataset.academicPoint;
                     const conduct_diff_points = textarea.dataset.conductPoint;
+                    const total_point = textarea.dataset.totalPoint;
                     const dateFrom = document.getElementById('date_from').value;
                     const dateTo = document.getElementById('date_to').value;
                     // Gọi API lấy comment
-                    const res = await fetch(`/api/user_comment?user_id=${userId}&dateFrom=${dateFrom}&dateTo=${dateTo}&academic_diff_points=${academic_diff_points}&conduct_diff_points=${conduct_diff_points}`);
+                    const res = await fetch(`/api/user_comment?user_id=${userId}&dateFrom=${dateFrom}&dateTo=${dateTo}&academic_diff_points=${academic_diff_points}&conduct_diff_points=${conduct_diff_points}&total_point=${total_point}`);
                     const data = await res.json();
                     if (data.success) {
                         textarea.value = data.comment || '';
