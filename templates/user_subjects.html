@@ -586,9 +586,6 @@
         
 
         function saveUserSubjects() {
-            // Lấy danh sách user đã chọn (checkbox)
-            const userCheckboxes = document.querySelectorAll('.user-checkbox:checked');
-            const userIds = Array.from(userCheckboxes).map(cb => cb.value);
             const registeredDate = document.getElementById('modal_registered_date').value;
             const enteredBy = document.getElementById('modal_entered_by').value;
 
@@ -598,9 +595,15 @@
             }
             
             if (isEditMode) {
-                // Edit mode: get data from edit mode fields
+                // Edit mode: get user_id from hidden input (not from checkboxes)
+                const userId = document.getElementById('modal_user_id').value;
                 const subjectId = document.getElementById('modal_subject_id_edit').value;
                 const criteriaId = document.getElementById('modal_criteria_id_edit').value;
+                
+                if (!userId) {
+                    showWarning('Không tìm thấy thông tin học sinh');
+                    return;
+                }
                 
                 if (!subjectId) {
                     showWarning('Vui lòng chọn môn học');
@@ -627,7 +630,15 @@
                     },
                     body: JSON.stringify(data)
                 })
-                .then(response => response.json())
+                .then(response => {
+                    // Kiểm tra status code trước khi parse JSON
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.error || 'Có lỗi xảy ra');
+                        });
+                    }
+                    return response.json();
+                })
                 .then(result => {
                     if (result.success) {
                         const modal = bootstrap.Modal.getInstance(document.getElementById('userSubjectsModal'));
@@ -640,16 +651,25 @@
 
                         refreshTableData();
                     } else {
-                        showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+                        showError(result.error || 'Có lỗi xảy ra khi cập nhật dữ liệu');
                     }
                 })
                 .catch(error => {
                     console.error('Error updating user subjects:', error);
-                    showError('Có lỗi xảy ra khi cập nhật dữ liệu');
+                    showError(error.message || 'Có lỗi xảy ra khi cập nhật dữ liệu');
                 });
                 
             } else {
-                // Create mode: lặp qua từng học sinh và từng môn học
+                // Create mode: get user_ids from checkboxes
+                const userCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+                const userIds = Array.from(userCheckboxes).map(cb => cb.value);
+                
+                if (userIds.length === 0) {
+                    showWarning('Vui lòng chọn ít nhất một học sinh');
+                    return;
+                }
+                
+                // Get selected subjects and criteria
                 const selectedSubjects = [];
                 let validationFailed = false;
 
@@ -668,11 +688,6 @@
                         criteria_id: criteriaId
                     });
                 });
-
-                if (userIds.length === 0) {
-                    showWarning('Vui lòng chọn ít nhất một học sinh');
-                    return;
-                }
 
                 if (selectedSubjects.length === 0) {
                     showWarning('Vui lòng chọn ít nhất một môn học');
@@ -701,26 +716,45 @@
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(data)
                             })
-                            .then(response => response.json())
+                            .then(response => {
+                                // Parse JSON và giữ lại status để xử lý
+                                return response.json().then(data => ({
+                                    ok: response.ok,
+                                    status: response.status,
+                                    data: data
+                                }));
+                            })
                         );
                     });
                 });
 
                 Promise.all(apiCalls)
-                    .then(results => {
-                        let allSuccess = results.every(r => r.success);
-                        if (allSuccess) {
+                    .then(responses => {
+                        // Chuyển đổi responses về format cũ cho logic xử lý
+                        const results = responses.map(r => r.data);
+                        const failedResults = results.filter(result => !result.success);
+                        
+                        if (failedResults.length === 0) {
+                            // Tất cả thành công
                             const modal = bootstrap.Modal.getInstance(document.getElementById('userSubjectsModal'));
                             if (modal) modal.hide();
                             showSuccess('Đã lưu thành công!');
                             refreshTableData();
                         } else {
-                            showError('Có lỗi xảy ra khi lưu một số bản ghi');
+                            // Có lỗi - hiển thị lỗi đầu tiên
+                            const firstError = failedResults[0].error || 'Có lỗi xảy ra';
+                            if (failedResults.length === results.length) {
+                                // Tất cả đều lỗi
+                                showError(firstError);
+                            } else {
+                                // Một số lỗi
+                                showError(`${firstError}. Có ${failedResults.length}/${results.length} bản ghi bị lỗi.`);
+                            }
                         }
                     })
                     .catch(error => {
                         console.error('Error saving user subjects:', error);
-                        showError('Có lỗi xảy ra khi lưu dữ liệu');
+                        showError(error.message || 'Có lỗi xảy ra khi lưu dữ liệu');
                     });
             }
         }

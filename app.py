@@ -2707,6 +2707,15 @@ def create_user_conduct_api():
         registered_date = request.json['registered_date']
         entered_by = request.json['entered_by']
 
+        # Kiểm tra ngày không được là tương lai
+        try:
+            selected_date = datetime.strptime(registered_date, '%Y-%m-%d').date()
+            today = datetime.today().date()
+            if selected_date > today:
+                return jsonify({'success': False, 'error': 'Ngày không được là ngày tương lai. Vui lòng chọn lại!'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Định dạng ngày không hợp lệ!'}), 400
+
         conn = connect_db()
         cursor = conn.cursor()
         
@@ -2739,6 +2748,15 @@ def update_user_conduct_api(id):
         conduct_id = request.json['conduct_id']
         registered_date = request.json['registered_date']
         entered_by = request.json['entered_by']
+
+        # Kiểm tra ngày không được là tương lai
+        try:
+            selected_date = datetime.strptime(registered_date, '%Y-%m-%d').date()
+            today = datetime.today().date()
+            if selected_date > today:
+                return jsonify({'success': False, 'error': 'Ngày không được là ngày tương lai. Vui lòng chọn lại!'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Định dạng ngày không hợp lệ!'}), 400
 
         conn = connect_db()
         cursor = conn.cursor()
@@ -3288,6 +3306,15 @@ def create_user_subjects_api():
         registered_date = request.json['registered_date']
         entered_by = request.json['entered_by']
 
+        # Kiểm tra ngày không được là tương lai
+        try:
+            selected_date = datetime.strptime(registered_date, '%Y-%m-%d').date()
+            today = datetime.today().date()
+            if selected_date > today:
+                return jsonify({'success': False, 'error': 'Ngày không được là ngày tương lai. Vui lòng chọn lại!'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Định dạng ngày không hợp lệ!'}), 400
+
         conn = connect_db()
         cursor = conn.cursor()
         
@@ -3322,6 +3349,15 @@ def update_user_subjects_api(id):
         criteria_id = request.json.get('criteria_id') or None
         registered_date = request.json['registered_date']
         entered_by = request.json['entered_by']
+
+        # Kiểm tra ngày không được là tương lai
+        try:
+            selected_date = datetime.strptime(registered_date, '%Y-%m-%d').date()
+            today = datetime.today().date()
+            if selected_date > today:
+                return jsonify({'success': False, 'error': 'Ngày không được là ngày tương lai. Vui lòng chọn lại!'}), 400
+        except ValueError:
+            return jsonify({'success': False, 'error': 'Định dạng ngày không hợp lệ!'}), 400
 
         conn = connect_db()
         cursor = conn.cursor()

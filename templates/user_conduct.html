@@ -593,37 +593,35 @@
             const form = document.getElementById('conductForm');
             const formData = new FormData(form);
             
-            const userCheckboxes = document.querySelectorAll('.user-checkbox:checked');
-            const userIds = Array.from(userCheckboxes).map(cb => cb.value);
-
-            const baseData = {
-                user_ids: userIds,
-                registered_date: formData.get('registered_date'),
-                entered_by: formData.get('entered_by')
-            };
-
-            if (userIds.length === 0) {
-                showWarning('Vui lòng chọn ít nhất một học sinh');
-                return;
-            }
-
-            // Validate required fields
-            if (!baseData.user_ids || !baseData.registered_date || !baseData.entered_by) {
+            // Validate required fields first
+            const registeredDate = formData.get('registered_date');
+            const enteredBy = formData.get('entered_by');
+            
+            if (!registeredDate || !enteredBy) {
                 showWarning('Vui lòng điền đầy đủ thông tin');
                 return;
             }
 
             if (isEditMode) {
-                // Edit mode: chỉ cho phép chọn 1 hạnh kiểm từ dropdown
+                // Edit mode: lấy user_id từ hidden input
+                const userId = document.getElementById('modal_user_id').value;
                 const conductId = document.getElementById('modal_conduct_id').value;
+                
+                if (!userId) {
+                    showWarning('Không tìm thấy thông tin học sinh');
+                    return;
+                }
+                
                 if (!conductId) {
                     showWarning('Vui lòng chọn hạnh kiểm');
                     return;
                 }
 
                 const data = {
-                    ...baseData,
-                    conduct_id: conductId
+                    user_id: userId,
+                    conduct_id: conductId,
+                    registered_date: registeredDate,
+                    entered_by: enteredBy
                 };
 
                 fetch(`/api/user_conduct/${currentEditId}`, {
@@ -633,7 +631,15 @@
                     },
                     body: JSON.stringify(data)
                 })
-                .then(response => response.json())
+                .then(response => {
+                    // Kiểm tra status code trước khi parse JSON
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                            throw new Error(err.error || 'Có lỗi xảy ra');
+                        });
+                    }
+                    return response.json();
+                })
                 .then(result => {
                     if (result.success) {
                         const modal = bootstrap.Modal.getInstance(document.getElementById('conductModal'));
@@ -648,14 +654,23 @@
                         
                         refreshTableData();
                     } else {
-                        showError('Có lỗi xảy ra: ' + (result.error || 'Unknown error'));
+                        showError(result.error || 'Có lỗi xảy ra khi lưu dữ liệu');
                     }
                 })
                 .catch(error => {
                     console.error('Error saving conduct:', error);
-                    showError('Có lỗi xảy ra khi lưu dữ liệu');
+                    showError(error.message || 'Có lỗi xảy ra khi lưu dữ liệu');
                 });
             } else {
+                // Create mode: lấy user_ids từ checkboxes
+                const userCheckboxes = document.querySelectorAll('.user-checkbox:checked');
+                const userIds = Array.from(userCheckboxes).map(cb => cb.value);
+
+                if (userIds.length === 0) {
+                    showWarning('Vui lòng chọn ít nhất một học sinh');
+                    return;
+                }
+                
                 // Create mode: cho phép chọn nhiều hạnh kiểm từ checkbox
                 const selectedConducts = document.querySelectorAll('.conduct-checkbox:checked');
                 if (selectedConducts.length === 0) {
@@ -666,26 +681,35 @@
                 // Tạo array các API call cho từng hạnh kiểm được chọn
                 const apiCalls = [];
                 selectedConducts.forEach(checkbox => {
-                userIds.forEach(userId => {
-                    const data = {
-                        user_id: userId,
-                        conduct_id: checkbox.value,
-                        registered_date: baseData.registered_date,
-                        entered_by: baseData.entered_by
-                    };
-                    const apiCall = fetch('/api/user_conduct', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(data)
+                    userIds.forEach(userId => {
+                        const data = {
+                            user_id: userId,
+                            conduct_id: checkbox.value,
+                            registered_date: registeredDate,
+                            entered_by: enteredBy
+                        };
+                        const apiCall = fetch('/api/user_conduct', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(data)
+                        })
+                        .then(response => {
+                            // Parse JSON và giữ lại status để xử lý
+                            return response.json().then(data => ({
+                                ok: response.ok,
+                                status: response.status,
+                                data: data
+                            }));
+                        });
+                        apiCalls.push(apiCall);
                     });
-                    apiCalls.push(apiCall);
                 });
-            });
 
                 // Thực hiện tất cả API calls
                 Promise.all(apiCalls)
-                    .then(responses => Promise.all(responses.map(r => r.json())))
-                    .then(results => {
+                    .then(responses => {
+                        // Chuyển đổi responses về format cũ cho logic xử lý
+                        const results = responses.map(r => r.data);
                         const failedResults = results.filter(result => !result.success);
                         
                         if (failedResults.length === 0) {
@@ -702,13 +726,20 @@
                             
                             refreshTableData();
                         } else {
-                            // Có lỗi
-                            showError(`Có ${failedResults.length}/${results.length} bản ghi bị lỗi khi tạo`);
+                            // Có lỗi - hiển thị lỗi đầu tiên
+                            const firstError = failedResults[0].error || 'Có lỗi xảy ra';
+                            if (failedResults.length === results.length) {
+                                // Tất cả đều lỗi
+                                showError(firstError);
+                            } else {
+                                // Một số lỗi
+                                showError(`${firstError}. Có ${failedResults.length}/${results.length} bản ghi bị lỗi.`);
+                            }
                         }
                     })
                     .catch(error => {
                         console.error('Error saving conducts:', error);
-                        showError('Có lỗi xảy ra khi lưu dữ liệu');
+                        showError(error.message || 'Có lỗi xảy ra khi lưu dữ liệu');
                     });
             }
         }
