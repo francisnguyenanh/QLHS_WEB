@@ -949,6 +949,39 @@ def get_user_ranking_from_comments(user_id, date_from, date_to):
         return row[0], row[1]
     return None, None
 
+def get_current_week_dates():
+    """
+    Lấy khoảng thời gian from_date và to_date của tuần hiện tại từ Week_Settings.
+    Logic giống với frontend: tìm tuần chứa ngày hôm nay.
+    Nếu không tìm thấy trong Week_Settings, tính toán dựa trên Thứ 2 - Chủ Nhật.
+    """
+    today = datetime.today()
+    today_str = today.strftime('%Y-%m-%d')
+    
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    # Tìm tuần có from_date <= today <= to_date
+    cursor.execute("""
+        SELECT week_number, from_date, to_date 
+        FROM Week_Settings 
+        WHERE from_date IS NOT NULL AND to_date IS NOT NULL
+          AND from_date <= ? AND to_date >= ?
+        ORDER BY week_number ASC
+        LIMIT 1
+    """, (today_str, today_str))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        # Tìm thấy trong Week_Settings
+        return row[1], row[2]  # from_date, to_date
+    else:
+        # Không tìm thấy, tính toán theo Thứ 2 - Chủ Nhật
+        monday = today - timedelta(days=today.weekday())
+        sunday = monday + timedelta(days=6)
+        return monday.strftime('%Y-%m-%d'), sunday.strftime('%Y-%m-%d')
+
 # Trang chủ
 @app.route('/')
 def index():
@@ -2774,12 +2807,8 @@ def user_conduct_list():
         # Modal users same as filtered users for consistency
         modal_users = users.copy()
 
-        # Tính toán ngày mặc định: Thứ 2 của tuần hiện tại
-        today = datetime.today()
-        days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
-        nearest_monday = today - timedelta(days=days_since_monday)
-        default_date_from = nearest_monday.strftime('%Y-%m-%d')
-        default_date_to = (nearest_monday + timedelta(days=6)).strftime('%Y-%m-%d')  # Chủ Nhật của tuần
+        # Lấy khoảng thời gian từ Week_Settings (logic giống frontend)
+        default_date_from, default_date_to = get_current_week_dates()
 
         selected_users = []
         date_from = default_date_from
@@ -3366,12 +3395,8 @@ def user_subjects_list():
         # Modal users same as filtered users for consistency
         modal_users = users.copy()
 
-        # Tính toán ngày mặc định: Thứ 2 của tuần hiện tại
-        today = datetime.today()
-        days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
-        nearest_monday = today - timedelta(days=days_since_monday)
-        default_date_from = nearest_monday.strftime('%Y-%m-%d')
-        default_date_to = (nearest_monday + timedelta(days=6)).strftime('%Y-%m-%d')  # Chủ Nhật của tuần
+        # Lấy khoảng thời gian từ Week_Settings (logic giống frontend)
+        default_date_from, default_date_to = get_current_week_dates()
 
         selected_users = []
         date_from = default_date_from
@@ -3784,13 +3809,8 @@ def group_summary():
     if 'user_id' not in session:
         return  # Hoặc trả về lỗi phù hợp
 
-    # Tính toán ngày mặc định (Thứ Hai đến Chủ Nhật)
-    today = datetime.today()
-    days_since_monday = today.weekday()
-    monday = today - timedelta(days=days_since_monday)
-    sunday = monday + timedelta(days=6)
-    default_date_from = monday.strftime('%Y-%m-%d')
-    default_date_to = sunday.strftime('%Y-%m-%d')
+    # Lấy khoảng thời gian từ Week_Settings (logic giống frontend)
+    default_date_from, default_date_to = get_current_week_dates()
 
     # Lấy tham số từ request (GET hoặc POST)
     if request.method == 'POST':
@@ -4322,15 +4342,8 @@ def user_summary():
         filtered_users.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=True))
         groups.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
 
-        # Tính toán ngày mặc định: Tuần hiện tại (Thứ Hai đến Chủ Nhật)
-        today = datetime.today()
-        # Lấy thứ Hai của tuần hiện tại
-        days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
-        monday = today - timedelta(days=days_since_monday)
-        sunday = monday + timedelta(days=6)
-        
-        default_date_from = monday.strftime('%Y-%m-%d')
-        default_date_to = sunday.strftime('%Y-%m-%d')
+        # Lấy khoảng thời gian từ Week_Settings (logic giống frontend)
+        default_date_from, default_date_to = get_current_week_dates()
 
         selected_users = []
         selected_groups = []
@@ -6592,12 +6605,8 @@ def login_history():
         
         # Modal users same as filtered users for consistency
 
-        # Tính toán ngày mặc định: Thứ 2 của tuần hiện tại
-        today = datetime.today()
-        days_since_monday = today.weekday()  # 0=Monday, 6=Sunday
-        nearest_monday = today - timedelta(days=days_since_monday)
-        default_date_from = nearest_monday.strftime('%Y-%m-%d')
-        default_date_to = (nearest_monday + timedelta(days=6)).strftime('%Y-%m-%d')  # Chủ Nhật của tuần
+        # Lấy khoảng thời gian từ Week_Settings (logic giống frontend)
+        default_date_from, default_date_to = get_current_week_dates()
 
         selected_users = []
         date_from = default_date_from
