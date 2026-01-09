@@ -4842,6 +4842,378 @@ def user_summary():
         return redirect(url_for('login'))
 
 
+@app.route('/export_user_summary_excel')
+def export_user_summary_excel():
+    """Export user summary data to Excel file"""
+    permission_check = require_menu_permission('user_summary')
+    if permission_check:
+        return permission_check
+    
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Get parameters from query string
+    sort_by = request.args.get('sort_by', 'user_name')
+    sort_order = request.args.get('sort_order', 'asc')
+    
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM Roles WHERE name = 'GVCN'")
+    role_result = cursor.fetchone()
+    gvcn_role_id = role_result[0] if role_result else None
+    cursor.execute("SELECT id FROM Roles WHERE name = 'Master'")
+    master_role_result = cursor.fetchone()
+    master_role_id = master_role_result[0] if master_role_result else None
+    cursor.execute("SELECT id FROM Groups WHERE name = 'Giáo viên'")
+    group_result = cursor.fetchone()
+    teacher_group_id = group_result[0] if group_result else None
+    conn.close()
+
+    # Filter users and groups based on permissions
+    filtered_users = get_filtered_users_by_role()
+    groups = get_filtered_groups_by_role()
+    
+    filtered_users.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=True))
+    groups.sort(key=lambda u: vietnamese_sort_key(u['name'], sort_by_first_name=False))
+
+    # Get date range
+    default_date_from, default_date_to = get_current_week_dates()
+    
+    select_all_users = request.args.get('select_all_users') == 'on'
+    selected_users = request.args.getlist('users')
+    select_all_groups = request.args.get('select_all_groups') == 'on'
+    selected_groups = request.args.getlist('groups')
+    date_from = request.args.get('date_from') or default_date_from
+    date_to = request.args.get('date_to') or default_date_to
+    period_type = request.args.get('period_type', 'week')
+
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    # Build user query with permission filtering
+    user_query = """
+        SELECT id, name
+        FROM Users
+        WHERE is_deleted = 0
+    """
+    user_params = []
+    
+    # Add GVCN and Master role filtering
+    excluded_roles = []
+    if gvcn_role_id is not None:
+        excluded_roles.append(gvcn_role_id)
+    if master_role_id is not None:
+        excluded_roles.append(master_role_id)
+    
+    if excluded_roles:
+        placeholders = ','.join('?' * len(excluded_roles))
+        user_query += f" AND role_id NOT IN ({placeholders})"
+        user_params.extend(excluded_roles)
+
+    if select_all_users:
+        filtered_user_id = [user[0] for user in filtered_users]
+        if filtered_user_id:
+            user_query += " AND id IN ({})".format(','.join('?' * len(filtered_user_id)))
+            user_params.extend(filtered_user_id)
+    elif selected_users:
+        user_query += " AND id IN ({})".format(','.join('?' * len(selected_users)))
+        user_params.extend(selected_users)
+    
+    if select_all_groups:
+        group_ids = [group['id'] for group in groups]
+        if group_ids:
+            user_query += " AND group_id IN ({})".format(','.join('?' * len(group_ids)))
+            user_params.extend(group_ids)
+    elif selected_groups:
+        user_query += " AND group_id IN ({})".format(','.join('?' * len(selected_groups)))
+        user_params.extend(selected_groups)
+
+    cursor.execute(user_query, user_params)
+    users = cursor.fetchall()
+    users.sort(key=lambda u: vietnamese_sort_key(u[1], sort_by_first_name=True))
+    
+    # Prepare data for Excel
+    excel_data = []
+    role_name = session.get('role_name', '')
+    
+    for user_id, user_name in users:
+        conduct_points = 0
+        academic_points = 0
+
+        # Get conduct points
+        uc_query = """
+            SELECT SUM(total_points)
+            FROM User_Conduct
+            WHERE user_id = ? AND is_deleted = 0
+        """
+        uc_params = [user_id]
+        if date_from:
+            uc_query += " AND registered_date >= ?"
+            uc_params.append(date_from)
+        if date_to:
+            uc_query += " AND registered_date <= ?"
+            uc_params.append(date_to)
+        cursor.execute(uc_query, uc_params)
+        uc_points = cursor.fetchone()[0]
+        if uc_points:
+            conduct_points = uc_points
+
+        # Get academic points
+        us_query = """
+            SELECT SUM(total_points)
+            FROM User_Subjects
+            WHERE user_id = ? AND is_deleted = 0
+        """
+        us_params = [user_id]
+        if date_from:
+            us_query += " AND registered_date >= ?"
+            us_params.append(date_from)
+        if date_to:
+            us_query += " AND registered_date <= ?"
+            us_params.append(date_to)
+        cursor.execute(us_query, us_params)
+        us_points = cursor.fetchone()[0]
+        if us_points:
+            academic_points = us_points
+
+        # Get current comment
+        current_comment = ""
+        cursor.execute('''
+            SELECT comment_text FROM User_Comments 
+            WHERE user_id = ? AND period_start = ? AND period_end = ?
+            ORDER BY updated_date DESC LIMIT 1
+        ''', (user_id, date_from, date_to))
+        comment_result = cursor.fetchone()
+        if comment_result:
+            current_comment = comment_result[0] or ""
+
+        # Calculate previous period points
+        prev_conduct_points = 0
+        prev_academic_points = 0
+        
+        if date_from and date_to:
+            try:
+                period_start = datetime.strptime(date_from, '%Y-%m-%d')
+                period_end = datetime.strptime(date_to, '%Y-%m-%d')
+                period_duration = (period_end - period_start).days
+                
+                prev_period_end = period_start - timedelta(days=1)
+                prev_period_start = prev_period_end - timedelta(days=period_duration)
+                
+                prev_date_from = prev_period_start.strftime('%Y-%m-%d')
+                prev_date_to = prev_period_end.strftime('%Y-%m-%d')
+                
+                # Previous conduct points
+                cursor.execute('''
+                    SELECT SUM(total_points) FROM User_Conduct
+                    WHERE user_id = ? AND is_deleted = 0 
+                    AND registered_date >= ? AND registered_date <= ?
+                ''', (user_id, prev_date_from, prev_date_to))
+                prev_uc = cursor.fetchone()[0]
+                if prev_uc:
+                    prev_conduct_points = prev_uc
+                
+                # Previous academic points
+                cursor.execute('''
+                    SELECT SUM(total_points) FROM User_Subjects
+                    WHERE user_id = ? AND is_deleted = 0 
+                    AND registered_date >= ? AND registered_date <= ?
+                ''', (user_id, prev_date_from, prev_date_to))
+                prev_us = cursor.fetchone()[0]
+                if prev_us:
+                    prev_academic_points = prev_us
+                
+                current_academic_points = academic_points if academic_points else 0
+                current_conduct_points = conduct_points if conduct_points else 0
+                
+                academic_difference = current_academic_points - prev_academic_points
+                conduct_difference = current_conduct_points - prev_conduct_points
+                total_point = current_academic_points + current_conduct_points
+                
+                auto_comment = get_auto_comment(academic_difference, conduct_difference, total_point)
+                auto_ranking, ranking_color = get_ranking_info(total_point)
+                
+                if auto_ranking is None:
+                    auto_ranking = ""
+                if auto_comment is None:
+                    auto_comment = ""
+                
+                if current_comment is not None and current_comment.strip() != "":
+                    comment_to_show = current_comment
+                else:
+                    comment_to_show = auto_comment or ""
+            except:
+                auto_ranking = ""
+                comment_to_show = current_comment
+                total_point = (academic_points if academic_points else 0) + (conduct_points if conduct_points else 0)
+        else:
+            auto_ranking = ""
+            comment_to_show = current_comment
+            total_point = (academic_points if academic_points else 0) + (conduct_points if conduct_points else 0)
+
+        # Check standards
+        standard = ""
+        cursor.execute("""
+            SELECT COUNT(*) FROM User_Subjects
+            WHERE user_id = ? AND is_deleted = 0
+            AND registered_date >= ? AND registered_date <= ?
+        """, (user_id, date_from, date_to))
+        us_count = cursor.fetchone()[0]
+
+        cursor.execute("""
+            SELECT COUNT(*) FROM User_Conduct
+            WHERE user_id = ? AND is_deleted = 0
+            AND registered_date >= ? AND registered_date <= ?
+        """, (user_id, date_from, date_to))
+        uc_count = cursor.fetchone()[0]
+
+        if us_count == 0 and uc_count == 0:
+            standard = "HT/HK"
+        elif us_count == 0:
+            standard = "HT"
+        elif uc_count == 0:
+            standard = "HK"
+        else:
+            standard = ""
+
+        # Build row data
+        row_data = {
+            'Đạt': standard,
+            'Họ Tên': user_name,
+            'Học Tập (Trước)': prev_academic_points,
+            'Học Tập (Sau)': academic_points if academic_points else 0,
+            'Học Tập (Tiến Bộ)': (academic_points if academic_points else 0) - prev_academic_points,
+            'Hạnh Kiểm (Trước)': prev_conduct_points,
+            'Hạnh Kiểm (Sau)': conduct_points if conduct_points else 0,
+            'Hạnh Kiểm (Tiến Bộ)': (conduct_points if conduct_points else 0) - prev_conduct_points,
+            'Tổng': total_point
+        }
+        
+        # Add ranking and comment columns for GVCN/Master roles
+        if role_name == 'GVCN' or role_name == 'Master':
+            row_data['Xếp loại'] = auto_ranking
+            row_data['Nhận xét'] = comment_to_show
+        
+        excel_data.append(row_data)
+
+    conn.close()
+
+    # Sort data
+    if sort_by == 'user_name':
+        excel_data.sort(key=lambda x: vietnamese_sort_key(x['Họ Tên'], sort_by_first_name=True), reverse=(sort_order == 'desc'))
+    elif sort_by == 'academic_points':
+        excel_data.sort(key=lambda x: x['Học Tập (Sau)'], reverse=(sort_order == 'desc'))
+    elif sort_by == 'conduct_points':
+        excel_data.sort(key=lambda x: x['Hạnh Kiểm (Sau)'], reverse=(sort_order == 'desc'))
+    elif sort_by == 'prev_academic_points':
+        excel_data.sort(key=lambda x: x['Học Tập (Trước)'], reverse=(sort_order == 'desc'))
+    elif sort_by == 'prev_conduct_points':
+        excel_data.sort(key=lambda x: x['Hạnh Kiểm (Trước)'], reverse=(sort_order == 'desc'))
+    elif sort_by == 'academic_progress':
+        excel_data.sort(key=lambda x: x['Học Tập (Tiến Bộ)'], reverse=(sort_order == 'desc'))
+    elif sort_by == 'conduct_progress':
+        excel_data.sort(key=lambda x: x['Hạnh Kiểm (Tiến Bộ)'], reverse=(sort_order == 'desc'))
+    elif sort_by == 'sum_points' or sort_by == 'total_points':
+        excel_data.sort(key=lambda x: x['Tổng'], reverse=(sort_order == 'desc'))
+    elif sort_by == 'standard':
+        def standard_sort_key(val):
+            order_map = {'HT/HK': 0, 'HT': 1, 'HK': 2, '': 3}
+            return order_map.get(val['Đạt'], 99)
+        excel_data.sort(key=standard_sort_key, reverse=(sort_order == 'desc'))
+
+    # Create Excel file using openpyxl
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Tổng Kết Học Sinh"
+    
+    # Write headers
+    headers = list(excel_data[0].keys()) if excel_data else []
+    ws.append(headers)
+    
+    # Style headers
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(name='Arial', bold=True, color="FFFFFF", size=11)
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    for col in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_alignment
+        cell.border = border
+    
+    # Write data rows
+    for row_data in excel_data:
+        ws.append(list(row_data.values()))
+    
+    # Style data cells
+    data_font = Font(name='Arial', size=11)
+    data_alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    number_alignment = Alignment(horizontal="center", vertical="center")
+    even_row_fill = PatternFill(start_color="f6e9ad", end_color="f6e9ad", fill_type="solid")
+    
+    for row in range(2, ws.max_row + 1):
+        for col in range(1, len(headers) + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.border = border
+            cell.font = data_font
+            
+            # Tô màu nền cho dòng chẵn
+            if row % 2 == 0:
+                cell.fill = even_row_fill
+            
+            # Apply appropriate alignment based on column
+            if col == 2:  # Name column
+                cell.alignment = data_alignment
+            elif col in [len(headers) - 1, len(headers)]:  # Ranking and Comment columns (if exist)
+                cell.alignment = data_alignment
+            else:  # Number columns
+                cell.alignment = number_alignment
+    
+    # Auto-adjust column widths
+    column_widths = {
+        'Đạt': 8,
+        'Họ Tên': 25,
+        'Học Tập (Trước)': 12,
+        'Học Tập (Sau)': 12,
+        'Học Tập (Tiến Bộ)': 15,
+        'Hạnh Kiểm (Trước)': 12,
+        'Hạnh Kiểm (Sau)': 12,
+        'Hạnh Kiểm (Tiến Bộ)': 15,
+        'Tổng': 10,
+        'Xếp loại': 15,
+        'Nhận xét': 40
+    }
+    
+    for idx, header in enumerate(headers, start=1):
+        column_letter = get_column_letter(idx)
+        ws.column_dimensions[column_letter].width = column_widths.get(header, 15)
+    
+    # Save to BytesIO
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    # Generate filename with date range
+    filename = f"TongKetHocSinh_{date_from}_to_{date_to}.xlsx"
+    
+    response = make_response(output.read())
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    
+    return response
+
+
 @app.route('/api/user_comment')
 def api_user_comment():
     user_id = request.args.get('user_id')

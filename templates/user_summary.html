@@ -43,6 +43,11 @@
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
+    .btn-compact.btn-info {
+        background: linear-gradient(135deg, #198754, #20c997);
+        border: none;
+        color: white;
+    }
     .btn-compact.btn-success {
         background: linear-gradient(135deg, #198754, #20c997);
         border: none;
@@ -197,6 +202,10 @@
                         </button>
                     -->
                     </form>
+                    <button type="button" class="btn btn-danger btn-compact" id="exportExcelBtn" data-bs-toggle="tooltip" title="Xuất dữ liệu ra Excel">
+                        <i class="fas fa-file-excel"></i>
+                        <span class="d-none d-md-inline ms-1">Xuất Excel</span>
+                    </button>
                     <button type="button" class="btn btn-warning btn-compact" id="loadRankingBtn" data-bs-toggle="tooltip" title="Nhập xếp loại">
                         <i class="fas fa-star"></i>
                         <span class="d-none d-md-inline ms-1">Xếp loại</span>
@@ -518,6 +527,19 @@
             document.getElementById('searchForm').addEventListener('submit', function(e) {
                 e.preventDefault();
                 loadData();
+            });
+
+            // Export Excel button
+            document.getElementById('exportExcelBtn').addEventListener('click', function() {
+                const form = document.getElementById('searchForm');
+                const formData = new FormData(form);
+                
+                // Tạo URL với query parameters
+                const params = new URLSearchParams(formData);
+                const url = '{{ url_for("export_user_summary_excel") }}?' + params.toString();
+                
+                // Mở URL trong tab mới để tải file
+                window.open(url, '_blank');
             });
 
             // Initialize table events and auto-save
@@ -919,6 +941,12 @@
 
         .btn-compact.btn-success {
             background: linear-gradient(135deg, #198754, #20c997);
+            border: none;
+            color: white;
+        }
+
+        .btn-compact.btn-danger {
+            background: linear-gradient(135deg, #044a26, #065d43);
             border: none;
             color: white;
         }
