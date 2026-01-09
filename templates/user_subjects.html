@@ -101,6 +101,10 @@
                         <span class="d-none d-md-inline ms-1">Tạo mới</span>
                     </button>
                 
+                <button type="button" class="btn btn-info btn-compact" id="exportExcelBtn" data-bs-toggle="tooltip" title="Xuất dữ liệu ra Excel">
+                    <i class="fas fa-file-excel"></i>
+                    <span class="d-none d-md-inline ms-1">Xuất Excel</span>
+                </button>
                 
                 <button type="button" class="btn btn-primary btn-compact" id="toggleSearchForm" data-bs-toggle="tooltip" title="Hiện/Ẩn bộ lọc">
                     <i class="fas fa-filter"></i>
@@ -931,6 +935,17 @@
             // ===== SELECT ALL FUNCTIONALITY =====
             // Select all functionality đã được implement ở phần đầu file
             // Không cần duplicate code ở đây
+            
+            // ===== EXCEL EXPORT BUTTON =====
+            const exportExcelBtn = document.getElementById('exportExcelBtn');
+            if (exportExcelBtn) {
+                exportExcelBtn.addEventListener('click', function() {
+                    const formData = new FormData(searchForm);
+                    const params = new URLSearchParams(formData);
+                    const url = `/export_user_subjects_excel?${params.toString()}`;
+                    window.open(url, '_blank');
+                });
+            }
             
             // ===== SEARCH FORM AJAX SUBMISSION =====
             const searchForm = document.getElementById('searchForm');

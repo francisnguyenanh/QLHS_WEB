@@ -5275,6 +5275,480 @@ def export_user_summary_excel():
     return response
 
 
+@app.route('/export_user_subjects_excel')
+def export_user_subjects_excel():
+    """Export user subjects data to Excel file"""
+    permission_check = require_menu_permission('user_subject')
+    if permission_check:
+        return permission_check
+    
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Get parameters from query string
+    sort_by = request.args.get('sort_by', 'registered_date')
+    sort_order = request.args.get('sort_order', 'desc')
+    
+    # Get filtered data based on role permissions
+    users = get_filtered_users_by_role()
+    groups = get_filtered_groups_by_role()
+    subjects = get_filtered_subjects_by_role()
+    criteria = get_filtered_criteria_by_role()
+    
+    # Get date range
+    default_date_from, default_date_to = get_current_week_dates()
+    
+    select_all_users = request.args.get('select_all_users') == 'on'
+    selected_users = request.args.getlist('users')
+    select_all_groups = request.args.get('select_all_groups') == 'on'
+    selected_groups = request.args.getlist('groups')
+    select_all_subjects = request.args.get('select_all_subjects') == 'on'
+    selected_subjects = request.args.getlist('subjects')
+    date_from = request.args.get('date_from') or default_date_from
+    date_to = request.args.get('date_to') or default_date_to
+    
+    valid_columns = {
+        'user_name': 'u.name',
+        'subject_name': 's.name',
+        'criteria_name': 'cr.name',
+        'group_name': 'g.name',
+        'registered_date': 'us.registered_date',
+        'total_points': 'us.total_points',
+        'entered_by': 'us.entered_by'
+    }
+    sort_column = valid_columns.get(sort_by, 'us.registered_date')
+    sort_direction = 'DESC' if sort_order == 'desc' else 'ASC'
+    sort_by_first_name = (sort_by == 'user_name')
+
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    # Base query with role-based filtering
+    query = """
+            SELECT us.id, u.name AS user_name, s.name AS subject_name, cr.name AS criteria_name, 
+                   us.registered_date, us.total_points, us.entered_by, g.name AS group_name, cr.criterion_type AS criterion_type
+            FROM User_Subjects us
+            JOIN Users u ON us.user_id = u.id
+            JOIN Subjects s ON us.subject_id = s.id
+            LEFT JOIN Criteria cr ON us.criteria_id = cr.id
+            JOIN Groups g ON u.group_id = g.id
+            WHERE us.is_deleted = 0
+        """
+    params = []
+    
+    # Add role-based filtering for users
+    if users:
+        user_ids = [user['id'] for user in users]
+        query += " AND us.user_id IN ({})".format(','.join('?' * len(user_ids)))
+        params.extend(user_ids)
+    else:
+        query += " AND 1 = 0"
+    
+    # Add role-based filtering for subjects
+    if subjects:
+        subject_ids = [subject['id'] for subject in subjects]
+        query += " AND us.subject_id IN ({})".format(','.join('?' * len(subject_ids)))
+        params.extend(subject_ids)
+    else:
+        query += " AND 1 = 0"
+    
+    # Add role-based filtering for groups
+    if groups:
+        group_ids = [group['id'] for group in groups]
+        query += " AND u.group_id IN ({})".format(','.join('?' * len(group_ids)))
+        params.extend(group_ids)
+    else:
+        query += " AND 1 = 0"
+
+    # Additional filtering based on search criteria
+    if select_all_users:
+        pass
+    elif selected_users:
+        allowed_user_ids = [user['id'] for user in users]
+        filtered_selected_users = [uid for uid in selected_users if int(uid) in allowed_user_ids]
+        if filtered_selected_users:
+            query += " AND us.user_id IN ({})".format(','.join('?' * len(filtered_selected_users)))
+            params.extend(filtered_selected_users)
+        else:
+            query += " AND 1 = 0"
+
+    if date_from:
+        query += " AND us.registered_date >= ?"
+        params.append(date_from)
+    if date_to:
+        query += " AND us.registered_date <= ?"
+        params.append(date_to)
+
+    if select_all_subjects:
+        pass
+    elif selected_subjects:
+        allowed_subject_ids = [subject['id'] for subject in subjects]
+        filtered_selected_subjects = [sid for sid in selected_subjects if int(sid) in allowed_subject_ids]
+        if filtered_selected_subjects:
+            query += " AND us.subject_id IN ({})".format(','.join('?' * len(filtered_selected_subjects)))
+            params.extend(filtered_selected_subjects)
+        else:
+            query += " AND 1 = 0"
+
+    if select_all_groups:
+        pass
+    elif selected_groups:
+        allowed_group_ids = [group['id'] for group in groups]
+        filtered_selected_groups = [gid for gid in selected_groups if int(gid) in allowed_group_ids]
+        if filtered_selected_groups:
+            query += " AND u.group_id IN ({})".format(','.join('?' * len(filtered_selected_groups)))
+            params.extend(filtered_selected_groups)
+        else:
+            query += " AND 1 = 0"
+
+    query += f" ORDER BY {sort_column} {sort_direction}"
+           
+    cursor.execute(query, params)
+    db_rows = cursor.fetchall()
+    
+    # If sorting by user_name, apply Vietnamese first name sorting
+    if sort_by_first_name:
+        db_rows = sorted(db_rows, 
+                       key=lambda r: vietnamese_sort_key(r[1], sort_by_first_name=True),
+                       reverse=(sort_order == 'desc'))
+    
+    conn.close()
+    
+    # Prepare data for Excel
+    excel_data = []
+    for row in db_rows:
+        formatted_date = format_date_ddmmyyyy(row[4])
+        excel_data.append({
+            'Họ tên': row[1],
+            'Môn học': row[2],
+            'Tiêu chí': row[3] or 'None',
+            'Nhóm': row[7],
+            'Ngày': formatted_date,
+            'Điểm': row[5],
+            'Người nhập': row[6]
+        })
+
+    # Create Excel file using openpyxl
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Điểm Môn Học"
+    
+    # Write headers
+    headers = ['Họ tên', 'Môn học', 'Tiêu chí', 'Nhóm', 'Ngày', 'Điểm', 'Người nhập']
+    ws.append(headers)
+    
+    # Style headers
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(name='Arial', bold=True, color="FFFFFF", size=11)
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    for col in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_alignment
+        cell.border = border
+    
+    # Write data rows
+    for row_data in excel_data:
+        ws.append(list(row_data.values()))
+    
+    # Style data cells
+    data_font = Font(name='Arial', size=11)
+    data_alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    center_alignment = Alignment(horizontal="center", vertical="center")
+    even_row_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    
+    for row in range(2, ws.max_row + 1):
+        for col in range(1, len(headers) + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.border = border
+            cell.font = data_font
+            
+            # Tô màu nền cho dòng chẵn
+            if row % 2 == 0:
+                cell.fill = even_row_fill
+            
+            # Apply appropriate alignment
+            if col in [1, 2, 3, 4, 7]:  # Text columns
+                cell.alignment = data_alignment
+            else:  # Number columns
+                cell.alignment = center_alignment
+    
+    # Auto-adjust column widths
+    column_widths = {
+        'Họ tên': 25,
+        'Môn học': 20,
+        'Tiêu chí': 25,
+        'Nhóm': 15,
+        'Ngày': 12,
+        'Điểm': 10,
+        'Người nhập': 20
+    }
+    
+    for idx, header in enumerate(headers, start=1):
+        column_letter = get_column_letter(idx)
+        ws.column_dimensions[column_letter].width = column_widths.get(header, 15)
+    
+    # Save to BytesIO
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    # Generate filename with date range
+    filename = f"DiemMonHoc_{date_from}_to_{date_to}.xlsx"
+    
+    response = make_response(output.read())
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    
+    return response
+
+
+@app.route('/export_user_conduct_excel')
+def export_user_conduct_excel():
+    """Export user conduct data to Excel file"""
+    permission_check = require_menu_permission('user_conduct')
+    if permission_check:
+        return permission_check
+    
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    
+    # Get parameters from query string
+    sort_by = request.args.get('sort_by', 'registered_date')
+    sort_order = request.args.get('sort_order', 'desc')
+    
+    # Get filtered data based on role permissions
+    users = get_filtered_users_by_role()
+    groups = get_filtered_groups_by_role()
+    conducts = get_filtered_conducts_by_role()
+    
+    # Get date range
+    default_date_from, default_date_to = get_current_week_dates()
+    
+    select_all_users = request.args.get('select_all_users') == 'on'
+    selected_users = request.args.getlist('users')
+    select_all_groups = request.args.get('select_all_groups') == 'on'
+    selected_groups = request.args.getlist('groups')
+    select_all_conducts = request.args.get('select_all_conducts') == 'on'
+    selected_conducts = request.args.getlist('conducts')
+    date_from = request.args.get('date_from') or default_date_from
+    date_to = request.args.get('date_to') or default_date_to
+    
+    valid_columns = {
+        'user_name': 'u.name',
+        'conduct_name': 'c.name',
+        'group_name': 'g.name',
+        'registered_date': 'uc.registered_date',
+        'total_points': 'uc.total_points',
+        'entered_by': 'uc.entered_by'
+    }
+    sort_column = valid_columns.get(sort_by, 'uc.registered_date')
+    sort_direction = 'DESC' if sort_order == 'desc' else 'ASC'
+    sort_by_first_name = (sort_by == 'user_name')
+
+    conn = connect_db()
+    cursor = conn.cursor()
+    
+    # Base query with role-based filtering
+    query = """
+            SELECT uc.id, u.name AS user_name, c.name AS conduct_name, uc.registered_date, uc.total_points, uc.entered_by, g.name AS group_name, c.conduct_type AS conduct_type
+            FROM User_Conduct uc
+            JOIN Users u ON uc.user_id = u.id
+            JOIN Conduct c ON uc.conduct_id = c.id
+            JOIN Groups g ON u.group_id = g.id
+            WHERE uc.is_deleted = 0
+        """
+    params = []
+    
+    # Add role-based filtering for users
+    if users:
+        user_ids = [user['id'] for user in users]
+        query += " AND uc.user_id IN ({})".format(','.join('?' * len(user_ids)))
+        params.extend(user_ids)
+    else:
+        query += " AND 1 = 0"
+    
+    # Add role-based filtering for conducts
+    if conducts:
+        conduct_ids = [conduct['id'] for conduct in conducts]
+        query += " AND uc.conduct_id IN ({})".format(','.join('?' * len(conduct_ids)))
+        params.extend(conduct_ids)
+    else:
+        query += " AND 1 = 0"
+    
+    # Add role-based filtering for groups
+    if groups:
+        group_ids = [group['id'] for group in groups]
+        query += " AND u.group_id IN ({})".format(','.join('?' * len(group_ids)))
+        params.extend(group_ids)
+    else:
+        query += " AND 1 = 0"
+
+    # Additional filtering based on search criteria
+    if select_all_users:
+        pass
+    elif selected_users:
+        allowed_user_ids = [user['id'] for user in users]
+        filtered_selected_users = [uid for uid in selected_users if int(uid) in allowed_user_ids]
+        if filtered_selected_users:
+            query += " AND uc.user_id IN ({})".format(','.join('?' * len(filtered_selected_users)))
+            params.extend(filtered_selected_users)
+        else:
+            query += " AND 1 = 0"
+
+    if date_from:
+        query += " AND uc.registered_date >= ?"
+        params.append(date_from)
+    if date_to:
+        query += " AND uc.registered_date <= ?"
+        params.append(date_to)
+
+    if select_all_conducts:
+        pass
+    elif selected_conducts:
+        allowed_conduct_ids = [conduct['id'] for conduct in conducts]
+        filtered_selected_conducts = [cid for cid in selected_conducts if int(cid) in allowed_conduct_ids]
+        if filtered_selected_conducts:
+            query += " AND uc.conduct_id IN ({})".format(','.join('?' * len(filtered_selected_conducts)))
+            params.extend(filtered_selected_conducts)
+        else:
+            query += " AND 1 = 0"
+
+    if select_all_groups:
+        pass
+    elif selected_groups:
+        allowed_group_ids = [group['id'] for group in groups]
+        filtered_selected_groups = [gid for gid in selected_groups if int(gid) in allowed_group_ids]
+        if filtered_selected_groups:
+            query += " AND u.group_id IN ({})".format(','.join('?' * len(filtered_selected_groups)))
+            params.extend(filtered_selected_groups)
+        else:
+            query += " AND 1 = 0"
+
+    query += f" ORDER BY {sort_column} {sort_direction}"
+    
+    cursor.execute(query, params)
+    db_rows = cursor.fetchall()
+
+    # If sorting by user_name, apply Vietnamese first name sorting
+    if sort_by_first_name:
+        db_rows = sorted(db_rows, 
+                       key=lambda r: vietnamese_sort_key(r[1], sort_by_first_name=True),
+                       reverse=(sort_order == 'desc'))
+    
+    conn.close()
+    
+    # Prepare data for Excel
+    excel_data = []
+    for row in db_rows:
+        formatted_date = format_date_ddmmyyyy(row[3])
+        excel_data.append({
+            'Họ tên': row[1],
+            'Hạnh kiểm': row[2],
+            'Nhóm': row[6],
+            'Ngày': formatted_date,
+            'Điểm': row[4],
+            'Người nhập': row[5]
+        })
+
+    # Create Excel file using openpyxl
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Điểm Hạnh Kiểm"
+    
+    # Write headers
+    headers = ['Họ tên', 'Hạnh kiểm', 'Nhóm', 'Ngày', 'Điểm', 'Người nhập']
+    ws.append(headers)
+    
+    # Style headers
+    header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
+    header_font = Font(name='Arial', bold=True, color="FFFFFF", size=11)
+    header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+    
+    for col in range(1, len(headers) + 1):
+        cell = ws.cell(row=1, column=col)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_alignment
+        cell.border = border
+    
+    # Write data rows
+    for row_data in excel_data:
+        ws.append(list(row_data.values()))
+    
+    # Style data cells
+    data_font = Font(name='Arial', size=11)
+    data_alignment = Alignment(horizontal="left", vertical="center", wrap_text=True)
+    center_alignment = Alignment(horizontal="center", vertical="center")
+    even_row_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    
+    for row in range(2, ws.max_row + 1):
+        for col in range(1, len(headers) + 1):
+            cell = ws.cell(row=row, column=col)
+            cell.border = border
+            cell.font = data_font
+            
+            # Tô màu nền cho dòng chẵn
+            if row % 2 == 0:
+                cell.fill = even_row_fill
+            
+            # Apply appropriate alignment
+            if col in [1, 2, 3, 4, 6]:  # Text columns
+                cell.alignment = data_alignment
+            else:  # Number columns
+                cell.alignment = center_alignment
+    
+    # Auto-adjust column widths
+    column_widths = {
+        'Họ tên': 25,
+        'Hạnh kiểm': 25,
+        'Nhóm': 15,
+        'Ngày': 12,
+        'Điểm': 10,
+        'Người nhập': 20
+    }
+    
+    for idx, header in enumerate(headers, start=1):
+        column_letter = get_column_letter(idx)
+        ws.column_dimensions[column_letter].width = column_widths.get(header, 15)
+    
+    # Save to BytesIO
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    
+    # Generate filename with date range
+    filename = f"DiemHanhKiem_{date_from}_to_{date_to}.xlsx"
+    
+    response = make_response(output.read())
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    
+    return response
+
+
 @app.route('/api/user_comment')
 def api_user_comment():
     user_id = request.args.get('user_id')
