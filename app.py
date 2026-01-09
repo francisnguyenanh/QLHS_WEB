@@ -4600,8 +4600,29 @@ def user_summary():
             else:
                 standard = ""
 
+            # Tính điểm trung bình (loại bỏ thứ 7 và chủ nhật)
+            if date_from and date_to:
+                try:
+                    from_date_obj = datetime.strptime(date_from, '%Y-%m-%d')
+                    to_date_obj = datetime.strptime(date_to, '%Y-%m-%d')
+                    
+                    # Đếm số ngày làm việc (không tính thứ 7 và chủ nhật)
+                    num_working_days = 0
+                    current_date = from_date_obj
+                    while current_date <= to_date_obj:
+                        # weekday(): 0=Monday, 6=Sunday
+                        if current_date.weekday() < 5:  # Thứ 2-6 (0-4)
+                            num_working_days += 1
+                        current_date += timedelta(days=1)
+                    
+                    average_point = round(total_point / num_working_days, 1) if num_working_days > 0 else 0
+                except:
+                    average_point = 0
+            else:
+                average_point = 0
+
             # Thêm vào tuple record
-            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, standard, user_id, comment_to_show, comment_to_show, prev_academic_points, prev_conduct_points, auto_ranking, total_point))
+            records.append((user_name, academic_points if academic_points else 0, conduct_points if conduct_points else 0, standard, user_id, comment_to_show, comment_to_show, prev_academic_points, prev_conduct_points, auto_ranking, total_point, average_point))
 
         if sort_by == 'user_name':
             records.sort(key=lambda x: vietnamese_sort_key(x[0], sort_by_first_name=True) if x[0] else '', reverse=(sort_order == 'desc'))
@@ -4621,6 +4642,8 @@ def user_summary():
             records.sort(key=lambda x: x[1] + x[2], reverse=(sort_order == 'desc'))
         elif sort_by == 'sum_points':
             records.sort(key=lambda x: x[10], reverse=(sort_order == 'desc'))   # index 10 is sum points
+        elif sort_by == 'average_point':
+            records.sort(key=lambda x: x[11], reverse=(sort_order == 'desc'))   # index 11 is average point
         elif sort_by == 'standard':
             # Sắp xếp theo tiêu chuẩn: HT/HK > HT > HK > ''
             def standard_sort_key(val):
@@ -4667,6 +4690,16 @@ def user_summary():
                     <a href="#" class="sort-link text-decoration-none text-dark" data-sort="sum_points" data-order="{{ 'desc' if sort_by == 'sum_points' and sort_order == 'asc' else 'asc' }}">
                         Tổng
                         {% if sort_by == 'sum_points' %}
+                            {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
+                        {% else %}
+                            <i class="fas fa-sort"></i>
+                        {% endif %}
+                    </a>
+                </th>
+                <th rowspan="2" class="text-center" style="width: 80px;">
+                    <a href="#" class="sort-link text-decoration-none text-dark" data-sort="average_point" data-order="{{ 'desc' if sort_by == 'average_point' and sort_order == 'asc' else 'asc' }}">
+                        ĐTB
+                        {% if sort_by == 'average_point' %}
                             {% if sort_order == 'asc' %}▲{% else %}▼{% endif %}
                         {% else %}
                             <i class="fas fa-sort"></i>
@@ -4777,6 +4810,9 @@ def user_summary():
                     </td>
                     <td class="text-center">
                         {{ record[10] }}
+                    </td>
+                    <td class="text-center">
+                        {{ record[11] }}
                     </td>
                     {% if role_name == 'GVCN' or role_name == 'Master' %}
                     <td class="text-center comment-col">
@@ -5076,6 +5112,27 @@ def export_user_summary_excel():
         else:
             standard = ""
 
+        # Tính điểm trung bình (loại bỏ thứ 7 và chủ nhật)
+        if date_from and date_to:
+            try:
+                from_date_obj = datetime.strptime(date_from, '%Y-%m-%d')
+                to_date_obj = datetime.strptime(date_to, '%Y-%m-%d')
+                
+                # Đếm số ngày làm việc (không tính thứ 7 và chủ nhật)
+                num_working_days = 0
+                current_date = from_date_obj
+                while current_date <= to_date_obj:
+                    # weekday(): 0=Monday, 6=Sunday
+                    if current_date.weekday() < 5:  # Thứ 2-6 (0-4)
+                        num_working_days += 1
+                    current_date += timedelta(days=1)
+                
+                average_point = round(total_point / num_working_days, 1) if num_working_days > 0 else 0
+            except:
+                average_point = 0
+        else:
+            average_point = 0
+
         # Build row data
         row_data = {
             'Đạt': standard,
@@ -5086,7 +5143,8 @@ def export_user_summary_excel():
             'Hạnh Kiểm (Trước)': prev_conduct_points,
             'Hạnh Kiểm (Sau)': conduct_points if conduct_points else 0,
             'Hạnh Kiểm (Tiến Bộ)': (conduct_points if conduct_points else 0) - prev_conduct_points,
-            'Tổng': total_point
+            'Tổng': total_point,
+            'ĐTB': average_point
         }
         
         # Add ranking and comment columns for GVCN/Master roles
@@ -5115,6 +5173,8 @@ def export_user_summary_excel():
         excel_data.sort(key=lambda x: x['Hạnh Kiểm (Tiến Bộ)'], reverse=(sort_order == 'desc'))
     elif sort_by == 'sum_points' or sort_by == 'total_points':
         excel_data.sort(key=lambda x: x['Tổng'], reverse=(sort_order == 'desc'))
+    elif sort_by == 'average_point':
+        excel_data.sort(key=lambda x: x['ĐTB'], reverse=(sort_order == 'desc'))
     elif sort_by == 'standard':
         def standard_sort_key(val):
             order_map = {'HT/HK': 0, 'HT': 1, 'HK': 2, '': 3}
@@ -5191,6 +5251,7 @@ def export_user_summary_excel():
         'Hạnh Kiểm (Sau)': 12,
         'Hạnh Kiểm (Tiến Bộ)': 15,
         'Tổng': 10,
+        'ĐTB': 10,
         'Xếp loại': 15,
         'Nhận xét': 40
     }
