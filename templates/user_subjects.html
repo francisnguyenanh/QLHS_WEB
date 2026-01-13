@@ -95,17 +95,17 @@
             
             <!-- Toggle button for search form -->
             <div class="d-flex gap-2">
-                
-                    <button type="button" class="btn btn-success btn-compact" onclick="openCreateModal()" data-bs-toggle="tooltip" title="Tạo mới kết quả học tập">
-                        <i class="fas fa-plus"></i>
-                        <span class="d-none d-md-inline ms-1">Tạo mới</span>
-                    </button>
-                
-                <button type="button" class="btn btn-info btn-compact" id="exportExcelBtn" data-bs-toggle="tooltip" title="Xuất dữ liệu ra Excel">
+                {% if role_name == 'GVCN' or role_name == 'Master' %}
+                <button type="button" class="btn btn-danger btn-compact" id="exportExcelBtn" data-bs-toggle="tooltip" title="Xuất dữ liệu ra Excel">
                     <i class="fas fa-file-excel"></i>
                     <span class="d-none d-md-inline ms-1">Xuất Excel</span>
                 </button>
-                
+                {% endif %}
+
+                <button type="button" class="btn btn-success btn-compact" onclick="openCreateModal()" data-bs-toggle="tooltip" title="Tạo mới kết quả học tập">
+                    <i class="fas fa-plus"></i>
+                    <span class="d-none d-md-inline ms-1">Tạo mới</span>
+                </button>
                 <button type="button" class="btn btn-primary btn-compact" id="toggleSearchForm" data-bs-toggle="tooltip" title="Hiện/Ẩn bộ lọc">
                     <i class="fas fa-filter"></i>
                     <span class="d-none d-md-inline ms-1">Bộ lọc</span>
@@ -1157,6 +1157,12 @@
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-compact.btn-danger {
+            background: linear-gradient(135deg, #044a26, #065d43);
+            border: none;
+            color: white;
         }
 
         .btn-compact:hover {

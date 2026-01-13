@@ -140,15 +140,16 @@
             
             <!-- Toggle button for search form -->
             <div class="d-flex gap-2">
-                
+                {% if role_name == 'GVCN' or role_name == 'Master' %}
+                <button type="button" class="btn btn-danger btn-compact" id="exportExcelBtn" data-bs-toggle="tooltip" title="Xuất dữ liệu ra Excel">
+                    <i class="fas fa-file-excel"></i>
+                    <span class="d-none d-md-inline ms-1">Xuất Excel</span>
+                </button>
+                {% endif %}
+
                 <button type="button" class="btn btn-success btn-compact" onclick="openCreateModal()" data-bs-toggle="tooltip" title="Tạo mới hạnh kiểm">
                     <i class="fas fa-plus"></i>
                     <span class="d-none d-md-inline ms-1">Tạo mới</span>
-                </button>
-                
-                <button type="button" class="btn btn-info btn-compact" id="exportExcelBtn" data-bs-toggle="tooltip" title="Xuất dữ liệu ra Excel">
-                    <i class="fas fa-file-excel"></i>
-                    <span class="d-none d-md-inline ms-1">Xuất Excel</span>
                 </button>
                 
                 <button type="button" class="btn btn-primary btn-compact" id="toggleSearchForm" data-bs-toggle="tooltip" title="Hiện/Ẩn bộ lọc">
@@ -1162,6 +1163,12 @@
         .btn-compact:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-compact.btn-danger {
+            background: linear-gradient(135deg, #044a26, #065d43);
+            border: none;
+            color: white;
         }
 
         .btn-compact.btn-success {
