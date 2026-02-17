@@ -7679,6 +7679,9 @@ def user_account_encoded(encoded_id):
     
     #logging.info(f"Accessed user account for user_id: {class_data}")
     
+    # Lấy URL cơ sở
+    site_url = request.host_url.rstrip('/')
+    
     return render_template(
         'user_account.html',
         name=user[0],
@@ -7687,7 +7690,8 @@ def user_account_encoded(encoded_id):
         role_name=user[3],
         role_username=user[4],
         role_password=user[5],
-        class_name=class_data['name'] if class_data else "Chưa phân lớp"
+        class_name=class_data['name'] if class_data else "Chưa phân lớp",
+        site_url=site_url
     )
 
 @app.route('/api/user_ranking')
