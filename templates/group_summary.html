@@ -384,6 +384,17 @@
         let currentDate = new Date();
         let currentPeriodType = 'week';
         let isCollapsed = false; // Global variable for collapse state
+        
+        // Lưu trữ dữ liệu bảng để sort phía client
+        let tableData = [];
+        let currentSortBy = '{{ sort_by }}';
+        let currentSortOrder = '{{ sort_order }}';
+        
+        // Hàm hiển thị thông báo lỗi
+        function showError(message) {
+            console.error(message);
+            // Có thể thêm toast notification ở đây nếu cần
+        }
 
         // Hàm lấy tuần hiện tại từ backend
         async function loadCurrentWeek() {
@@ -393,10 +404,12 @@
                 const res = await fetch(`/api/week_by_date?date=${todayStr}`);
                 const data = await res.json();
                 if (res.ok && !data.error) {
+                    isProgrammaticChange = true;
                     document.getElementById('date_from').value = data.from_date;
                     document.getElementById('date_to').value = data.to_date;
                     document.getElementById('periodDisplay').textContent = `Tuần ${data.week_number}`;
                     window.currentWeekNumber = data.week_number;
+                    isProgrammaticChange = false;
                 } else {
                     showError(data.error || 'Không lấy được dữ liệu tuần');
                 }
@@ -413,10 +426,12 @@
                 const res = await fetch(`/api/week_by_number?week_number=${week}`);
                 const data = await res.json();
                 if (res.ok && !data.error) {
+                    isProgrammaticChange = true;
                     document.getElementById('date_from').value = data.from_date;
                     document.getElementById('date_to').value = data.to_date;
                     document.getElementById('periodDisplay').textContent = `Tuần ${data.week_number}`;
                     window.currentWeekNumber = data.week_number;
+                    isProgrammaticChange = false;
                 } else {
                     showError(data.error || 'Không lấy được dữ liệu tuần');
                 }
@@ -455,8 +470,10 @@
                 const firstDay = getFirstDayOfMonth(currentDate);
                 const lastDay = getLastDayOfMonth(currentDate);
 
+                isProgrammaticChange = true;
                 dateFromInput.value = formatDate(firstDay);
                 dateToInput.value = formatDate(lastDay);
+                isProgrammaticChange = false;
 
                 const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
                                    'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
@@ -465,6 +482,118 @@
         }
         // Biến để theo dõi việc khởi tạo
         let isInitializing = true;
+        let isProgrammaticChange = false; // Flag để phân biệt giữa user change và programmatic change
+        
+        // Hàm lưu dữ liệu bảng từ DOM
+        function loadTableData() {
+            tableData = [];
+            const rows = document.querySelectorAll('#table-container tbody tr');
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 8) {
+                    // Lấy giá trị progress (remove span tags)
+                    let progressCell = cells[7];
+                    let progressText = progressCell.textContent.trim();
+                    let progressValue = parseFloat(progressText.replace('+', '')) || 0;
+                    
+                    tableData.push({
+                        group_name: cells[0].textContent.trim(),
+                        prev_study: parseFloat(cells[1].textContent.trim()) || 0,
+                        prev_conduct: parseFloat(cells[2].textContent.trim()) || 0,
+                        prev_total: parseFloat(cells[3].textContent.trim()) || 0,
+                        now_study: parseFloat(cells[4].textContent.trim()) || 0,
+                        now_conduct: parseFloat(cells[5].textContent.trim()) || 0,
+                        now_total: parseFloat(cells[6].textContent.trim()) || 0,
+                        progress: progressValue
+                    });
+                }
+            });
+        }
+        
+        // Hàm so sánh tên tiếng Việt
+        function vietnameseCompare(a, b) {
+            return a.localeCompare(b, 'vi', {sensitivity: 'base'});
+        }
+        
+        // Hàm sort dữ liệu
+        function sortTableData(sortBy, sortOrder) {
+            tableData.sort((a, b) => {
+                let valA = a[sortBy];
+                let valB = b[sortBy];
+                
+                if (sortBy === 'group_name') {
+                    const comparison = vietnameseCompare(valA, valB);
+                    return sortOrder === 'asc' ? comparison : -comparison;
+                } else {
+                    const comparison = valA - valB;
+                    return sortOrder === 'asc' ? comparison : -comparison;
+                }
+            });
+        }
+        
+        // Hàm render lại bảng
+        function renderTable() {
+            const tbody = document.querySelector('#table-container tbody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            tableData.forEach(record => {
+                const row = document.createElement('tr');
+                
+                // Progress cell với màu sắc
+                let progressHtml = '';
+                if (record.progress > 0) {
+                    progressHtml = `<span class="text-success">+${record.progress}</span>`;
+                } else if (record.progress < 0) {
+                    progressHtml = `<span class="text-danger">${record.progress}</span>`;
+                } else {
+                    progressHtml = `<span class="text-muted">${record.progress}</span>`;
+                }
+                
+                row.innerHTML = `
+                    <td>${record.group_name}</td>
+                    <td class="text-center">${record.prev_study}</td>
+                    <td class="text-center">${record.prev_conduct}</td>
+                    <td class="text-center">${record.prev_total}</td>
+                    <td class="text-center">${record.now_study}</td>
+                    <td class="text-center">${record.now_conduct}</td>
+                    <td class="text-center">${record.now_total}</td>
+                    <td class="text-center">${progressHtml}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Hàm cập nhật sort indicators trong header
+        function updateSortIndicators(sortBy, sortOrder) {
+            document.querySelectorAll('.sort-link').forEach(link => {
+                const linkSortBy = link.getAttribute('data-sort');
+                const arrow = sortOrder === 'asc' ? '▲' : '▼';
+                const sortIcon = '<i class="fas fa-sort"></i>';
+                
+                // Lấy text của link (không bao gồm icon)
+                let linkText = '';
+                if (linkSortBy === 'group_name') linkText = 'Nhóm';
+                else if (linkSortBy === 'prev_study') linkText = 'Học tập';
+                else if (linkSortBy === 'prev_conduct') linkText = 'Hạnh kiểm';
+                else if (linkSortBy === 'prev_total') linkText = 'Tổng';
+                else if (linkSortBy === 'now_study') linkText = 'Học tập';
+                else if (linkSortBy === 'now_conduct') linkText = 'Hạnh kiểm';
+                else if (linkSortBy === 'now_total') linkText = 'Tổng';
+                else if (linkSortBy === 'progress') linkText = 'Tiến bộ';
+                
+                if (linkSortBy === sortBy) {
+                    link.innerHTML = linkText + '\n                                ' + arrow;
+                    // Cập nhật order cho lần click tiếp theo
+                    link.setAttribute('data-order', sortOrder === 'asc' ? 'desc' : 'asc');
+                } else {
+                    link.innerHTML = linkText + '\n                                ' + sortIcon;
+                    link.setAttribute('data-order', 'asc');
+                }
+            });
+        }
+
+        // Biến để theo dõi việc khởi tạo
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
@@ -517,7 +646,7 @@
                     }
                 });
             }
-            loadCurrentWeek();
+            
             // Kiểm tra xem có giá trị date_from và date_to từ server không
             const dateFromValue = document.getElementById('date_from').value;
             const dateToValue = document.getElementById('date_to').value;
@@ -535,15 +664,37 @@
                 
                 if (currentPeriodType === 'week') {
                     document.getElementById('week_type').checked = true;
+                    // Cập nhật display cho tuần hiện tại dựa vào giá trị từ server
+                    // Fetch week number từ date_from
+                    fetch(`/api/week_by_date?date=${dateFromValue}`)
+                        .then(res => res.json())
+                        .then(data => {
+                            if (!data.error) {
+                                document.getElementById('periodDisplay').textContent = `Tuần ${data.week_number}`;
+                                window.currentWeekNumber = data.week_number;
+                            }
+                        })
+                        .catch(error => console.error('Error fetching week number:', error));
                 } else {
                     // Tháng: sử dụng ngày đầu tháng  
                     currentDate = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
                     document.getElementById('month_type').checked = true;
+                    
+                    // Cập nhật display cho tháng
+                    const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+                                       'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+                    document.getElementById('periodDisplay').textContent = `${monthNames[fromDate.getMonth()]} ${fromDate.getFullYear()}`;
                 }
+            } else {
+                // Chỉ load tuần hiện tại khi chưa có giá trị từ server
+                loadCurrentWeek();
             }
             
             // Hoàn thành khởi tạo
             isInitializing = false;
+            
+            // Load dữ liệu bảng ban đầu
+            loadTableData();
 
             document.querySelectorAll('input[name="period_type"]').forEach(radio => {
                 radio.addEventListener('change', function() {
@@ -551,7 +702,7 @@
                     if (currentPeriodType === 'week') {
                         loadCurrentWeek();
                     } else {
-                        updatePeriodDisplay(); // Tháng giữ logic cũ
+                        updatePeriodDisplay();
                     }
                 });
             });
@@ -574,19 +725,10 @@
                 }
             });
 
-            // Tự động submit form khi thay đổi ngày (chỉ sau khi khởi tạo xong)
-            document.getElementById('date_from').addEventListener('change', function() {
-                if (!isInitializing) {
-                    document.getElementById('searchForm').submit();
-                }
-            });
-            document.getElementById('date_to').addEventListener('change', function() {
-                if (!isInitializing) {
-                    document.getElementById('searchForm').submit();
-                }
-            });
+            // Không auto-submit khi date thay đổi
+            // Người dùng sẽ phải click nút "Tìm kiếm" để submit form
             
-            // ===== AJAX SORTING LOGIC =====
+            // ===== CLIENT-SIDE SORTING LOGIC =====
             // Add event listeners for sort links
             document.querySelectorAll('.sort-link').forEach(link => {
                 link.addEventListener('click', function(e) {
@@ -597,94 +739,20 @@
                     
                     console.log('Sort clicked:', sortBy, sortOrder);
                     
-                    // Get form data
-                    const form = document.getElementById('searchForm');
-                    const formData = new FormData(form);
+                    // Sort dữ liệu
+                    sortTableData(sortBy, sortOrder);
                     
-                    // Add sort parameters
-                    formData.append('sort_by', sortBy);
-                    formData.append('sort_order', sortOrder);
+                    // Render lại bảng
+                    renderTable();
                     
-                    // Make AJAX request
-                    fetch('{{ url_for("group_summary") }}', {
-                        method: 'POST',
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.html) {
-                            // Update table content
-                            document.getElementById('table-container').innerHTML = data.html;
-                            
-                            // Re-attach event listeners to new sort links
-                            attachSortListeners();
-                            
-                            console.log('Table updated successfully');
-                        } else {
-                            console.error('Failed to update table:', data);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('AJAX Error:', error);
-                    });
+                    // Cập nhật sort indicators
+                    updateSortIndicators(sortBy, sortOrder);
+                    
+                    // Lưu trạng thái sort hiện tại
+                    currentSortBy = sortBy;
+                    currentSortOrder = sortOrder;
                 });
             });
-            
-            // Function to re-attach sort listeners after AJAX update
-            function attachSortListeners() {
-                document.querySelectorAll('.sort-link').forEach(link => {
-                    // Remove existing listeners by cloning the element
-                    const newLink = link.cloneNode(true);
-                    link.parentNode.replaceChild(newLink, link);
-                    
-                    // Add fresh event listener
-                    newLink.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        
-                        const sortBy = this.getAttribute('data-sort');
-                        const sortOrder = this.getAttribute('data-order');
-                        
-                        console.log('Sort clicked (re-attached):', sortBy, sortOrder);
-                        
-                        // Get form data
-                        const form = document.getElementById('searchForm');
-                        const formData = new FormData(form);
-                        
-                        // Add sort parameters
-                        formData.append('sort_by', sortBy);
-                        formData.append('sort_order', sortOrder);
-                        
-                        // Make AJAX request
-                        fetch('{{ url_for("group_summary") }}', {
-                            method: 'POST',
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            },
-                            body: formData
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success && data.html) {
-                                // Update table content
-                                document.getElementById('table-container').innerHTML = data.html;
-                                
-                                // Re-attach event listeners again
-                                attachSortListeners();
-                                
-                                console.log('Table updated successfully (re-attached)');
-                            } else {
-                                console.error('Failed to update table (re-attached):', data);
-                            }
-                        })
-                        .catch(error => {
-                            console.error('AJAX Error (re-attached):', error);
-                        });
-                    });
-                });
-            }
         });
     </script>
     <style>
